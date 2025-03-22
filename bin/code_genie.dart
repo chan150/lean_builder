@@ -1,13 +1,15 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:analyzer/dart/analysis/features.dart';
+import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:code_genie/src/resolvers/assets_reader.dart';
+import 'package:code_genie/src/resolvers/package_file_resolver.dart';
+import 'package:code_genie/src/scanner/assets_graph.dart';
+import 'package:code_genie/src/scanner/top_level_scanner.dart';
+import 'package:code_genie/src/utils.dart';
 import 'package:xxh3/xxh3.dart';
-
-import 'resolvers/package_file_resolver.dart';
-import 'scanner/assets_graph.dart';
-import 'scanner/top_level_scanner.dart';
-import 'utils.dart';
 
 final packageUrl = '/Users/milad/.pub-cache/hosted/pub.dev/args-2.6.0/lib';
 final webPackageUrl = '/Users/milad/.pub-cache/hosted/pub.dev/web-1.1.1/lib';
@@ -20,14 +22,13 @@ final assetsGraphFile = File('.dart_tool/build/assets_graph.json');
 void main(List<String> args) async {
   final stopWatch = Stopwatch()..start();
 
-  final fileResolver = PackageFileResolver.forCurrentRoot();
-  final rootPackage = rootPackageName;
+  final fileResolver = PackageFileResolver.forCurrentRoot(rootPackageName);
   final AssetsGraph assetsGraph;
 
   if (assetsGraphFile.existsSync()) {
     final cachedGraph = jsonDecode(assetsGraphFile.readAsStringSync());
     assetsGraph = AssetsGraph.fromCache(cachedGraph, fileResolver);
-    if (!assetsGraph.loadedFromCAche) {
+    if (!assetsGraph.loadedFromCache) {
       print('Cache is outdated, rebuilding...');
       assetsGraphFile.deleteSync(recursive: true);
     }
@@ -36,44 +37,64 @@ void main(List<String> args) async {
   }
 
   final scanner = TopLevelScanner(assetsGraph);
-  final packagesToScan = assetsGraph.loadedFromCAche || true ? {rootPackage} : fileResolver.packages;
-  for (final package in packagesToScan) {
-    final packagePath = fileResolver.pathFor(package);
-    final packageRoot = '${Uri.parse(packagePath).path}/lib';
-    final dir = Directory(packageRoot);
-    if (!dir.existsSync()) return;
-    final files = dir
-        .listSync(recursive: true, followLinks: false)
-        .whereType<File>()
-        .where((file) => file.path.endsWith('.dart') && !file.path.endsWith('.g.dart'));
-    for (var file in files) {
-      scanner.scanFile(file);
-    }
+  final assetsReader = FileAssetReader(fileResolver);
+  final packagesToScan = assetsGraph.loadedFromCache || true ? {rootPackageName} : fileResolver.packages;
+
+  final assets = assetsReader.listAssetsFor(packagesToScan);
+  for (final asset in assets) {
+    scanner.scanFile(asset);
   }
-  final packageAssets = assetsGraph.getAssetsForPackage(rootPackage);
-  if (assetsGraph.loadedFromCAche) {
-    for (final asset in packageAssets) {
-      final uri = fileResolver.resolve(Uri.parse(asset.path));
-      final file = File.fromUri(uri);
-      if (!file.existsSync()) {
-        assetsGraph.removeAsset(asset.pathHash);
+  if (assetsGraph.loadedFromCache) {
+    for (final entry in assetsGraph.getAssetsForPackage(rootPackageName)) {
+      final asset = fileResolver.buildAssetUri(entry.uri);
+      if (!asset.existsSync()) {
+        assetsGraph.removeAsset(asset.id);
         continue;
       }
-      final content = file.readAsBytesSync();
+      final content = asset.readAsBytesSync();
       final currentHash = xxh3String(content);
-      if (currentHash != asset.contentHash) {
-        assetsGraph.removeAsset(asset.pathHash);
-        scanner.scanFile(file);
+      if (currentHash != entry.contentHash) {
+        assetsGraph.removeAsset(asset.id);
+        scanner.scanFile(asset);
       }
+    }
+  }
+  final packageAssets = assetsGraph.getAssetsForPackage(rootPackageName);
+  for (final asset in packageAssets) {
+    if (asset.hasAnnotation) {
+      final fileAsset = fileResolver.buildAssetUri(asset.uri);
+      // print(fileAsset.uri);
+      final unit = getUnitForAsset(fileResolver, fileAsset.path);
+      // final clazz = unit.declarations.whereType<ClassDeclaration>().firstWhere((e) => e.metadata.isNotEmpty);
+      // final superClass = clazz.extendsClause!.superclass.name2.lexeme;
+
+      // final imports =
+      //     unit.directives
+      //         .whereType<ImportDirective>()
+      //         .map((e) => fileResolver.resolve(Uri.parse(e.uri.stringValue!), relativeTo: fileAsset.uri))
+      //         .map((e) => File.fromUri(e).path)
+      //         .toSet();
+
+      final identifiers = assetsGraph.getExposedIdentifiers(fileAsset.id);
+      // print(identifiers);
     }
   }
 
-  for (final asset in packageAssets) {
-    print(asset);
-  }
+  // for (final asset in packageAssets) {
+  //   print(asset);
+  // }
 
   await assetsGraphFile.writeAsString(jsonEncode(assetsGraph.toJson()));
   print('Time taken: ${stopWatch.elapsed.inMilliseconds} ms');
+}
+
+CompilationUnit getUnitForAsset(PackageFileResolver fileResolver, String path) {
+  if (_unitsCache.containsKey(path)) {
+    return _unitsCache[path]!;
+  }
+  final unit = parseFile(path: path, featureSet: FeatureSet.latestLanguageVersion()).unit;
+  _unitsCache[path] = unit;
+  return unit;
 }
 
 final _unitsCache = <String, CompilationUnit>{};

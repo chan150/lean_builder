@@ -1,4 +1,7 @@
-import '../../bin/resolvers/package_file_resolver.dart';
+import 'dart:io';
+
+import 'package:code_genie/src/resolvers/file_asset.dart';
+import 'package:code_genie/src/resolvers/package_file_resolver.dart';
 
 class MockPackageFileResolver implements PackageFileResolver {
   final Map<String, String> packageToPath;
@@ -46,5 +49,15 @@ class MockPackageFileResolver implements PackageFileResolver {
       return 'package:test/$packagePath';
     }
     return path;
+  }
+
+  @override
+  FileAsset buildAssetUri(Uri uri, {FileAsset? relativeTo}) {
+    return FileAsset(File.fromUri(uri), uri, 'mock-test-hash', true);
+  }
+
+  @override
+  bool isRootPackage(String package) {
+    return package == 'test';
   }
 }

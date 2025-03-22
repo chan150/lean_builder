@@ -1,0 +1,210 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:path/path.dart' as p;
+import 'package:xxh3/xxh3.dart';
+
+import 'file_asset.dart';
+
+/// Abstract interface for resolving package file paths
+abstract class PackageFileResolver {
+  static const dirsScheme = {'lib': 'package', 'bin': 'asset', 'test': 'asset'};
+
+  /// Resolves a URI to an absolute URI
+  Uri resolve(Uri uri, {Uri? relativeTo});
+
+  /// Returns the package name for a given URI
+  String packageFor(Uri uri, {Uri? relativeTo});
+
+  String pathFor(String package);
+
+  /// Converts a file URI to a package import string
+  String uriToPackageImport(Uri uri);
+
+  FileAsset buildAssetUri(Uri uri, {FileAsset? relativeTo});
+
+  /// Returns the set of available packages
+  Set<String> get packages;
+
+  String get packagesHash;
+
+  /// Creates a resolver for the current working directory
+  factory PackageFileResolver.forCurrentRoot(String rootPackage) {
+    return PackageFileResolverImpl.forRoot(Directory.current.path, rootPackage);
+  }
+
+  bool isRootPackage(String package);
+}
+
+/// Implementation of file resolution for Dart package system
+class PackageFileResolverImpl implements PackageFileResolver {
+  final Map<String, String> packageToPath;
+  final Map<String, String> pathToPackage;
+
+  @override
+  final String packagesHash;
+  final String rootPackage;
+
+  static const _packageConfigPath = '.dart_tool/package_config.json';
+  static const _skyEnginePackage = 'sky_engine';
+
+  PackageFileResolverImpl(this.packageToPath, this.pathToPackage, this.packagesHash, this.rootPackage);
+
+  @override
+  Set<String> get packages => packageToPath.keys.toSet();
+
+  @override
+  String pathFor(String package) {
+    assert(packageToPath.containsKey(package), 'Package $package not found');
+    return packageToPath[package]!;
+  }
+
+  /// Creates a resolver for the specified root directory
+  factory PackageFileResolverImpl.forRoot(String path, String rootPackage) {
+    final config = _loadPackageConfig(path);
+    return PackageFileResolverImpl(config.packageToPath, config.pathToPackage, config.packagesHash, rootPackage);
+  }
+
+  /// Helper method to load and parse package configuration
+  static _PackageConfig _loadPackageConfig(String rootPath) {
+    final packageConfig = File.fromUri(Uri.file(p.join(rootPath, _packageConfigPath)));
+    final json = jsonDecode(packageConfig.readAsStringSync());
+    final packageConfigJson = json['packages'] as List<dynamic>;
+    final packagesHash = xxh3String(Uint8List.fromList(jsonEncode(packageConfigJson).codeUnits));
+
+    final packageToPath = <String, String>{};
+    final pathToPackage = <String, String>{};
+
+    for (var entry in packageConfigJson) {
+      final name = entry['name'] as String;
+      if (name[0] == '_') continue;
+
+      final packageUri = Uri.parse(entry['rootUri'] as String);
+      final absoluteUri =
+          packageUri.hasScheme ? packageUri : Directory.current.uri.resolve(packageUri.pathSegments.skip(1).join('/'));
+      final resolvedPath = absoluteUri.replace(path: p.canonicalize(absoluteUri.path)).toString();
+      packageToPath[name] = resolvedPath;
+      pathToPackage[resolvedPath] = name;
+    }
+
+    return _PackageConfig(packageToPath, pathToPackage, packagesHash);
+  }
+
+  @override
+  String packageFor(Uri uri, {Uri? relativeTo}) {
+    final path = resolve(uri, relativeTo: relativeTo).replace(scheme: 'file').toString();
+    String? bestMatch;
+    int bestMatchLength = 0;
+    for (final entry in pathToPackage.entries) {
+      final rootPath = entry.key;
+      final packageName = entry.value;
+
+      // Check for exact match
+      if (path == rootPath) {
+        return packageName;
+      }
+
+      // Check if uri starts with this root path
+      if (path.startsWith(rootPath) && (rootPath.endsWith('/') || path.substring(rootPath.length).startsWith('/'))) {
+        // If this match is longer than our current best match, use it
+        if (rootPath.length > bestMatchLength) {
+          bestMatch = packageName;
+          bestMatchLength = rootPath.length;
+        }
+      }
+    }
+    assert(bestMatch != null, 'Could not find package for $uri');
+    return bestMatch!;
+  }
+
+  Uri toShortPath(Uri uri) {
+    if (uri.scheme == 'package') {
+      return uri;
+    } else if (uri.scheme == 'file') {
+      final packageName = packageFor(uri);
+      final rootUri = Uri.parse(packageToPath[packageName]!);
+      final segments = uri.pathSegments.sublist(rootUri.pathSegments.length);
+      final dir = segments[0];
+      final scheme = PackageFileResolver.dirsScheme[dir];
+      return Uri(scheme: scheme, pathSegments: [packageName, ...segments.skip(scheme == 'package' ? 1 : 0)]);
+    }
+    return uri;
+  }
+
+  @override
+  FileAsset buildAssetUri(Uri uri, {FileAsset? relativeTo}) {
+    Uri absoluteUri = resolve(uri, relativeTo: relativeTo?.uri);
+    final packageName = packageFor(absoluteUri);
+    final Uri shortPath = toShortPath(absoluteUri);
+    final hash = xxh3String(Uint8List.fromList(shortPath.toString().codeUnits));
+    return FileAsset(File.fromUri(absoluteUri), shortPath, hash, packageName == rootPackage);
+  }
+
+  @override
+  Uri resolve(Uri uri, {Uri? relativeTo}) {
+    return switch (uri.scheme) {
+      'package' => _resolvePackageUri(uri),
+      'asset' => _resolveAssetUri(uri),
+      'dart' => _resolveDartUri(uri),
+      '' => _resolveRelativeUri(uri, relativeTo),
+      _ => uri,
+    };
+  }
+
+  Uri _resolvePackageUri(Uri uri) {
+    final package = uri.pathSegments.first;
+    final packagePath = packageToPath[package];
+    if (packagePath != null) {
+      return Uri.parse(p.joinAll([packagePath, 'lib', ...uri.pathSegments.skip(1)]));
+    }
+    return uri;
+  }
+
+  Uri _resolveAssetUri(Uri uri) {
+    final package = uri.pathSegments.first;
+    final packagePath = packageToPath[package];
+    if (packagePath != null) {
+      return Uri.parse(p.joinAll([packagePath, ...uri.pathSegments.skip(1)]));
+    }
+    return uri;
+  }
+
+  Uri _resolveDartUri(Uri uri) {
+    final packagePath = packageToPath[_skyEnginePackage];
+    final dir = uri.path;
+    if (packagePath != null) {
+      return Uri.parse(p.joinAll([packagePath, 'lib', dir, '$dir.dart']));
+    }
+    return uri;
+  }
+
+  Uri _resolveRelativeUri(Uri uri, Uri? relativeTo) {
+    assert(relativeTo != null, 'Relative URI requires a base URI');
+    final baseDir = p.dirname(relativeTo!.path);
+    final normalized = p.normalize(p.join(baseDir, uri.path));
+    return Uri(scheme: 'file', path: normalized);
+  }
+
+  @override
+  String uriToPackageImport(Uri uri) {
+    final splits = uri.path.split('/lib/');
+    final package = pathToPackage[splits.firstOrNull];
+    assert(package != null, 'Package not found for URI: $uri');
+    return 'package:$package/${splits.last}';
+  }
+
+  @override
+  bool isRootPackage(String package) {
+    return package == rootPackage;
+  }
+}
+
+/// Private class to hold package configuration data
+class _PackageConfig {
+  final Map<String, String> packageToPath;
+  final Map<String, String> pathToPackage;
+  final String packagesHash;
+
+  _PackageConfig(this.packageToPath, this.pathToPackage, this.packagesHash);
+}

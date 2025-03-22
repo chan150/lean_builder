@@ -1,19 +1,23 @@
+import 'package:code_genie/test/test2.dart';
+
 part 'test_part.dart';
 
-// class A extends XX {
-//   A(this.x);
-//
-//   final PartX x;
-//
-//   final String xxx = '2323ee223';
-//   void method() {}
-// }
-//
-// abstract class B {
-//   B();
-// }
-//
-// enum EnumX { A, B, C }
+@Annotation()
+class A extends XX {
+  A(this.x);
+
+  final PartX x;
+
+  final String xxx = '2323ee223';
+
+  void method() {}
+}
+
+class Annotation {
+  const Annotation();
+}
+
+enum EnumX { A, B, C }
 
 const constVar = 42;
 final finalVar = 42;
