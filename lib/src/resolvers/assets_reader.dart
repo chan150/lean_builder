@@ -14,9 +14,10 @@ class FileAssetReader {
     return file.path.endsWith('.dart') && !file.path.endsWith('.g.dart');
   }
 
-  List<FileAsset> listAssetsFor(Set<String> packages) {
-    final assets = <FileAsset>[];
+  Map<String, List<FileAsset>> listAssetsFor(Set<String> packages) {
+    final assets = <String, List<FileAsset>>{};
     for (final package in packages) {
+      final collection = <FileAsset>[];
       final packagePath = fileResolver.pathFor(package);
       final dir = Directory.fromUri(Uri.parse(packagePath));
       assert(dir.existsSync(), 'Package $package not found at ${dir.path}');
@@ -25,9 +26,10 @@ class FileAssetReader {
         if (subDir == 'test' && !fileResolver.isRootPackage(package)) continue;
         final subDirPath = Directory(p.join(dir.path, subDir));
         if (subDirPath.existsSync()) {
-          _collectAssets(subDirPath, assets);
+          _collectAssets(subDirPath, collection);
         }
       }
+      assets[package] = collection;
     }
     return assets;
   }

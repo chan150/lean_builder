@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:analyzer/dart/analysis/features.dart';
 import 'package:analyzer/dart/analysis/utilities.dart';
@@ -27,23 +28,30 @@ void main(List<String> args) async {
 
   if (assetsGraphFile.existsSync()) {
     final cachedGraph = jsonDecode(assetsGraphFile.readAsStringSync());
-    assetsGraph = AssetsGraph.fromCache(cachedGraph, fileResolver);
+    assetsGraph = AssetsGraph.fromCache(cachedGraph, fileResolver.packagesHash);
     if (!assetsGraph.loadedFromCache) {
       print('Cache is outdated, rebuilding...');
       assetsGraphFile.deleteSync(recursive: true);
     }
   } else {
-    assetsGraph = AssetsGraph(fileResolver);
+    assetsGraph = AssetsGraph(fileResolver.packagesHash);
   }
 
-  final scanner = TopLevelScanner(assetsGraph);
+  final scanner = TopLevelScanner(assetsGraph, fileResolver);
   final assetsReader = FileAssetReader(fileResolver);
   final packagesToScan = assetsGraph.loadedFromCache ? {rootPackageName} : fileResolver.packages;
 
   final assets = assetsReader.listAssetsFor(packagesToScan);
-  for (final asset in assets) {
-    scanner.scanFile(asset);
+  final futures = <Future>[];
+  for (final package in assets.keys) {
+    final future = Isolate.run(() {
+      for (final asset in assets[package]!) {
+        scanner.scanFile(asset);
+      }
+    });
+    futures.add(future);
   }
+  Future.wait(futures);
   if (assetsGraph.loadedFromCache) {
     for (final entry in assetsGraph.getAssetsForPackage(rootPackageName)) {
       final asset = fileResolver.buildAssetUri(entry.uri);
@@ -54,25 +62,35 @@ void main(List<String> args) async {
       final content = asset.readAsBytesSync();
       final currentHash = xxh3String(content);
       if (currentHash != entry.contentHash) {
-        print('updating ${asset.path}');
         assetsGraph.removeAsset(asset.id);
         scanner.scanFile(asset);
       }
     }
   }
-  final packageAssets = assetsGraph.getAssetsForPackage(rootPackageName);
-  for (final asset in packageAssets) {
-    if (asset.hasAnnotation && asset.uri.isScheme('package')) {
-      final fileAsset = fileResolver.buildAssetUri(asset.uri);
-      final unit = getUnitForAsset(fileResolver, fileAsset.path);
-      final clazz = unit.declarations.whereType<ClassDeclaration>().firstWhere((e) => e.metadata.isNotEmpty);
-      // final superClass = clazz.extendsClause!.superclass.name2.lexeme;
 
-      final ref = assetsGraph.getIdentifierRef('XX', fileAsset.id);
-      print('src: ${assetsGraph.assets[ref?.srcHash]?[0]}');
-      print('provider: ${assetsGraph.assets[ref?.providerHash]?[0]}');
-    }
-  }
+  // final packageAssets = assetsGraph.getAssetsForPackage(rootPackageName);
+  // for (final asset in packageAssets) {
+  //   // print(assetsGraph.getIdentifierRef('Container', asset.id));
+  //   // if (asset.hasAnnotation && asset.uri.isScheme('package')) {
+  //   //
+  //   //   final unit = getUnitForAsset(fileResolver, fileAsset.path);
+  //   //   final clazz = unit.declarations.whereType<ClassDeclaration>().firstWhere((e) => e.metadata.isNotEmpty);
+  //   //   final superClass = clazz.extendsClause!.superclass.name2.lexeme;
+  //   //   print(superClass);
+  //   //
+  //   //   final ref = assetsGraph.getIdentifierRef(superClass, fileAsset.id);
+  //   //   if (ref != null) {
+  //   //     final superAsset = fileResolver.buildAssetUri(ref.srcUri);
+  //   //     final superUnit = getUnitForAsset(fileResolver, superAsset.path);
+  //   //     final superClazz = superUnit.declarations.whereType<ClassDeclaration>().firstWhere(
+  //   //       (e) => e.name.lexeme == ref.identifier,
+  //   //     );
+  //   //     print(superClazz);
+  //   //     print('src: ${ref.srcUri}');
+  //   //     print('provider: ${assetsGraph.assets[ref.providerId]?[0]}');
+  //   //   }
+  //   // }
+  // }
 
   // for (final asset in packageAssets) {
   //   print(asset);

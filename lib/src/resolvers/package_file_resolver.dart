@@ -9,7 +9,7 @@ import 'file_asset.dart';
 
 /// Abstract interface for resolving package file paths
 abstract class PackageFileResolver {
-  static const dirsScheme = {'lib': 'package', 'bin': 'asset', 'test': 'asset'};
+  static const dirsScheme = {'lib': 'package', 'test': 'asset'};
 
   /// Resolves a URI to an absolute URI
   Uri resolve(Uri uri, {Uri? relativeTo});

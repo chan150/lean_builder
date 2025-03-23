@@ -2,18 +2,15 @@ import 'dart:collection';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:code_genie/src/resolvers/file_asset.dart';
 import 'package:xxh3/xxh3.dart';
 
-import '../resolvers/file_asset.dart';
-import '../resolvers/package_file_resolver.dart';
 import 'directive_statement.dart';
 
 class AssetsGraph {
-  AssetsGraph(this.packageResolver) : packagesHash = packageResolver.packagesHash, loadedFromCache = false;
+  AssetsGraph(this.packagesHash) : loadedFromCache = false;
 
-  AssetsGraph._fromCache(this.packageResolver, this.packagesHash, this.loadedFromCache);
-
-  final PackageFileResolver packageResolver;
+  AssetsGraph._fromCache(this.packagesHash, this.loadedFromCache);
 
   final String packagesHash;
   final bool loadedFromCache;
@@ -35,11 +32,6 @@ class AssetsGraph {
     return _srcDigests[path] = xxh3String(Uint8List.fromList(path.codeUnits));
   }
 
-  String shortenPath(String path) {
-    final resolved = packageResolver.uriToPackageImport(Uri(path: path));
-    return resolved;
-  }
-
   bool isVisited(String fileId) {
     return visitedAssets.contains(fileId);
   }
@@ -50,6 +42,12 @@ class AssetsGraph {
     }
     if (isVisited) visitedAssets.add(asset.id);
     return asset.id;
+  }
+
+  Uri getUriForAsset(String pathHash) {
+    final asset = assets[pathHash];
+    assert(asset != null, 'Asset not found: $pathHash');
+    return Uri.parse(asset![0]);
   }
 
   List<ScannedAsset> getDependentsOf(String pathHash) {
@@ -78,9 +76,9 @@ class AssetsGraph {
     return assets;
   }
 
-  void updateFileInfo(FileAsset asset, {required String content, bool hasAnnotation = false}) {
+  void updateFileInfo(FileAsset asset, {required Uint8List content, bool hasAnnotation = false}) {
     assert(assets.containsKey(asset.id), 'Asset not found: $asset');
-    final contentHash = asset.root ? xxh3String(Uint8List.fromList(content.codeUnits)) : null;
+    final contentHash = asset.root ? xxh3String(content) : null;
     final assetArr = assets[asset.id]!;
     assetArr[1] = contentHash;
     assetArr[2] = hasAnnotation ? 1 : 0;
@@ -150,7 +148,14 @@ class AssetsGraph {
     final possibleSrcs = identifiers.where((e) => e[0] == identifier).map((e) => e[1]).toSet();
 
     if (possibleSrcs.contains(srcFileId)) {
-      return IdentifierReference(identifier, srcFileId, srcFileId);
+      final uri = getUriForAsset(srcFileId);
+      return IdentifierReference(
+        identifier: identifier,
+        srcId: srcFileId,
+        srcUri: uri,
+        providerId: srcFileId,
+        providerUri: uri,
+      );
     }
 
     // Check all imports of the source file
@@ -165,16 +170,31 @@ class AssetsGraph {
 
       // Check if the imported file directly declares the identifier\
       if (possibleSrcs.contains(importedFileHash)) {
-        return IdentifierReference(identifier, importedFileHash, importedFileHash);
+        final uri = getUriForAsset(importedFileHash);
+        return IdentifierReference(
+          identifier: identifier,
+          srcId: importedFileHash,
+          srcUri: uri,
+          providerId: importedFileHash,
+          providerUri: uri,
+        );
       }
 
       // Case 2b: Check if the imported file re-exports the identifier
       Set<String> reExportedSrcs = {};
       Set<String> visitedFiles = {};
       _collectProviders(importedFileHash, identifier, reExportedSrcs, visitedFiles);
-      for (final srcHash in possibleSrcs) {
-        if (reExportedSrcs.contains(srcHash)) {
-          return IdentifierReference(identifier, srcHash, importedFileHash);
+      for (final srcId in possibleSrcs) {
+        if (reExportedSrcs.contains(srcId)) {
+          final srcUri = getUriForAsset(srcId);
+          final importedUri = getUriForAsset(importedFileHash);
+          return IdentifierReference(
+            identifier: identifier,
+            srcId: srcId,
+            srcUri: srcUri,
+            providerId: importedFileHash,
+            providerUri: importedUri,
+          );
         }
       }
     }
@@ -270,13 +290,13 @@ class AssetsGraph {
   }
 
   // Create from cached data if valid
-  factory AssetsGraph.fromCache(Map<String, dynamic> json, PackageFileResolver packageResolver) {
-    final packagesHash = json['packagesHash'] as String;
-    final version = json['version'] as String;
-    if (packagesHash != packageResolver.packagesHash || version != AssetsGraph.version) {
-      return AssetsGraph(packageResolver);
+  factory AssetsGraph.fromCache(Map<String, dynamic> json, String packagesHash) {
+    final storedPackagesHash = json['packagesHash'] as String?;
+    final version = json['version'] as String?;
+    if (storedPackagesHash != packagesHash || version != AssetsGraph.version) {
+      return AssetsGraph(packagesHash);
     }
-    final graph = AssetsGraph._fromCache(packageResolver, packagesHash, true);
+    final graph = AssetsGraph._fromCache(packagesHash, true);
     graph.assets.addAll((json['assets'] as Map<String, dynamic>).cast<String, List<dynamic>>());
     graph.visitedAssets.addAll(graph.assets.keys);
     for (final export in json['exports'].entries) {
@@ -291,10 +311,10 @@ class AssetsGraph {
 }
 
 class ScannedAsset {
-  ScannedAsset(this.pathHash, this.uri, this.contentHash, this.hasAnnotation);
+  ScannedAsset(this.id, this.uri, this.contentHash, this.hasAnnotation);
 
   final Uri uri;
-  final String pathHash;
+  final String id;
   final String? contentHash;
   final bool hasAnnotation;
 
@@ -305,14 +325,22 @@ class ScannedAsset {
 }
 
 class IdentifierReference {
-  IdentifierReference(this.identifier, this.srcHash, this.providerHash);
+  IdentifierReference({
+    required this.identifier,
+    required this.srcId,
+    required this.providerId,
+    required this.srcUri,
+    required this.providerUri,
+  });
 
   final String identifier;
-  final String srcHash;
-  final String providerHash;
+  final String srcId;
+  final String providerId;
+  final Uri srcUri;
+  final Uri providerUri;
 
   @override
   String toString() {
-    return 'IdentifierReference{identifier: $identifier, srcHash: $srcHash, providerHash: $providerHash}';
+    return 'IdentifierReference{identifier: $identifier, srcHash: $srcId, providerHash: $providerId}';
   }
 }

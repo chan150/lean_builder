@@ -13,8 +13,8 @@ main() {
   late AssetsGraph assetsGraph;
   setUp(() {
     final mockPackageFileResolver = MockPackageFileResolver();
-    assetsGraph = AssetsGraph(mockPackageFileResolver);
-    scanner = TopLevelScanner(assetsGraph);
+    assetsGraph = AssetsGraph(mockPackageFileResolver.packagesHash);
+    scanner = TopLevelScanner(assetsGraph, mockPackageFileResolver);
   });
 
   test('TopLevelScanner should scan a file', () {

@@ -20,6 +20,11 @@ class FileAsset {
     return file.readAsStringSync();
   }
 
+  Uint8List? readAsBytesSyncSafe() {
+    if (!file.existsSync()) return null;
+    return file.readAsBytesSync();
+  }
+
   Uint8List readAsBytesSync() {
     return file.readAsBytesSync();
   }

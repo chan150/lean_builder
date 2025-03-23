@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:analyzer/dart/analysis/features.dart';
@@ -9,6 +10,7 @@ import 'package:analyzer/src/dart/scanner/reader.dart';
 import 'package:analyzer/src/dart/scanner/scanner.dart';
 // ignore: implementation_imports
 import 'package:analyzer/src/string_source.dart';
+import 'package:code_genie/src/resolvers/package_file_resolver.dart';
 
 import '../resolvers/file_asset.dart';
 import 'assets_graph.dart';
@@ -16,16 +18,17 @@ import 'directive_statement.dart';
 
 class TopLevelScanner {
   final AssetsGraph graph;
+  final PackageFileResolver fileResolver;
 
-  TopLevelScanner(this.graph);
+  TopLevelScanner(this.graph, this.fileResolver);
 
   static const _declarationKeywords = {Keyword.CLASS, Keyword.MIXIN, Keyword.ENUM, Keyword.TYPEDEF, Keyword.EXTENSION};
 
   void scanFile(FileAsset asset) {
     try {
       if (graph.isVisited(asset.id)) return;
-      final content = asset.readAsStringSyncSafe();
-      if (content == null) return;
+      final bytes = asset.readAsBytesSync();
+      final content = utf8.decode(bytes);
       graph.addAsset(asset);
       final scanner = Scanner(StringSource(content, asset.path), CharSequenceReader(content), BooleanErrorListener())
         ..configureFeatures(
@@ -82,22 +85,22 @@ class TopLevelScanner {
         }
         token = nextToken;
       }
-      graph.updateFileInfo(asset, content: content, hasAnnotation: hasTopLevelAnnotation);
+      graph.updateFileInfo(asset, content: bytes, hasAnnotation: hasTopLevelAnnotation);
 
       for (final export in exports) {
         graph.addExport(asset, export);
-        scanFile(export.asset);
+        // scanFile(export.asset);
       }
 
       for (final import in imports) {
         graph.addImport(asset, import);
       }
     } catch (e) {
-      if (e is Error) {
-        print(e.stackTrace);
-      } else {
-        print(StackTrace.current);
-      }
+      // if (e is Error) {
+      //   print(e.stackTrace);
+      // } else {
+      //   print(StackTrace.current);
+      // }
       print('Error scanning file: ${asset.shortPath} $e');
       // Silent error handling
     }
@@ -145,7 +148,7 @@ class TopLevelScanner {
     final url = nextLexeme.substring(1, nextLexeme.length - 1);
     final uri = Uri.parse(url);
     if (uri.path[0] == '_') return null;
-    final asset = graph.packageResolver.buildAssetUri(uri, relativeTo: enclosingAsset);
+    final asset = fileResolver.buildAssetUri(uri, relativeTo: enclosingAsset);
 
     // Extract show/hide combinators
     final show = <String>[];
