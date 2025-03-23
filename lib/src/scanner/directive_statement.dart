@@ -3,7 +3,7 @@ import 'package:collection/collection.dart';
 import '../resolvers/file_asset.dart';
 
 class DirectiveStatement {
-  final FileAsset asset;
+  final AssetFile asset;
   final List<String> show;
   final List<String> hide;
 

@@ -1,16 +1,10 @@
-import 'dart:convert';
-import 'dart:io';
-import 'dart:isolate';
-
 import 'package:analyzer/dart/analysis/features.dart';
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:code_genie/src/resolvers/assets_reader.dart';
 import 'package:code_genie/src/resolvers/package_file_resolver.dart';
 import 'package:code_genie/src/scanner/assets_graph.dart';
-import 'package:code_genie/src/scanner/top_level_scanner.dart';
+import 'package:code_genie/src/scanner/isolate_scanner.dart';
 import 'package:code_genie/src/utils.dart';
-import 'package:xxh3/xxh3.dart';
 
 final packageUrl = '/Users/milad/.pub-cache/hosted/pub.dev/args-2.6.0/lib';
 final webPackageUrl = '/Users/milad/.pub-cache/hosted/pub.dev/web-1.1.1/lib';
@@ -18,55 +12,15 @@ final autoRoutePackageUrl = '/Users/milad/.pub-cache/hosted/pub.dev/auto_route-1
 final flutterPackageUrl = '/Users/milad/Dev/sdk/flutter/packages/flutter';
 final testPackageUrl = '/Users/milad/StudioProjects/code_genie/lib/test';
 
-final assetsGraphFile = File('.dart_tool/build/assets_graph.json');
-
 void main(List<String> args) async {
   final stopWatch = Stopwatch()..start();
-
+  // if (assetsGraphFile.existsSync()) {
+  //   assetsGraphFile.deleteSync(recursive: true);
+  // }
   final fileResolver = PackageFileResolver.forCurrentRoot(rootPackageName);
-  final AssetsGraph assetsGraph;
-
-  if (assetsGraphFile.existsSync()) {
-    final cachedGraph = jsonDecode(assetsGraphFile.readAsStringSync());
-    assetsGraph = AssetsGraph.fromCache(cachedGraph, fileResolver.packagesHash);
-    if (!assetsGraph.loadedFromCache) {
-      print('Cache is outdated, rebuilding...');
-      assetsGraphFile.deleteSync(recursive: true);
-    }
-  } else {
-    assetsGraph = AssetsGraph(fileResolver.packagesHash);
-  }
-
-  final scanner = TopLevelScanner(assetsGraph, fileResolver);
-  final assetsReader = FileAssetReader(fileResolver);
-  final packagesToScan = assetsGraph.loadedFromCache ? {rootPackageName} : fileResolver.packages;
-
-  final assets = assetsReader.listAssetsFor(packagesToScan);
-  final futures = <Future>[];
-  for (final package in assets.keys) {
-    final future = Isolate.run(() {
-      for (final asset in assets[package]!) {
-        scanner.scanFile(asset);
-      }
-    });
-    futures.add(future);
-  }
-  Future.wait(futures);
-  if (assetsGraph.loadedFromCache) {
-    for (final entry in assetsGraph.getAssetsForPackage(rootPackageName)) {
-      final asset = fileResolver.buildAssetUri(entry.uri);
-      if (!asset.existsSync()) {
-        assetsGraph.removeAsset(asset.id);
-        continue;
-      }
-      final content = asset.readAsBytesSync();
-      final currentHash = xxh3String(content);
-      if (currentHash != entry.contentHash) {
-        assetsGraph.removeAsset(asset.id);
-        scanner.scanFile(asset);
-      }
-    }
-  }
+  final AssetsGraph assetsGraph = AssetsGraph.init(fileResolver.packagesHash);
+  final isoTlScanner = IsolateTLScanner(assetsGraph: assetsGraph, fileResolver: fileResolver);
+  await isoTlScanner.scanAssets();
 
   // final packageAssets = assetsGraph.getAssetsForPackage(rootPackageName);
   // for (final asset in packageAssets) {
@@ -96,7 +50,7 @@ void main(List<String> args) async {
   //   print(asset);
   // }
 
-  await assetsGraphFile.writeAsString(jsonEncode(assetsGraph.toJson()));
+  // await assetsGraphFile.writeAsString(jsonEncode(assetsGraph.toJson()));
   print('Time taken: ${stopWatch.elapsed.inMilliseconds} ms');
 }
 

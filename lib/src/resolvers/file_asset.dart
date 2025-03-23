@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-class FileAsset {
+class AssetFile {
   final File file;
   final String id;
 
@@ -9,7 +9,7 @@ class FileAsset {
 
   final bool root;
 
-  FileAsset(this.file, this.shortPath, this.id, this.root);
+  AssetFile(this.file, this.shortPath, this.id, this.root);
 
   String get path => file.path;
 

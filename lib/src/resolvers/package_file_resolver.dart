@@ -22,7 +22,7 @@ abstract class PackageFileResolver {
   /// Converts a file URI to a package import string
   String uriToPackageImport(Uri uri);
 
-  FileAsset buildAssetUri(Uri uri, {FileAsset? relativeTo});
+  AssetFile buildAssetUri(Uri uri, {AssetFile? relativeTo});
 
   /// Returns the set of available packages
   Set<String> get packages;
@@ -34,7 +34,15 @@ abstract class PackageFileResolver {
     return PackageFileResolverImpl.forRoot(Directory.current.path, rootPackage);
   }
 
+  factory PackageFileResolver.fromJson(Map<String, dynamic> data) {
+    final packageToPath = (data['packageToPath'] as Map<dynamic, dynamic>).cast<String, String>();
+    final pathToPackage = Map.of(packageToPath.map((k, v) => MapEntry(v, k)));
+    return PackageFileResolverImpl(packageToPath, pathToPackage, data['packagesHash'], data['rootPackage']);
+  }
+
   bool isRootPackage(String package);
+
+  Map<String, dynamic> toJson();
 }
 
 /// Implementation of file resolution for Dart package system
@@ -81,9 +89,13 @@ class PackageFileResolverImpl implements PackageFileResolver {
       if (name[0] == '_') continue;
 
       final packageUri = Uri.parse(entry['rootUri'] as String);
-      final absoluteUri =
-          packageUri.hasScheme ? packageUri : Directory.current.uri.resolve(packageUri.pathSegments.skip(1).join('/'));
-      final resolvedPath = absoluteUri.replace(path: p.canonicalize(absoluteUri.path)).toString();
+      String resolvedPath = packageUri.toString();
+      if (!packageUri.hasScheme) {
+        Uri absoluteUri = packageUri;
+        absoluteUri = Directory.current.uri.resolve(packageUri.pathSegments.skip(1).join('/'));
+        resolvedPath = absoluteUri.replace(path: p.canonicalize(absoluteUri.path)).toString();
+      }
+
       packageToPath[name] = resolvedPath;
       pathToPackage[resolvedPath] = name;
     }
@@ -93,6 +105,10 @@ class PackageFileResolverImpl implements PackageFileResolver {
 
   @override
   String packageFor(Uri uri, {Uri? relativeTo}) {
+    if (uri.scheme == 'dart') {
+      return _skyEnginePackage;
+    }
+
     final path = resolve(uri, relativeTo: relativeTo).replace(scheme: 'file').toString();
     String? bestMatch;
     int bestMatchLength = 0;
@@ -104,7 +120,6 @@ class PackageFileResolverImpl implements PackageFileResolver {
       if (path == rootPath) {
         return packageName;
       }
-
       // Check if uri starts with this root path
       if (path.startsWith(rootPath) && (rootPath.endsWith('/') || path.substring(rootPath.length).startsWith('/'))) {
         // If this match is longer than our current best match, use it
@@ -114,7 +129,7 @@ class PackageFileResolverImpl implements PackageFileResolver {
         }
       }
     }
-    assert(bestMatch != null, 'Could not find package for $uri');
+    assert(bestMatch != null, 'Could not find package for $path');
     return bestMatch!;
   }
 
@@ -133,12 +148,19 @@ class PackageFileResolverImpl implements PackageFileResolver {
   }
 
   @override
-  FileAsset buildAssetUri(Uri uri, {FileAsset? relativeTo}) {
-    Uri absoluteUri = resolve(uri, relativeTo: relativeTo?.uri);
+  AssetFile buildAssetUri(Uri uri, {AssetFile? relativeTo}) {
+    final absoluteUri = resolve(uri, relativeTo: relativeTo?.uri);
+    // if (uri.toString().contains('gen_helpers.dart')) {
+    //   print('-----------------');
+    //   print(uri);
+    //   print(absoluteUri);
+    //   print(relativeTo?.uri);
+    //   print('-----------------');
+    // }
     final packageName = packageFor(absoluteUri);
-    final Uri shortPath = toShortPath(absoluteUri);
+    final shortPath = toShortPath(absoluteUri);
     final hash = xxh3String(Uint8List.fromList(shortPath.toString().codeUnits));
-    return FileAsset(File.fromUri(absoluteUri), shortPath, hash, packageName == rootPackage);
+    return AssetFile(File.fromUri(absoluteUri), shortPath, hash, packageName == rootPackage);
   }
 
   @override
@@ -182,7 +204,8 @@ class PackageFileResolverImpl implements PackageFileResolver {
   Uri _resolveRelativeUri(Uri uri, Uri? relativeTo) {
     assert(relativeTo != null, 'Relative URI requires a base URI');
     final baseDir = p.dirname(relativeTo!.path);
-    final normalized = p.normalize(p.join(baseDir, uri.path));
+    final uriPath = uri.path.startsWith('/') ? uri.path.substring(1) : uri.path;
+    final normalized = p.normalize(p.join(baseDir, uriPath));
     return Uri(scheme: 'file', path: normalized);
   }
 
@@ -197,6 +220,11 @@ class PackageFileResolverImpl implements PackageFileResolver {
   @override
   bool isRootPackage(String package) {
     return package == rootPackage;
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {'packageToPath': packageToPath, 'packagesHash': packagesHash, 'rootPackage': rootPackage};
   }
 }
 

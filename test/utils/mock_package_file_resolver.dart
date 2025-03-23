@@ -52,12 +52,17 @@ class MockPackageFileResolver implements PackageFileResolver {
   }
 
   @override
-  FileAsset buildAssetUri(Uri uri, {FileAsset? relativeTo}) {
-    return FileAsset(File.fromUri(uri), uri, 'mock-test-hash', true);
+  AssetFile buildAssetUri(Uri uri, {AssetFile? relativeTo}) {
+    return AssetFile(File.fromUri(uri), uri, 'mock-test-hash', true);
   }
 
   @override
   bool isRootPackage(String package) {
     return package == 'test';
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {'packages': packageToPath, 'hash': packagesHash};
   }
 }

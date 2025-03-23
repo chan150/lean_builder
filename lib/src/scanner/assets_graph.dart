@@ -1,48 +1,34 @@
-import 'dart:collection';
 import 'dart:convert';
-import 'dart:typed_data';
+import 'dart:io';
 
-import 'package:code_genie/src/resolvers/file_asset.dart';
-import 'package:xxh3/xxh3.dart';
+import 'package:code_genie/src/scanner/scan_results.dart';
+import 'package:collection/collection.dart';
 
-import 'directive_statement.dart';
+class AssetsGraph extends AssetsScanResults {
+  static final cacheFile = File('.dart_tool/build/assets_graph.json');
 
-class AssetsGraph {
   AssetsGraph(this.packagesHash) : loadedFromCache = false;
 
   AssetsGraph._fromCache(this.packagesHash, this.loadedFromCache);
+
+  factory AssetsGraph.init(String packagesHash) {
+    if (cacheFile.existsSync()) {
+      final cachedGraph = jsonDecode(cacheFile.readAsStringSync());
+      final instance = AssetsGraph.fromCache(cachedGraph, packagesHash);
+      if (!instance.loadedFromCache) {
+        print('Cache is outdated, rebuilding...');
+        cacheFile.deleteSync(recursive: true);
+      }
+      return instance;
+    } else {
+      return AssetsGraph(packagesHash);
+    }
+  }
 
   final String packagesHash;
   final bool loadedFromCache;
 
   static const String version = '1.0.0';
-
-  final Map<String, List<dynamic>> assets = {/*  [src, content hash, has annotation] */};
-  final List<List<dynamic>> identifiers = [/* [identifier, srcHash] */];
-  final Map<String, List<List<dynamic>>> exports = {};
-  final Map<String, List<List<dynamic>>> imports = {};
-
-  final visitedAssets = <String>{};
-  final _srcDigests = HashMap<String, String>();
-
-  String digestPath(String path) {
-    if (_srcDigests.containsKey(path)) {
-      return _srcDigests[path]!;
-    }
-    return _srcDigests[path] = xxh3String(Uint8List.fromList(path.codeUnits));
-  }
-
-  bool isVisited(String fileId) {
-    return visitedAssets.contains(fileId);
-  }
-
-  String addAsset(FileAsset asset, {bool isVisited = true}) {
-    if (!assets.containsKey(asset.id)) {
-      assets[asset.id] = [asset.shortPath.toString(), null, 0];
-    }
-    if (isVisited) visitedAssets.add(asset.id);
-    return asset.id;
-  }
 
   Uri getUriForAsset(String pathHash) {
     final asset = assets[pathHash];
@@ -74,72 +60,6 @@ class AssetsGraph {
       }
     }
     return assets;
-  }
-
-  void updateFileInfo(FileAsset asset, {required Uint8List content, bool hasAnnotation = false}) {
-    assert(assets.containsKey(asset.id), 'Asset not found: $asset');
-    final contentHash = asset.root ? xxh3String(content) : null;
-    final assetArr = assets[asset.id]!;
-    assetArr[1] = contentHash;
-    assetArr[2] = hasAnnotation ? 1 : 0;
-  }
-
-  // Add a direct declaration
-  void addDeclaration(String identifier, FileAsset declaringFile) {
-    if (!assets.containsKey(declaringFile.id)) {
-      throw Exception('Asset not found: $declaringFile');
-    }
-    final entry = lookupIdentifier(identifier, declaringFile.id);
-    if (entry == null) {
-      identifiers.add([identifier, declaringFile.id]);
-    }
-  }
-
-  List<dynamic>? lookupIdentifier(String identifier, String srcHash) {
-    for (final entry in identifiers) {
-      if (entry[0] == identifier && entry[1] == srcHash) {
-        return entry;
-      }
-    }
-    return null;
-  }
-
-  void addExport(FileAsset exportingFile, DirectiveStatement statement) {
-    assert(assets.containsKey(exportingFile.id));
-    final exportedFileHash = addAsset(statement.asset, isVisited: false);
-    final exporters = exports[exportingFile.id] ?? [];
-    if (exporters.isNotEmpty) {
-      for (final exporter in exporters) {
-        if (exporter[0] == exportedFileHash) {
-          return;
-        }
-      }
-    }
-    exporters.add([
-      exportedFileHash,
-      if (statement.show.isNotEmpty || statement.hide.isNotEmpty) statement.show,
-      if (statement.hide.isNotEmpty) statement.hide,
-    ]);
-    exports[exportingFile.id] = exporters;
-  }
-
-  void addImport(FileAsset importingFile, DirectiveStatement statement) {
-    assert(assets.containsKey(importingFile.id));
-    final importedFileHash = addAsset(statement.asset, isVisited: false);
-    final importsOfFile = imports[importingFile.id] ?? [];
-    if (importsOfFile.isNotEmpty) {
-      for (final importedFile in importsOfFile) {
-        if (importedFile[0] == importedFileHash) {
-          return;
-        }
-      }
-    }
-    importsOfFile.add([
-      importedFileHash,
-      if (statement.show.isNotEmpty || statement.hide.isNotEmpty) statement.show,
-      if (statement.hide.isNotEmpty) statement.hide,
-    ]);
-    imports[importingFile.id] = importsOfFile;
   }
 
   IdentifierReference? getIdentifierRef(String identifier, String srcFileId) {
@@ -229,26 +149,6 @@ class AssetsGraph {
     return identifiers;
   }
 
-  // String? getImportForIdentifier(String identifier, Set<String> imports) {
-  //   final possibleProviders = getProvidersForIdentifier(identifier);
-  //   for (final provider in possibleProviders) {
-  //     if (imports.contains(provider)) {
-  //       return provider;
-  //     }
-  //   }
-  //   return null;
-  // }
-
-  // Uri? getSourceForIdentifier(String identifier) {
-  //   for (final provider in identifiers.entries) {
-  //     if (provider.key.split('@').first == identifier) {
-  //       final source = assets[provider.value.first];
-  //       return packageResolver.resolve(Uri.parse('package:$source.dart'));
-  //     }
-  //   }
-  //   return null;
-  // }
-
   Map<String, String> getExposedIdentifiersInside(String fileHash) {
     final identifiers = <String, String>{};
     for (final importArr in imports[fileHash] ?? []) {
@@ -260,35 +160,6 @@ class AssetsGraph {
     return identifiers;
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'assets': assets,
-      'identifiers': identifiers,
-      'exports': exports,
-      'imports': imports,
-      'packagesHash': packagesHash,
-      'version': version,
-    };
-  }
-
-  // Convert to JSON string
-  String toJsonString() {
-    return jsonEncode(toJson());
-  }
-
-  void removeAsset(String pathHash) {
-    assets.remove(pathHash);
-    visitedAssets.remove(pathHash);
-    // remove all exports that reference this asset
-    exports.removeWhere((key, value) {
-      value.removeWhere((element) => element[0] == pathHash);
-      return value.isEmpty;
-    });
-    imports.remove(pathHash);
-    // remove all identifiers that reference this asset
-    identifiers.removeWhere((element) => element[1] == pathHash);
-  }
-
   // Create from cached data if valid
   factory AssetsGraph.fromCache(Map<String, dynamic> json, String packagesHash) {
     final storedPackagesHash = json['packagesHash'] as String?;
@@ -296,17 +167,7 @@ class AssetsGraph {
     if (storedPackagesHash != packagesHash || version != AssetsGraph.version) {
       return AssetsGraph(packagesHash);
     }
-    final graph = AssetsGraph._fromCache(packagesHash, true);
-    graph.assets.addAll((json['assets'] as Map<String, dynamic>).cast<String, List<dynamic>>());
-    graph.visitedAssets.addAll(graph.assets.keys);
-    for (final export in json['exports'].entries) {
-      graph.exports[export.key] = (export.value as List<dynamic>).cast<List<dynamic>>();
-    }
-    for (final import in json['imports'].entries) {
-      graph.imports[import.key] = (import.value as List<dynamic>).cast<List<dynamic>>();
-    }
-    graph.identifiers.addAll((json['identifiers'] as List<dynamic>).cast<List<dynamic>>());
-    return graph;
+    return AssetsScanResults.populate(AssetsGraph._fromCache(packagesHash, true), json);
   }
 }
 

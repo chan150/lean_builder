@@ -5,8 +5,8 @@ void main() {
   late final PackageFileResolverImpl fileResolver;
   setUpAll(() {
     fileResolver = PackageFileResolverImpl(
-      {'code_genie': 'file:///root/code_genie-1.0.0'},
-      {'file:///root/code_genie-1.0.0': 'code_genie'},
+      {'code_genie': 'file:///root/code_genie-1.0.0', 'git': 'file:///root/git/vertex_core-12345/'},
+      {'file:///root/code_genie-1.0.0': 'code_genie', 'file:///root/git/vertex_core-12345/': 'git'},
       'mock-test-hash',
       'code_genie',
     );
@@ -18,9 +18,20 @@ void main() {
     expect(package, 'code_genie');
   });
 
-  test('PackageFileResolverImpl should resolve path for package', () {
+  test('PackageFileResolver should resolve package for package uri', () {
+    final uri = Uri.parse('package:git/src/resolvers/package_file_resolver.dart');
+    final package = fileResolver.packageFor(uri);
+    expect(package, 'git');
+  });
+
+  test('PackageFileResolver should resolve path for package', () {
     final path = fileResolver.pathFor('code_genie');
     expect(path, 'file:///root/code_genie-1.0.0');
+  });
+
+  test('PackageFileResolver should resolve path for package', () {
+    final path = fileResolver.pathFor('git');
+    expect(path, 'file:///root/git/vertex_core-12345/');
   });
 
   test('PackageFileResolver should resolve uri for package', () {
@@ -39,6 +50,14 @@ void main() {
   test('PackageFileResolver should resolve relative uri when back roots', () {
     final uri = fileResolver.resolve(
       Uri.parse('./file_asset.dart'),
+      relativeTo: Uri.parse('file:///root/code_genie-1.0.0/lib/src/resolvers/'),
+    );
+    expect(uri, Uri.parse('file:///root/code_genie-1.0.0/lib/src/file_asset.dart'));
+  });
+
+  test('PackageFileResolver should resolve relative uri with leading slash', () {
+    final uri = fileResolver.resolve(
+      Uri.parse('/file_asset.dart'),
       relativeTo: Uri.parse('file:///root/code_genie-1.0.0/lib/src/resolvers/'),
     );
     expect(uri, Uri.parse('file:///root/code_genie-1.0.0/lib/src/file_asset.dart'));
