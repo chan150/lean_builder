@@ -41,14 +41,15 @@ class TopLevelScanner {
       bool hasTopLevelAnnotation = false;
       while (token.type != TokenType.EOF) {
         switch (token.type) {
-          case TokenType.OPEN_CURLY_BRACKET:
-          case TokenType.OPEN_PAREN:
-          case TokenType.OPEN_SQUARE_BRACKET:
+          case TokenType.OPEN_CURLY_BRACKET: // '{'
+          case TokenType.OPEN_PAREN: // '('
+          case TokenType.OPEN_SQUARE_BRACKET: // '['
+          case TokenType.STRING_INTERPOLATION_EXPRESSION: // '${'
             scopeTracker++;
             break;
-          case TokenType.CLOSE_CURLY_BRACKET:
-          case TokenType.CLOSE_PAREN:
-          case TokenType.CLOSE_SQUARE_BRACKET:
+          case TokenType.CLOSE_CURLY_BRACKET: // '}'
+          case TokenType.CLOSE_PAREN: // ')'
+          case TokenType.CLOSE_SQUARE_BRACKET: // ']'
             scopeTracker = max(0, scopeTracker - 1);
             break;
         }

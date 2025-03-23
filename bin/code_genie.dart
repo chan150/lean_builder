@@ -38,7 +38,7 @@ void main(List<String> args) async {
 
   final scanner = TopLevelScanner(assetsGraph);
   final assetsReader = FileAssetReader(fileResolver);
-  final packagesToScan = assetsGraph.loadedFromCache || true ? {rootPackageName} : fileResolver.packages;
+  final packagesToScan = assetsGraph.loadedFromCache ? {rootPackageName} : fileResolver.packages;
 
   final assets = assetsReader.listAssetsFor(packagesToScan);
   for (final asset in assets) {
@@ -54,6 +54,7 @@ void main(List<String> args) async {
       final content = asset.readAsBytesSync();
       final currentHash = xxh3String(content);
       if (currentHash != entry.contentHash) {
+        print('updating ${asset.path}');
         assetsGraph.removeAsset(asset.id);
         scanner.scanFile(asset);
       }
@@ -61,22 +62,15 @@ void main(List<String> args) async {
   }
   final packageAssets = assetsGraph.getAssetsForPackage(rootPackageName);
   for (final asset in packageAssets) {
-    if (asset.hasAnnotation) {
+    if (asset.hasAnnotation && asset.uri.isScheme('package')) {
       final fileAsset = fileResolver.buildAssetUri(asset.uri);
-      // print(fileAsset.uri);
       final unit = getUnitForAsset(fileResolver, fileAsset.path);
-      // final clazz = unit.declarations.whereType<ClassDeclaration>().firstWhere((e) => e.metadata.isNotEmpty);
+      final clazz = unit.declarations.whereType<ClassDeclaration>().firstWhere((e) => e.metadata.isNotEmpty);
       // final superClass = clazz.extendsClause!.superclass.name2.lexeme;
 
-      // final imports =
-      //     unit.directives
-      //         .whereType<ImportDirective>()
-      //         .map((e) => fileResolver.resolve(Uri.parse(e.uri.stringValue!), relativeTo: fileAsset.uri))
-      //         .map((e) => File.fromUri(e).path)
-      //         .toSet();
-
-      final identifiers = assetsGraph.getExposedIdentifiers(fileAsset.id);
-      // print(identifiers);
+      final ref = assetsGraph.getIdentifierRef('XX', fileAsset.id);
+      print('src: ${assetsGraph.assets[ref?.srcHash]?[0]}');
+      print('provider: ${assetsGraph.assets[ref?.providerHash]?[0]}');
     }
   }
 

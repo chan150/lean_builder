@@ -78,13 +78,6 @@ class AssetsGraph {
     return assets;
   }
 
-  String _identifyAsset(String assetPath) {
-    final shortPath = shortenPath(assetPath);
-    final hash = digestPath(shortPath);
-    assert(assets.containsKey(hash), 'Asset not found: $assetPath');
-    return hash;
-  }
-
   void updateFileInfo(FileAsset asset, {required String content, bool hasAnnotation = false}) {
     assert(assets.containsKey(asset.id), 'Asset not found: $asset');
     final contentHash = asset.root ? xxh3String(Uint8List.fromList(content.codeUnits)) : null;
@@ -151,36 +144,69 @@ class AssetsGraph {
     imports[importingFile.id] = importsOfFile;
   }
 
-  Set<String> getProvidersForIdentifier(String identifier) {
-    Set<String> providers = {};
-    Set<String> visitedFiles = {};
-    // Start with direct declarations
-    for (final entry in identifiers) {
-      if (entry[0] == identifier) {
-        _collectProviders(entry[1], identifier, providers, visitedFiles);
+  IdentifierReference? getIdentifierRef(String identifier, String srcFileId) {
+    // First check if the identifier is declared directly in this file
+
+    final possibleSrcs = identifiers.where((e) => e[0] == identifier).map((e) => e[1]).toSet();
+
+    if (possibleSrcs.contains(srcFileId)) {
+      return IdentifierReference(identifier, srcFileId, srcFileId);
+    }
+
+    // Check all imports of the source file
+    final fileImports = imports[srcFileId] ?? [];
+    for (final importEntry in fileImports) {
+      final importedFileHash = importEntry[0] as String;
+      final shows = importEntry.elementAtOrNull(1) as List<dynamic>? ?? const [];
+      final hides = importEntry.elementAtOrNull(2) as List<dynamic>? ?? const [];
+      // Skip if the identifier is hidden or not shown
+      if (shows.isNotEmpty && !shows.contains(identifier)) continue;
+      if (hides.contains(identifier)) continue;
+
+      // Check if the imported file directly declares the identifier\
+      if (possibleSrcs.contains(importedFileHash)) {
+        return IdentifierReference(identifier, importedFileHash, importedFileHash);
+      }
+
+      // Case 2b: Check if the imported file re-exports the identifier
+      Set<String> reExportedSrcs = {};
+      Set<String> visitedFiles = {};
+      _collectProviders(importedFileHash, identifier, reExportedSrcs, visitedFiles);
+      for (final srcHash in possibleSrcs) {
+        if (reExportedSrcs.contains(srcHash)) {
+          return IdentifierReference(identifier, srcHash, importedFileHash);
+        }
       }
     }
 
-    return providers;
+    return null;
   }
 
   void _collectProviders(String fileHash, String identifier, Set<String> providers, Set<String> visitedFiles) {
     if (visitedFiles.contains(fileHash)) return;
     visitedFiles.add(fileHash);
     assert(assets.containsKey(fileHash));
-    providers.add(assets[fileHash]![0]);
+    providers.add(fileHash);
     // Check all files that export this file
-    for (var entry in exports.entries) {
-      for (final expEntry in entry.value) {
-        if (expEntry[0] == fileHash) {
-          final shows = expEntry.elementAtOrNull(1) as List<dynamic>? ?? const [];
-          final hides = expEntry.elementAtOrNull(2) as List<dynamic>? ?? const [];
-          if (shows.isNotEmpty && !shows.contains(identifier)) continue;
-          if (hides.isNotEmpty && hides.contains(identifier)) continue;
-          _collectProviders(entry.key, identifier, providers, visitedFiles);
-        }
+    final fileExports = exports[fileHash] ?? [];
+    for (final expEntry in fileExports) {
+      final exportedFileHash = expEntry[0] as String;
+      final shows = expEntry.elementAtOrNull(1) as List<dynamic>? ?? const [];
+      final hides = expEntry.elementAtOrNull(2) as List<dynamic>? ?? const [];
+      if (shows.isNotEmpty && !shows.contains(identifier)) continue;
+      if (hides.contains(identifier)) continue;
+      _collectProviders(exportedFileHash, identifier, providers, visitedFiles);
+    }
+  }
+
+  Set<String> identifiersForAsset(String assetHash) {
+    final identifiers = <String>{};
+    for (final entry in this.identifiers) {
+      if (entry[1] == assetHash) {
+        identifiers.add(entry[0]);
       }
     }
+    return identifiers;
   }
 
   // String? getImportForIdentifier(String identifier, Set<String> imports) {
@@ -203,12 +229,12 @@ class AssetsGraph {
   //   return null;
   // }
 
-  // Get all identifiers provided by a specific file
-  Map<String, Set<String>> getExposedIdentifiers(String fileHash) {
-    final identifiers = <String, Set<String>>{};
-    for (final entry in this.identifiers) {
-      if (entry[1] == fileHash) {
-        identifiers.putIfAbsent(entry[0], () => {});
+  Map<String, String> getExposedIdentifiersInside(String fileHash) {
+    final identifiers = <String, String>{};
+    for (final importArr in imports[fileHash] ?? []) {
+      final importedIdentifiers = identifiersForAsset(importArr[0]);
+      for (final identifier in importedIdentifiers) {
+        identifiers[identifier] = importArr[0];
       }
     }
     return identifiers;
@@ -238,13 +264,7 @@ class AssetsGraph {
       value.removeWhere((element) => element[0] == pathHash);
       return value.isEmpty;
     });
-
-    // remove all imports that reference this asset
-    imports.removeWhere((key, value) {
-      value.removeWhere((element) => element[0] == pathHash);
-      return value.isEmpty;
-    });
-
+    imports.remove(pathHash);
     // remove all identifiers that reference this asset
     identifiers.removeWhere((element) => element[1] == pathHash);
   }
@@ -281,5 +301,18 @@ class ScannedAsset {
   @override
   String toString() {
     return 'PackageAsset{path: $uri, hasAnnotation: $hasAnnotation}';
+  }
+}
+
+class IdentifierReference {
+  IdentifierReference(this.identifier, this.srcHash, this.providerHash);
+
+  final String identifier;
+  final String srcHash;
+  final String providerHash;
+
+  @override
+  String toString() {
+    return 'IdentifierReference{identifier: $identifier, srcHash: $srcHash, providerHash: $providerHash}';
   }
 }

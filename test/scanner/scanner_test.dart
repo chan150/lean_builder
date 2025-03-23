@@ -52,6 +52,6 @@ main() {
   test('TopLevelScanner should scan a file with top level annotation', () {
     final file = FileAsset(File('test/scanner/samples/with_annotation.dart'), Uri(path: ''), '', false);
     scanner.scanFile(file);
-    expect(assetsGraph.assets.values.first[2], 0);
+    expect(assetsGraph.assets.values.first[2], 1);
   });
 }
