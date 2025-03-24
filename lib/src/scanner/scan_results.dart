@@ -153,9 +153,8 @@ class AssetsScanResults extends ScanResults {
   @override
   void updateFileInfo(AssetFile asset, {required Uint8List content, bool hasAnnotation = false}) {
     assert(assets.containsKey(asset.id), 'Asset not found: $asset');
-    final contentHash = asset.root ? xxh3String(content) : null;
     final assetArr = assets[asset.id]!;
-    assetArr[1] = contentHash;
+    assetArr[1] = xxh3String(content);
     assetArr[2] = hasAnnotation ? 1 : 0;
   }
 

@@ -1,15 +1,8 @@
-import 'dart:convert';
 import 'dart:math';
 
-import 'package:analyzer/dart/analysis/features.dart';
+// ignore: implementation_imports
+import 'package:_fe_analyzer_shared/src/scanner/scanner.dart' as fasta;
 import 'package:analyzer/dart/ast/token.dart';
-import 'package:analyzer/error/listener.dart';
-// ignore: implementation_imports
-import 'package:analyzer/src/dart/scanner/reader.dart';
-// ignore: implementation_imports
-import 'package:analyzer/src/dart/scanner/scanner.dart';
-// ignore: implementation_imports
-import 'package:analyzer/src/string_source.dart';
 import 'package:code_genie/src/resolvers/package_file_resolver.dart';
 import 'package:code_genie/src/scanner/scan_results.dart';
 
@@ -28,17 +21,9 @@ class TopLevelScanner {
     try {
       if (results.isVisited(asset.id)) return;
       final bytes = asset.readAsBytesSync();
-      final content = utf8.decode(bytes);
       results.addAsset(asset);
-      final scanner = Scanner(StringSource(content, asset.path), CharSequenceReader(content), BooleanErrorListener())
-        ..configureFeatures(
-          featureSetForOverriding: FeatureSet.latestLanguageVersion(),
-          featureSet: FeatureSet.latestLanguageVersion(),
-        );
-
-      var token = scanner.tokenize(reportScannerErrors: false);
-      final exports = <DirectiveStatement>{};
-      final imports = <DirectiveStatement>{};
+      var token = fasta.scan(bytes).tokens;
+      final directives = <DirectiveStatement>{};
 
       int scopeTracker = 0;
       bool hasTopLevelAnnotation = false;
@@ -67,12 +52,11 @@ class TopLevelScanner {
             final nextLexeme = nextToken.lexeme;
             // Skip processing if the identifier starts with '_'
             if (nextLexeme.isNotEmpty) {
-              if (type == Keyword.EXPORT || (type == Keyword.PART && nextToken.type != Keyword.OF)) {
-                final directive = _tryParseDirective(nextToken, asset);
-                if (directive != null) exports.add(directive);
-              } else if (type == Keyword.IMPORT) {
-                final directive = _tryParseDirective(nextToken, asset);
-                if (directive != null) imports.add(directive);
+              if (type == Keyword.EXPORT ||
+                  type == Keyword.IMPORT ||
+                  (type == Keyword.PART && nextToken.type != Keyword.OF)) {
+                final directive = _tryParseDirective(type, nextToken, asset);
+                if (directive != null) directives.add(directive);
               } else if (nextLexeme[0] != '_' && _declarationKeywords.contains(type)) {
                 results.addDeclaration(nextLexeme, asset);
               }
@@ -87,21 +71,23 @@ class TopLevelScanner {
       }
       results.updateFileInfo(asset, content: bytes, hasAnnotation: hasTopLevelAnnotation);
 
-      for (final export in exports) {
-        results.addExport(asset, export);
-        // scanFile(export.asset);
-      }
-
-      for (final import in imports) {
-        results.addImport(asset, import);
+      for (final directive in directives) {
+        if (directive.type == Keyword.EXPORT) {
+          results.addExport(asset, directive);
+        } else if (directive.type == Keyword.PART) {
+          results.addExport(asset, directive);
+          results.addImport(asset, directive);
+        } else {
+          results.addImport(asset, directive);
+        }
       }
     } catch (e) {
+      print('Error scanning file: ${asset.path}');
       // if (e is Error) {
       //   print(e.stackTrace);
       // } else {
       //   print(StackTrace.current);
       // }
-      print('Error scanning file: ${asset.shortPath} $e');
       // Silent error handling
     }
   }
@@ -142,7 +128,7 @@ class TopLevelScanner {
     }
   }
 
-  DirectiveStatement? _tryParseDirective(Token nextToken, AssetFile enclosingAsset) {
+  DirectiveStatement? _tryParseDirective(TokenType type, Token nextToken, AssetFile enclosingAsset) {
     final nextLexeme = nextToken.lexeme;
     if (nextLexeme.length < 3) return null;
     final url = nextLexeme.substring(1, nextLexeme.length - 1);
@@ -178,6 +164,6 @@ class TopLevelScanner {
       if (t.type == TokenType.SEMICOLON) break;
     }
 
-    return DirectiveStatement(asset: asset, show: show, hide: hide);
+    return DirectiveStatement(type: type, asset: asset, show: show, hide: hide);
   }
 }

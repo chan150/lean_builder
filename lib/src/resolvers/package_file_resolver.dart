@@ -139,10 +139,16 @@ class PackageFileResolverImpl implements PackageFileResolver {
     } else if (uri.scheme == 'file') {
       final packageName = packageFor(uri);
       final rootUri = Uri.parse(packageToPath[packageName]!);
-      final segments = uri.pathSegments.sublist(rootUri.pathSegments.length);
+      // remove trailing slash if present
+      int rootSegLength = rootUri.pathSegments.length;
+      if (rootUri.pathSegments.last == '') {
+        rootSegLength--;
+      }
+      final segments = uri.pathSegments.sublist(rootSegLength);
       final dir = segments[0];
       final scheme = PackageFileResolver.dirsScheme[dir];
-      return Uri(scheme: scheme, pathSegments: [packageName, ...segments.skip(scheme == 'package' ? 1 : 0)]);
+      final dirsToSkip = scheme == 'package' ? 1 : 0;
+      return Uri(scheme: scheme, pathSegments: [packageName, ...segments.skip(dirsToSkip)]);
     }
     return uri;
   }
@@ -150,13 +156,7 @@ class PackageFileResolverImpl implements PackageFileResolver {
   @override
   AssetFile buildAssetUri(Uri uri, {AssetFile? relativeTo}) {
     final absoluteUri = resolve(uri, relativeTo: relativeTo?.uri);
-    // if (uri.toString().contains('gen_helpers.dart')) {
-    //   print('-----------------');
-    //   print(uri);
-    //   print(absoluteUri);
-    //   print(relativeTo?.uri);
-    //   print('-----------------');
-    // }
+
     final packageName = packageFor(absoluteUri);
     final shortPath = toShortPath(absoluteUri);
     final hash = xxh3String(Uint8List.fromList(shortPath.toString().codeUnits));
@@ -193,8 +193,8 @@ class PackageFileResolverImpl implements PackageFileResolver {
   }
 
   Uri _resolveDartUri(Uri uri) {
-    final packagePath = packageToPath[_skyEnginePackage];
     final dir = uri.path;
+    final packagePath = packageToPath[dir] ?? packageToPath[_skyEnginePackage];
     if (packagePath != null) {
       return Uri.parse(p.joinAll([packagePath, 'lib', dir, '$dir.dart']));
     }

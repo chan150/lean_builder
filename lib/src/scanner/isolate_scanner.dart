@@ -57,22 +57,18 @@ class IsolateTLScanner {
     final assets = assetsReader.listAssetsFor(packagesToScan);
     final assetsList = assets.values.expand((e) => e).toList();
 
-    // Only distribute work if building from scratch or there's significant work to do
-    if (!assetsGraph.loadedFromCache || assetsList.length > 20) {
+    // Only distribute work if building from scratch
+    if (!assetsGraph.loadedFromCache) {
       await scanWithIsolates(assetsList, fileResolver.toJson());
     } else {
-      // Use single-threaded approach for small tasks or incremental updates
+      // Use single-threaded approach incremental updates
       final scanner = TopLevelScanner(assetsGraph, fileResolver);
       for (final package in assets.keys) {
         for (final asset in assets[package]!) {
           scanner.scanFile(asset);
         }
       }
-    }
-
-    // Handle incremental updates
-    if (assetsGraph.loadedFromCache) {
-      updateIncrementalAssets();
+      updateIncrementalAssets(scanner);
     }
 
     await assetsGraphFile.writeAsString(jsonEncode(assetsGraph.toJson()));
@@ -142,7 +138,7 @@ class IsolateTLScanner {
     receivePort.close();
   }
 
-  void updateIncrementalAssets() {
+  void updateIncrementalAssets(TopLevelScanner scanner) {
     for (final entry in assetsGraph.getAssetsForPackage(rootPackageName)) {
       final asset = fileResolver.buildAssetUri(entry.uri);
       if (!asset.existsSync()) {
@@ -153,7 +149,6 @@ class IsolateTLScanner {
       final currentHash = xxh3String(content);
       if (currentHash != entry.contentHash) {
         assetsGraph.removeAsset(asset.id);
-        final scanner = TopLevelScanner(assetsGraph, fileResolver);
         scanner.scanFile(asset);
       }
     }

@@ -9,7 +9,7 @@ class AssetsGraph extends AssetsScanResults {
 
   AssetsGraph(this.packagesHash) : loadedFromCache = false;
 
-  AssetsGraph._fromCache(this.packagesHash, this.loadedFromCache);
+  AssetsGraph._fromCache(this.packagesHash) : loadedFromCache = true;
 
   factory AssetsGraph.init(String packagesHash) {
     if (cacheFile.existsSync()) {
@@ -160,6 +160,18 @@ class AssetsGraph extends AssetsScanResults {
     return identifiers;
   }
 
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      'assets': assets,
+      'identifiers': identifiers,
+      'exports': exports,
+      'imports': imports,
+      'version': version,
+      'packagesHash': packagesHash,
+    };
+  }
+
   // Create from cached data if valid
   factory AssetsGraph.fromCache(Map<String, dynamic> json, String packagesHash) {
     final storedPackagesHash = json['packagesHash'] as String?;
@@ -167,7 +179,7 @@ class AssetsGraph extends AssetsScanResults {
     if (storedPackagesHash != packagesHash || version != AssetsGraph.version) {
       return AssetsGraph(packagesHash);
     }
-    return AssetsScanResults.populate(AssetsGraph._fromCache(packagesHash, true), json);
+    return AssetsScanResults.populate(AssetsGraph._fromCache(packagesHash), json);
   }
 }
 

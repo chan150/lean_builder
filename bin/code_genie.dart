@@ -14,37 +14,40 @@ final testPackageUrl = '/Users/milad/StudioProjects/code_genie/lib/test';
 
 void main(List<String> args) async {
   final stopWatch = Stopwatch()..start();
-  // if (assetsGraphFile.existsSync()) {
-  //   assetsGraphFile.deleteSync(recursive: true);
+  print('Running Fresh Version');
+  // if (AssetsGraph.cacheFile.existsSync()) {
+  //   AssetsGraph.cacheFile.deleteSync(recursive: true);
   // }
   final fileResolver = PackageFileResolver.forCurrentRoot(rootPackageName);
   final AssetsGraph assetsGraph = AssetsGraph.init(fileResolver.packagesHash);
+
   final isoTlScanner = IsolateTLScanner(assetsGraph: assetsGraph, fileResolver: fileResolver);
   await isoTlScanner.scanAssets();
 
-  // final packageAssets = assetsGraph.getAssetsForPackage(rootPackageName);
-  // for (final asset in packageAssets) {
-  //   // print(assetsGraph.getIdentifierRef('Container', asset.id));
-  //   // if (asset.hasAnnotation && asset.uri.isScheme('package')) {
-  //   //
-  //   //   final unit = getUnitForAsset(fileResolver, fileAsset.path);
-  //   //   final clazz = unit.declarations.whereType<ClassDeclaration>().firstWhere((e) => e.metadata.isNotEmpty);
-  //   //   final superClass = clazz.extendsClause!.superclass.name2.lexeme;
-  //   //   print(superClass);
-  //   //
-  //   //   final ref = assetsGraph.getIdentifierRef(superClass, fileAsset.id);
-  //   //   if (ref != null) {
-  //   //     final superAsset = fileResolver.buildAssetUri(ref.srcUri);
-  //   //     final superUnit = getUnitForAsset(fileResolver, superAsset.path);
-  //   //     final superClazz = superUnit.declarations.whereType<ClassDeclaration>().firstWhere(
-  //   //       (e) => e.name.lexeme == ref.identifier,
-  //   //     );
-  //   //     print(superClazz);
-  //   //     print('src: ${ref.srcUri}');
-  //   //     print('provider: ${assetsGraph.assets[ref.providerId]?[0]}');
-  //   //   }
-  //   // }
-  // }
+  final packageAssets = assetsGraph.getAssetsForPackage(rootPackageName);
+  for (final asset in packageAssets) {
+    // print(assetsGraph.getIdentifierRef('Container', asset.id));
+    if (asset.hasAnnotation) {
+      print('Annotation found: ${asset.uri}');
+      //
+      //   final unit = getUnitForAsset(fileResolver, fileAsset.path);
+      //   final clazz = unit.declarations.whereType<ClassDeclaration>().firstWhere((e) => e.metadata.isNotEmpty);
+      //   final superClass = clazz.extendsClause!.superclass.name2.lexeme;
+      //   print(superClass);
+      //
+      //   final ref = assetsGraph.getIdentifierRef(superClass, fileAsset.id);
+      //   if (ref != null) {
+      //     final superAsset = fileResolver.buildAssetUri(ref.srcUri);
+      //     final superUnit = getUnitForAsset(fileResolver, superAsset.path);
+      //     final superClazz = superUnit.declarations.whereType<ClassDeclaration>().firstWhere(
+      //       (e) => e.name.lexeme == ref.identifier,
+      //     );
+      //     print(superClazz);
+      //     print('src: ${ref.srcUri}');
+      //     print('provider: ${assetsGraph.assets[ref.providerId]?[0]}');
+      //   }
+    }
+  }
 
   // for (final asset in packageAssets) {
   //   print(asset);
