@@ -15,18 +15,12 @@ class AssetFile {
 
   Uri get uri => file.uri;
 
-  String? readAsStringSyncSafe() {
-    if (!file.existsSync()) return null;
-    return file.readAsStringSync();
-  }
-
-  Uint8List? readAsBytesSyncSafe() {
-    if (!file.existsSync()) return null;
-    return file.readAsBytesSync();
-  }
-
   Uint8List readAsBytesSync() {
     return file.readAsBytesSync();
+  }
+
+  String readAsStringSync() {
+    return file.readAsStringSync();
   }
 
   bool existsSync() => file.existsSync();

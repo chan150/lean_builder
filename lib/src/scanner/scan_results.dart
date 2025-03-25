@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:analyzer/dart/ast/token.dart';
 import 'package:code_genie/src/resolvers/file_asset.dart';
 import 'package:collection/collection.dart';
 import 'package:xxh3/xxh3.dart';
@@ -32,7 +33,7 @@ abstract class ScanResults {
 
   void addAsset(AssetFile asset, {bool isVisited = true});
 
-  void addDeclaration(String identifier, AssetFile declaringFile);
+  void addDeclaration(String identifier, AssetFile declaringFile, IdentifierType type);
 
   void removeAsset(String id);
 
@@ -131,13 +132,13 @@ class AssetsScanResults extends ScanResults {
   }
 
   @override
-  void addDeclaration(String identifier, AssetFile declaringFile) {
+  void addDeclaration(String identifier, AssetFile declaringFile, IdentifierType type) {
     if (!assets.containsKey(declaringFile.id)) {
       throw Exception('Asset not found: $declaringFile');
     }
     final entry = lookupIdentifier(identifier, declaringFile.id);
     if (entry == null) {
-      identifiers.add([identifier, declaringFile.id]);
+      identifiers.add([identifier, declaringFile.id, type.value]);
     }
   }
 
@@ -192,4 +193,58 @@ class AssetsScanResults extends ScanResults {
   factory AssetsScanResults.fromJson(Map<String, dynamic> json) {
     return populate(AssetsScanResults(), json);
   }
+}
+
+enum IdentifierType {
+  $class(0),
+  $mixin(1),
+  $extension(2),
+  $enum(3),
+  $typeAlias(4),
+  $function(5),
+  $variable(6);
+
+  final int value;
+
+  const IdentifierType(this.value);
+
+  static IdentifierType fromValue(int value) {
+    switch (value) {
+      case 0:
+        return $class;
+      case 1:
+        return $mixin;
+      case 2:
+        return $extension;
+      case 3:
+        return $enum;
+      case 4:
+        return $typeAlias;
+      case 5:
+        return $function;
+      case 6:
+        return $variable;
+      default:
+        throw ArgumentError('Invalid value: $value');
+    }
+  }
+
+  static IdentifierType fromKeyword(TokenType type) {
+    switch (type) {
+      case Keyword.CLASS:
+        return $class;
+      case Keyword.MIXIN:
+        return $mixin;
+      case Keyword.EXTENSION:
+        return $extension;
+      case Keyword.ENUM:
+        return $enum;
+      case Keyword.TYPEDEF:
+        return $typeAlias;
+      default:
+        throw ArgumentError('Invalid value: $type');
+    }
+  }
+
+  bool get isInterface => this == $class || this == $mixin || this == $extension || this == $enum || this == $typeAlias;
 }

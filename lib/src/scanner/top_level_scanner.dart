@@ -15,8 +15,6 @@ class TopLevelScanner {
 
   TopLevelScanner(this.results, this.fileResolver);
 
-  static const _declarationKeywords = {Keyword.CLASS, Keyword.MIXIN, Keyword.ENUM, Keyword.TYPEDEF, Keyword.EXTENSION};
-
   void scanFile(AssetFile asset) {
     try {
       if (results.isVisited(asset.id)) return;
@@ -42,7 +40,13 @@ class TopLevelScanner {
             break;
         }
 
-        final nextToken = token.next!;
+        Token nextToken = token.next!;
+
+        void skipUntil(TokenType type) {
+          while (nextToken.type != type && nextToken.type != TokenType.EOF) {
+            nextToken = nextToken.next!;
+          }
+        }
 
         if (scopeTracker == 0) {
           if (token.type == TokenType.AT) {
@@ -50,19 +54,35 @@ class TopLevelScanner {
           } else if (token.isTopLevelKeyword) {
             final type = token.type;
             final nextLexeme = nextToken.lexeme;
-            // Skip processing if the identifier starts with '_'
-            if (nextLexeme.isNotEmpty) {
-              if (type == Keyword.EXPORT ||
-                  type == Keyword.IMPORT ||
-                  (type == Keyword.PART && nextToken.type != Keyword.OF)) {
-                final directive = _tryParseDirective(type, nextToken, asset);
-                if (directive != null) directives.add(directive);
-              } else if (nextLexeme[0] != '_' && _declarationKeywords.contains(type)) {
-                results.addDeclaration(nextLexeme, asset);
-              }
+            switch (type) {
+              case Keyword.IMPORT:
+              case Keyword.EXPORT:
+              case Keyword.PART:
+                if (type != Keyword.PART || nextToken.type != Keyword.OF) {
+                  final directive = _tryParseDirective(type, nextToken, asset);
+                  if (directive != null) directives.add(directive);
+                }
+                break;
+              case Keyword.TYPEDEF:
+                if (nextLexeme.isNotEmpty && nextLexeme[0] != '_') {
+                  results.addDeclaration(nextLexeme, asset, IdentifierType.$typeAlias);
+                }
+                skipUntil(TokenType.SEMICOLON);
+                break;
+
+              case Keyword.CLASS:
+              case Keyword.MIXIN:
+              case Keyword.ENUM:
+              case Keyword.EXTENSION:
+                if (nextLexeme.isNotEmpty && nextLexeme[0] != '_') {
+                  results.addDeclaration(nextLexeme, asset, IdentifierType.fromKeyword(type));
+                }
+                skipUntil(TokenType.OPEN_CURLY_BRACKET);
             }
           } else if (token.type == Keyword.CONST) {
             _tryParseConstVar(nextToken, asset);
+
+            skipUntil(TokenType.SEMICOLON);
           } else if (nextToken.isIdentifier) {
             _tryParseFunction(nextToken, token, asset);
           }
@@ -93,17 +113,51 @@ class TopLevelScanner {
   }
 
   void _tryParseFunction(Token nextToken, Token token, AssetFile asset) {
-    // Detect function declarations - look for identifiers followed by (
-    var possibleFunctionName = nextToken;
-    var afterIdentifier = possibleFunctionName.next;
+    // Skip if it's a private function
+    if (nextToken.lexeme.isEmpty || nextToken.lexeme[0] == '_') {
+      return;
+    }
 
-    // Simple function detection: identifier followed by (
-    if (afterIdentifier != null &&
-        (afterIdentifier.type == TokenType.OPEN_PAREN ||
-            (afterIdentifier.type == TokenType.LT && token.type != TokenType.SEMICOLON))) {
-      // Found a function or generic function
-      if (possibleFunctionName.lexeme.isNotEmpty && possibleFunctionName.lexeme[0] != '_') {
-        results.addDeclaration(possibleFunctionName.lexeme, asset);
+    // Simple case: function_name(
+    if (nextToken.next?.type == TokenType.OPEN_PAREN) {
+      results.addDeclaration(nextToken.lexeme, asset, IdentifierType.$function);
+      return;
+    }
+
+    // Generic function case: function_name<
+    if (nextToken.next?.type == TokenType.LT) {
+      // Track the angle bracket nesting level
+      var current = nextToken.next;
+      var depth = 1;
+      var iter = 0;
+      // Find the matching '>'
+      while (current != null && depth > 0 && iter < 10) {
+        iter++;
+        if (iter == 9) {
+          print('Error parsing generic function');
+          print(asset.uri);
+          print(nextToken.lexeme);
+          print(current);
+          print(token);
+        }
+
+        current = current.next;
+        if (current?.type == TokenType.LT) {
+          depth++;
+        } else if (current?.type == TokenType.LT_LT) {
+          depth += 2;
+        } else if (current?.type == TokenType.GT) {
+          depth--;
+        } else if (current?.type == TokenType.GT_GT) {
+          depth -= 2;
+        } else if (current?.type == TokenType.GT_GT_GT) {
+          depth -= 3;
+        }
+      }
+
+      // If we found '>' and it's followed by '(', we have a generic function
+      if (current != null && current.next?.type == TokenType.OPEN_PAREN) {
+        results.addDeclaration(nextToken.lexeme, asset, IdentifierType.$function);
       }
     }
   }
@@ -119,7 +173,7 @@ class TopLevelScanner {
                 afterIdentifier.type == TokenType.SEMICOLON ||
                 afterIdentifier.type == TokenType.COMMA)) {
           if (currentToken.lexeme.isNotEmpty && currentToken.lexeme[0] != '_') {
-            results.addDeclaration(currentToken.lexeme, asset);
+            results.addDeclaration(currentToken.lexeme, asset, IdentifierType.$variable);
           }
           break;
         }

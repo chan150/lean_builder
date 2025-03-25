@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:code_genie/src/scanner/scan_results.dart';
 import 'package:collection/collection.dart';
 
+import 'identifier_ref.dart';
+
 class AssetsGraph extends AssetsScanResults {
   static final cacheFile = File('.dart_tool/build/assets_graph.json');
 
@@ -62,20 +64,32 @@ class AssetsGraph extends AssetsScanResults {
     return assets;
   }
 
-  IdentifierReference? getIdentifierRef(String identifier, String srcFileId) {
+  IdentifierRef? getIdentifierRef(String identifier, String srcFileId) {
     // First check if the identifier is declared directly in this file
 
-    final possibleSrcs = identifiers.where((e) => e[0] == identifier).map((e) => e[1]).toSet();
+    // check for core
+    for (final identifierArr in identifiers) {
+      if (identifierArr[0] == identifier) {
+        print('src: ${assets[identifierArr[1]]?[0]}, type: ${IdentifierType.fromValue(identifierArr[2] as int).name}');
+      }
+    }
 
-    if (possibleSrcs.contains(srcFileId)) {
-      final uri = getUriForAsset(srcFileId);
-      return IdentifierReference(
-        identifier: identifier,
-        srcId: srcFileId,
-        srcUri: uri,
-        providerId: srcFileId,
-        providerUri: uri,
-      );
+    final possibleSrcs = Map<String, int>.fromEntries(
+      identifiers.where((e) => e[0] == identifier).map((e) => MapEntry(e[1], e[2])),
+    );
+
+    for (final entry in possibleSrcs.entries) {
+      if (entry.key == srcFileId) {
+        final uri = getUriForAsset(srcFileId);
+        return IdentifierRef(
+          identifier: identifier,
+          srcId: srcFileId,
+          srcUri: uri,
+          providerId: srcFileId,
+          providerUri: uri,
+          type: IdentifierType.fromValue(entry.value),
+        );
+      }
     }
 
     // Check all imports of the source file
@@ -89,31 +103,36 @@ class AssetsGraph extends AssetsScanResults {
       if (hides.contains(identifier)) continue;
 
       // Check if the imported file directly declares the identifier\
-      if (possibleSrcs.contains(importedFileHash)) {
-        final uri = getUriForAsset(importedFileHash);
-        return IdentifierReference(
-          identifier: identifier,
-          srcId: importedFileHash,
-          srcUri: uri,
-          providerId: importedFileHash,
-          providerUri: uri,
-        );
+      for (final entry in possibleSrcs.entries) {
+        if (entry.key == importedFileHash) {
+          final uri = getUriForAsset(importedFileHash);
+          return IdentifierRef(
+            identifier: identifier,
+            srcId: importedFileHash,
+            srcUri: uri,
+            providerId: importedFileHash,
+            providerUri: uri,
+            type: IdentifierType.fromValue(entry.value),
+          );
+        }
       }
 
       // Case 2b: Check if the imported file re-exports the identifier
       Set<String> reExportedSrcs = {};
       Set<String> visitedFiles = {};
       _collectProviders(importedFileHash, identifier, reExportedSrcs, visitedFiles);
-      for (final srcId in possibleSrcs) {
+      for (final entry in possibleSrcs.entries) {
+        final srcId = entry.key;
         if (reExportedSrcs.contains(srcId)) {
           final srcUri = getUriForAsset(srcId);
           final importedUri = getUriForAsset(importedFileHash);
-          return IdentifierReference(
+          return IdentifierRef(
             identifier: identifier,
             srcId: srcId,
             srcUri: srcUri,
             providerId: importedFileHash,
             providerUri: importedUri,
+            type: IdentifierType.fromValue(entry.value),
           );
         }
       }
@@ -194,26 +213,5 @@ class ScannedAsset {
   @override
   String toString() {
     return 'PackageAsset{path: $uri, hasAnnotation: $hasAnnotation}';
-  }
-}
-
-class IdentifierReference {
-  IdentifierReference({
-    required this.identifier,
-    required this.srcId,
-    required this.providerId,
-    required this.srcUri,
-    required this.providerUri,
-  });
-
-  final String identifier;
-  final String srcId;
-  final String providerId;
-  final Uri srcUri;
-  final Uri providerUri;
-
-  @override
-  String toString() {
-    return 'IdentifierReference{identifier: $identifier, srcHash: $srcId, providerHash: $providerId}';
   }
 }

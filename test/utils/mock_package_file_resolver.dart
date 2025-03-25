@@ -30,14 +30,6 @@ class MockPackageFileResolver implements PackageFileResolver {
 
   @override
   Uri resolve(Uri uri, {Uri? relativeTo}) {
-    if (uri.isScheme('package') && uri.pathSegments.first == 'test') {
-      final restPath = uri.pathSegments.skip(1).join('/');
-      return Uri.parse('path/to/test/lib/$restPath');
-    } else if (uri.isScheme('dart')) {
-      return Uri.parse('path/to/sky_engine/lib/${uri.path}/${uri.path}.dart');
-    } else if (!uri.hasScheme && relativeTo != null) {
-      return relativeTo.resolveUri(uri);
-    }
     return uri;
   }
 

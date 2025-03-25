@@ -36,8 +36,8 @@ class FileAssetReader {
 
   void _collectAssets(Directory directory, List<AssetFile> assets) {
     for (final entity in directory.listSync()) {
-      final basename = entity.uri.pathSegments.last;
-      if (basename.startsWith('_')) continue;
+      final isPrivate = entity.uri.pathSegments.any((e) => e.startsWith('_'));
+      if (isPrivate) continue;
       if (entity is Directory) {
         _collectAssets(entity, assets);
       } else if (entity is File && isValid(entity)) {

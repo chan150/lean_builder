@@ -56,6 +56,8 @@ class PackageFileResolverImpl implements PackageFileResolver {
 
   static const _packageConfigPath = '.dart_tool/package_config.json';
   static const _skyEnginePackage = 'sky_engine';
+  static const dartSdk = r'$sdk';
+  static final dartSdkPath = Uri.file(p.dirname(p.dirname(Platform.resolvedExecutable)));
 
   PackageFileResolverImpl(this.packageToPath, this.pathToPackage, this.packagesHash, this.rootPackage);
 
@@ -100,13 +102,16 @@ class PackageFileResolverImpl implements PackageFileResolver {
       pathToPackage[resolvedPath] = name;
     }
 
+    final sdkPath = dartSdkPath.toString();
+    pathToPackage[sdkPath] = dartSdk;
+    packageToPath[dartSdk] = sdkPath;
     return _PackageConfig(packageToPath, pathToPackage, packagesHash);
   }
 
   @override
   String packageFor(Uri uri, {Uri? relativeTo}) {
     if (uri.scheme == 'dart') {
-      return _skyEnginePackage;
+      return dartSdk;
     }
 
     final path = resolve(uri, relativeTo: relativeTo).replace(scheme: 'file').toString();
@@ -129,6 +134,13 @@ class PackageFileResolverImpl implements PackageFileResolver {
         }
       }
     }
+    if (bestMatch == null) {
+      print('Could not find package for $path');
+      for (final entry in pathToPackage.entries) {
+        print('entry: ${entry.key} => ${entry.value}');
+      }
+    }
+
     assert(bestMatch != null, 'Could not find package for $path');
     return bestMatch!;
   }
@@ -138,6 +150,7 @@ class PackageFileResolverImpl implements PackageFileResolver {
       return uri;
     } else if (uri.scheme == 'file') {
       final packageName = packageFor(uri);
+
       final rootUri = Uri.parse(packageToPath[packageName]!);
       // remove trailing slash if present
       int rootSegLength = rootUri.pathSegments.length;
@@ -146,6 +159,11 @@ class PackageFileResolverImpl implements PackageFileResolver {
       }
       final segments = uri.pathSegments.sublist(rootSegLength);
       final dir = segments[0];
+
+      if (packageName == dartSdk) {
+        return Uri(scheme: 'dart', pathSegments: segments.skip(1).take(1));
+      }
+
       final scheme = PackageFileResolver.dirsScheme[dir];
       final dirsToSkip = scheme == 'package' ? 1 : 0;
       return Uri(scheme: scheme, pathSegments: [packageName, ...segments.skip(dirsToSkip)]);
@@ -194,6 +212,12 @@ class PackageFileResolverImpl implements PackageFileResolver {
 
   Uri _resolveDartUri(Uri uri) {
     final dir = uri.path;
+    // handle core
+    if (uri.pathSegments.length == 1) {
+      final sdkPath = packageToPath[dartSdk]!;
+      return Uri.parse(p.joinAll([sdkPath, 'lib', dir, '$dir.dart']));
+    }
+
     final packagePath = packageToPath[dir] ?? packageToPath[_skyEnginePackage];
     if (packagePath != null) {
       return Uri.parse(p.joinAll([packagePath, 'lib', dir, '$dir.dart']));
