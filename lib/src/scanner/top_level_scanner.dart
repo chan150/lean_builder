@@ -29,12 +29,6 @@ class TopLevelScanner {
         scopeTracker = max(0, scopeTracker + _scopeDelta(token.type));
         Token nextToken = token.next!;
 
-        void skipUntil(TokenType type) {
-          while (nextToken.type != type && nextToken.type != TokenType.EOF) {
-            nextToken = nextToken.next!;
-          }
-        }
-
         if (scopeTracker == 0) {
           if (token.type == TokenType.AT) {
             hasTopLevelAnnotation = true;
@@ -46,25 +40,28 @@ class TopLevelScanner {
               case Keyword.EXPORT:
               case Keyword.PART:
                 if (type != Keyword.PART || nextToken.type != Keyword.OF) {
-                  final directive = _tryParseDirective(type, nextToken, asset);
-                  if (directive != null) directives.add(directive);
+                  final (directive, nextT) = _tryParseDirective(type, nextToken, asset);
+                  if (directive != null) {
+                    directives.add(directive);
+                  }
+                  token = nextT ?? token;
                 }
                 break;
               case Keyword.TYPEDEF:
-                token = parseTypeDef(nextToken, asset) ?? token;
+                nextToken = parseTypeDef(nextToken, asset) ?? token;
                 break;
               case Keyword.CLASS:
               case Keyword.MIXIN:
               case Keyword.ENUM:
               case Keyword.EXTENSION:
-                if (nextLexeme.isNotEmpty && nextLexeme[0] != '_') {
+                if (_isValidName(nextLexeme)) {
                   results.addDeclaration(nextLexeme, asset, IdentifierType.fromKeyword(type));
                 }
-                skipUntil(TokenType.OPEN_CURLY_BRACKET);
+                nextToken = _skipUntil(nextToken, TokenType.OPEN_CURLY_BRACKET);
             }
           } else if (token.type == Keyword.CONST) {
             _tryParseConstVar(nextToken, asset);
-            skipUntil(TokenType.SEMICOLON);
+            nextToken = _skipUntil(nextToken, TokenType.SEMICOLON);
           } else if (nextToken.isIdentifier) {
             _tryParseFunction(nextToken, asset);
           }
@@ -161,43 +158,46 @@ class TopLevelScanner {
     }
   }
 
-  DirectiveStatement? _tryParseDirective(TokenType type, Token nextToken, AssetFile enclosingAsset) {
-    final nextLexeme = nextToken.lexeme;
-    if (nextLexeme.length < 3) return null;
-    final url = nextLexeme.substring(1, nextLexeme.length - 1);
+  (DirectiveStatement?, Token? endToken) _tryParseDirective(TokenType type, Token token, AssetFile enclosingAsset) {
+    final lexeme = token.lexeme;
+    if (lexeme.length < 3) {
+      return (null, _skipUntil(token, TokenType.SEMICOLON));
+    }
+    final url = lexeme.substring(1, lexeme.length - 1);
     final uri = Uri.parse(url);
-    if (uri.path[0] == '_') return null;
+    if (uri.path[0] == '_') return (null, _skipUntil(token, TokenType.SEMICOLON));
 
     final asset = fileResolver.buildAssetUri(uri, relativeTo: enclosingAsset);
 
+    Token? current = token.next;
     // Extract show/hide combinators
     final show = <String>[];
     final hide = <String>[];
     var showMode = true;
     var skipNext = false;
 
-    for (var t = nextToken.next; t != null; t = t.next) {
+    for (current; current != null && !current.isEof; current = current.next) {
       if (skipNext) {
         skipNext = false;
         continue;
       }
-      if (t.type == TokenType.AS) {
+      if (current.type == TokenType.AS) {
         skipNext = true;
-      } else if (t.type == Keyword.SHOW) {
+      } else if (current.type == Keyword.SHOW) {
         showMode = true;
-      } else if (t.type == Keyword.HIDE) {
+      } else if (current.type == Keyword.HIDE) {
         showMode = false;
-      } else if (t.type == TokenType.IDENTIFIER) {
+      } else if (current.type == TokenType.IDENTIFIER) {
         if (showMode) {
-          show.add(t.lexeme);
+          show.add(current.lexeme);
         } else {
-          hide.add(t.lexeme);
+          hide.add(current.lexeme);
         }
       }
-      if (t.type == TokenType.SEMICOLON) break;
+      if (current.type == TokenType.SEMICOLON) break;
     }
 
-    return DirectiveStatement(type: type, asset: asset, show: show, hide: hide);
+    return (DirectiveStatement(type: type, asset: asset, show: show, hide: hide), current);
   }
 
   Token? parseTypeDef(Token? token, AssetFile asset) {
@@ -228,6 +228,13 @@ class TopLevelScanner {
 
   bool _isValidName(String? identifier) {
     return identifier != null && identifier.isNotEmpty && identifier[0] != '_';
+  }
+
+  Token _skipUntil(Token current, TokenType until) {
+    while (current.type != until && current.type != TokenType.EOF) {
+      current = current.next!;
+    }
+    return current;
   }
 
   int _scopeDelta(TokenType type) {
