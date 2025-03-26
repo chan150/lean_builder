@@ -29,7 +29,7 @@ class MockPackageFileResolver implements PackageFileResolver {
   }
 
   @override
-  Uri resolve(Uri uri, {Uri? relativeTo}) {
+  Uri resolveFileUri(Uri uri, {Uri? relativeTo}) {
     return uri;
   }
 
@@ -56,5 +56,10 @@ class MockPackageFileResolver implements PackageFileResolver {
   @override
   Map<String, dynamic> toJson() {
     return {'packages': packageToPath, 'hash': packagesHash};
+  }
+
+  @override
+  Uri toShortUri(Uri uri) {
+    return uri;
   }
 }

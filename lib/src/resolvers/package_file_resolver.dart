@@ -10,9 +10,18 @@ import 'file_asset.dart';
 /// Abstract interface for resolving package file paths
 abstract class PackageFileResolver {
   static const dirsScheme = {'lib': 'package', 'test': 'asset'};
+  static const dartSdk = r'$sdk';
+  static final dartSdkPath = Uri.file(p.dirname(p.dirname(Platform.resolvedExecutable)));
 
   /// Resolves a URI to an absolute URI
-  Uri resolve(Uri uri, {Uri? relativeTo});
+  Uri resolveFileUri(Uri uri, {Uri? relativeTo});
+
+  /// short reversible path
+  /// e.g
+  /// package:name/src/file.dart
+  /// dart:core/bool.dart
+  /// asset:package/test/file.dart
+  Uri toShortUri(Uri uri);
 
   /// Returns the package name for a given URI
   String packageFor(Uri uri, {Uri? relativeTo});
@@ -56,8 +65,6 @@ class PackageFileResolverImpl implements PackageFileResolver {
 
   static const _packageConfigPath = '.dart_tool/package_config.json';
   static const _skyEnginePackage = 'sky_engine';
-  static const dartSdk = r'$sdk';
-  static final dartSdkPath = Uri.file(p.dirname(p.dirname(Platform.resolvedExecutable)));
 
   PackageFileResolverImpl(this.packageToPath, this.pathToPackage, this.packagesHash, this.rootPackage);
 
@@ -87,8 +94,11 @@ class PackageFileResolverImpl implements PackageFileResolver {
     final pathToPackage = <String, String>{};
 
     for (var entry in packageConfigJson) {
-      final name = entry['name'] as String;
+      String name = entry['name'] as String;
       if (name[0] == '_') continue;
+      if (name == _skyEnginePackage) {
+        name = PackageFileResolver.dartSdk;
+      }
 
       final packageUri = Uri.parse(entry['rootUri'] as String);
       String resolvedPath = packageUri.toString();
@@ -101,20 +111,21 @@ class PackageFileResolverImpl implements PackageFileResolver {
       packageToPath[name] = resolvedPath;
       pathToPackage[resolvedPath] = name;
     }
-
-    final sdkPath = dartSdkPath.toString();
-    pathToPackage[sdkPath] = dartSdk;
-    packageToPath[dartSdk] = sdkPath;
+    if (!packageToPath.containsKey(PackageFileResolver.dartSdk)) {
+      final sdkPath = PackageFileResolver.dartSdkPath.toString();
+      pathToPackage[sdkPath] = PackageFileResolver.dartSdk;
+      packageToPath[PackageFileResolver.dartSdk] = sdkPath;
+    }
     return _PackageConfig(packageToPath, pathToPackage, packagesHash);
   }
 
   @override
   String packageFor(Uri uri, {Uri? relativeTo}) {
     if (uri.scheme == 'dart') {
-      return dartSdk;
+      return PackageFileResolver.dartSdk;
     }
 
-    final path = resolve(uri, relativeTo: relativeTo).replace(scheme: 'file').toString();
+    final path = resolveFileUri(uri, relativeTo: relativeTo).replace(scheme: 'file').toString();
     String? bestMatch;
     int bestMatchLength = 0;
     for (final entry in pathToPackage.entries) {
@@ -145,7 +156,8 @@ class PackageFileResolverImpl implements PackageFileResolver {
     return bestMatch!;
   }
 
-  Uri toShortPath(Uri uri) {
+  @override
+  Uri toShortUri(Uri uri) {
     if (uri.scheme == 'package') {
       return uri;
     } else if (uri.scheme == 'file') {
@@ -160,8 +172,8 @@ class PackageFileResolverImpl implements PackageFileResolver {
       final segments = uri.pathSegments.sublist(rootSegLength);
       final dir = segments[0];
 
-      if (packageName == dartSdk) {
-        return Uri(scheme: 'dart', pathSegments: segments.skip(1).take(1));
+      if (packageName == PackageFileResolver.dartSdk) {
+        return Uri(scheme: 'dart', pathSegments: segments.skip(1));
       }
 
       final scheme = PackageFileResolver.dirsScheme[dir];
@@ -173,16 +185,16 @@ class PackageFileResolverImpl implements PackageFileResolver {
 
   @override
   AssetFile buildAssetUri(Uri uri, {AssetFile? relativeTo}) {
-    final absoluteUri = resolve(uri, relativeTo: relativeTo?.uri);
+    final absoluteUri = resolveFileUri(uri, relativeTo: relativeTo?.uri);
 
     final packageName = packageFor(absoluteUri);
-    final shortPath = toShortPath(absoluteUri);
-    final hash = xxh3String(Uint8List.fromList(shortPath.toString().codeUnits));
+    final shortPath = toShortUri(absoluteUri);
+    final hash = xxh3String(Uint8List.fromList(uri.toString().codeUnits));
     return AssetFile(File.fromUri(absoluteUri), shortPath, hash, packageName == rootPackage);
   }
 
   @override
-  Uri resolve(Uri uri, {Uri? relativeTo}) {
+  Uri resolveFileUri(Uri uri, {Uri? relativeTo}) {
     return switch (uri.scheme) {
       'package' => _resolvePackageUri(uri),
       'asset' => _resolveAssetUri(uri),
@@ -212,13 +224,13 @@ class PackageFileResolverImpl implements PackageFileResolver {
 
   Uri _resolveDartUri(Uri uri) {
     final dir = uri.path;
-    // handle core
-    if (uri.pathSegments.length == 1) {
-      final sdkPath = packageToPath[dartSdk]!;
-      return Uri.parse(p.joinAll([sdkPath, 'lib', dir, '$dir.dart']));
+
+    if (uri.pathSegments.length == 2) {
+      final sdkPath = packageToPath[PackageFileResolver.dartSdk]!;
+      return Uri.parse(p.joinAll([sdkPath, 'lib', ...uri.pathSegments]));
     }
 
-    final packagePath = packageToPath[dir] ?? packageToPath[_skyEnginePackage];
+    final packagePath = packageToPath[dir] ?? packageToPath[PackageFileResolver.dartSdk];
     if (packagePath != null) {
       return Uri.parse(p.joinAll([packagePath, 'lib', dir, '$dir.dart']));
     }

@@ -4,11 +4,12 @@ class Annotation {
 
 @Annotation()
 class AnnotatedClass {
-  final String name;
+  final FieldType type;
+  AnnotatedClass(this.type);
 
-  AnnotatedClass(this.name);
+  void method() {}
+}
 
-  void method() {
-    print('Hello, $name!');
-  }
+class FieldType {
+  FieldType();
 }

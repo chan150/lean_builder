@@ -19,16 +19,19 @@ main() {
   test('TopLevelScanner should scan a file with const variables', () {
     final file = AssetFileMock('''
     String stringVar = 'string';
+    const int _privateConst = 42;
     final int finalInt = 42;
     const kPi = 3.14159;
     const inferredConst = 3.14159;
     const List<String> constants = ['A', 'B'];
+    const Map<int, List<int>> kValue = _kValue; 
     ''');
     scanner.scanFile(file);
     final expected = [
       ['kPi', file.id, IdentifierType.$variable.value],
       ['inferredConst', file.id, IdentifierType.$variable.value],
       ['constants', file.id, IdentifierType.$variable.value],
+      ['kValue', file.id, IdentifierType.$variable.value],
     ];
     expect(assetsGraph.identifiers, expected);
   });
@@ -65,6 +68,18 @@ main() {
     typedef Callback = void Function(String);
     typedef GenericCallback<T> = void Function(T);
     typedef GenericCallback2<T, U> = void Function(T, U);
+    typedef bool ElementPredicate<E>(E element);
+    typedef Future<int> TypeName();
+    typedef void ConsumerCallback<T>(T value);
+    typedef NullableMap = Map<String, String?>;
+    typedef FunctionFactory = void Function() Function(String);
+    typedef Comparable<T extends num> = int Function(T, T);
+    typedef ComplexRecord = ({String name, int age, List<String>? hobbies});
+    typedef KeyValuePair<K extends Comparable<K>, V> = MapEntry<K, V>;
+    typedef OptionalParams = void Function(int required, [String? optional]);
+    typedef NamedParams = void Function({required String name, int? age});
+    typedef JsonProcessor = void Function(JsonMap data);
+    typedef Transformer<T, U> = U Function(T Function(T) processor, T input);
     ''');
     scanner.scanFile(file);
     final expected = [
@@ -73,6 +88,18 @@ main() {
       ['Callback', file.id, IdentifierType.$typeAlias.value],
       ['GenericCallback', file.id, IdentifierType.$typeAlias.value],
       ['GenericCallback2', file.id, IdentifierType.$typeAlias.value],
+      ['ElementPredicate', file.id, IdentifierType.$typeAlias.value],
+      ['TypeName', file.id, IdentifierType.$typeAlias.value],
+      ['ConsumerCallback', file.id, IdentifierType.$typeAlias.value],
+      ['NullableMap', file.id, IdentifierType.$typeAlias.value],
+      ['FunctionFactory', file.id, IdentifierType.$typeAlias.value],
+      ['Comparable', file.id, IdentifierType.$typeAlias.value],
+      ['ComplexRecord', file.id, IdentifierType.$typeAlias.value],
+      ['KeyValuePair', file.id, IdentifierType.$typeAlias.value],
+      ['OptionalParams', file.id, IdentifierType.$typeAlias.value],
+      ['NamedParams', file.id, IdentifierType.$typeAlias.value],
+      ['JsonProcessor', file.id, IdentifierType.$typeAlias.value],
+      ['Transformer', file.id, IdentifierType.$typeAlias.value],
     ];
     expect(assetsGraph.identifiers, expected);
   });
@@ -122,6 +149,8 @@ main() {
       abstract class AbstractShape {}
       final class FinalShape {}
       interface class Shape2 {}
+      sealed class Shape3 {}
+      base class Shape4 {}
     ''');
     scanner.scanFile(file);
     final expected = [
@@ -132,6 +161,8 @@ main() {
       ['AbstractShape', file.id, IdentifierType.$class.value],
       ['FinalShape', file.id, IdentifierType.$class.value],
       ['Shape2', file.id, IdentifierType.$class.value],
+      ['Shape3', file.id, IdentifierType.$class.value],
+      ['Shape4', file.id, IdentifierType.$class.value],
     ];
     expect(assetsGraph.identifiers, expected);
   });

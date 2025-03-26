@@ -54,11 +54,16 @@ class IsolateTLScanner {
     final assetsReader = FileAssetReader(fileResolver);
     final packagesToScan = assetsGraph.loadedFromCache ? {rootPackageName} : fileResolver.packages;
 
-    final assets = assetsReader.listAssetsFor(packagesToScan);
+    final assets = assetsReader.listAssetsFor(
+      packagesToScan,
+      exclude: {
+        PackageFileResolver.dartSdk: {'internal'},
+      },
+    );
     final assetsList = assets.values.expand((e) => e).toList();
 
     // Only distribute work if building from scratch
-    if (!assetsGraph.loadedFromCache && false) {
+    if (!assetsGraph.loadedFromCache) {
       await scanWithIsolates(assetsList, fileResolver.toJson());
     } else {
       // Use single-threaded approach incremental updates

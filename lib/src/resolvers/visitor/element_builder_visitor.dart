@@ -1,4 +1,5 @@
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:code_genie/src/ast_extensions.dart';
 import 'package:code_genie/src/resolvers/element.dart';
 import 'package:code_genie/src/resolvers/element_resolver.dart';
 import 'package:code_genie/src/resolvers/file_asset.dart';
@@ -34,6 +35,7 @@ class ElementBuilderVisitor extends IgnoringAstVisitor<void> {
   ElementBuilderVisitor(this.resolver, this.src) {
     final name = src.shortPath.path.split('/').lastOrNull ?? 'unknown';
     libraryElement = LibraryElement(name: name, srcId: src.id, topLevelElements: topLevelElements);
+    _pushContext(libraryElement);
   }
 
   @override
@@ -53,6 +55,12 @@ class ElementBuilderVisitor extends IgnoringAstVisitor<void> {
   void visitFieldDeclaration(FieldDeclaration node) {
     final classElement = currentElementAs<ClassElement>();
     // Process each variable in the field declaration
+
+    if (node.type != null) {
+      final typeNode = resolver.astNodeFor(node.type!.name!, src);
+      typeNode.accept(this);
+    }
+
     for (final variable in node.fields.variables) {
       final field = FieldElement(
         isStatic: node.isStatic,
@@ -104,5 +112,10 @@ class ElementBuilderVisitor extends IgnoringAstVisitor<void> {
   @override
   void visitConstructorDeclaration(ConstructorDeclaration node) {
     print('visiting constructor declaration: ${node.name?.lexeme}');
+  }
+
+  @override
+  void visitTypeAnnotation(TypeAnnotation node) {
+    print('visiting type annotation: ${node.toString()}');
   }
 }

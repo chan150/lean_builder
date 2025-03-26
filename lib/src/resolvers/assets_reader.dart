@@ -14,7 +14,7 @@ class FileAssetReader {
     return file.path.endsWith('.dart') && !file.path.endsWith('.g.dart');
   }
 
-  Map<String, List<AssetFile>> listAssetsFor(Set<String> packages) {
+  Map<String, List<AssetFile>> listAssetsFor(Set<String> packages, {Map<String, Set<String>> exclude = const {}}) {
     final assets = <String, List<AssetFile>>{};
     for (final package in packages) {
       final collection = <AssetFile>[];
@@ -26,7 +26,7 @@ class FileAssetReader {
         if (subDir == 'test' && !fileResolver.isRootPackage(package)) continue;
         final subDirPath = Directory(p.join(dir.path, subDir));
         if (subDirPath.existsSync()) {
-          _collectAssets(subDirPath, collection);
+          _collectAssets(subDirPath, collection, exclude[package]);
         }
       }
       assets[package] = collection;
@@ -34,11 +34,12 @@ class FileAssetReader {
     return assets;
   }
 
-  void _collectAssets(Directory directory, List<AssetFile> assets) {
+  void _collectAssets(Directory directory, List<AssetFile> assets, [Set<String>? excludeDirs]) {
     for (final entity in directory.listSync()) {
-      final isPrivate = entity.uri.pathSegments.any((e) => e.startsWith('_'));
-      if (isPrivate) continue;
+      final baseName = p.basename(entity.path);
+      if (baseName.isEmpty || baseName[0] == '_') continue;
       if (entity is Directory) {
+        if (excludeDirs != null && excludeDirs.contains(baseName)) continue;
         _collectAssets(entity, assets);
       } else if (entity is File && isValid(entity)) {
         assets.add(fileResolver.buildAssetUri(entity.uri));

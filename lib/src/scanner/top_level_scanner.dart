@@ -26,20 +26,7 @@ class TopLevelScanner {
       int scopeTracker = 0;
       bool hasTopLevelAnnotation = false;
       while (token.type != TokenType.EOF) {
-        switch (token.type) {
-          case TokenType.OPEN_CURLY_BRACKET: // '{'
-          case TokenType.OPEN_PAREN: // '('
-          case TokenType.OPEN_SQUARE_BRACKET: // '['
-          case TokenType.STRING_INTERPOLATION_EXPRESSION: // '${'
-            scopeTracker++;
-            break;
-          case TokenType.CLOSE_CURLY_BRACKET: // '}'
-          case TokenType.CLOSE_PAREN: // ')'
-          case TokenType.CLOSE_SQUARE_BRACKET: // ']'
-            scopeTracker = max(0, scopeTracker - 1);
-            break;
-        }
-
+        scopeTracker = max(0, scopeTracker + _scopeDelta(token.type));
         Token nextToken = token.next!;
 
         void skipUntil(TokenType type) {
@@ -64,12 +51,8 @@ class TopLevelScanner {
                 }
                 break;
               case Keyword.TYPEDEF:
-                if (nextLexeme.isNotEmpty && nextLexeme[0] != '_') {
-                  results.addDeclaration(nextLexeme, asset, IdentifierType.$typeAlias);
-                }
-                skipUntil(TokenType.SEMICOLON);
+                token = parseTypeDef(nextToken, asset) ?? token;
                 break;
-
               case Keyword.CLASS:
               case Keyword.MIXIN:
               case Keyword.ENUM:
@@ -81,10 +64,9 @@ class TopLevelScanner {
             }
           } else if (token.type == Keyword.CONST) {
             _tryParseConstVar(nextToken, asset);
-
             skipUntil(TokenType.SEMICOLON);
           } else if (nextToken.isIdentifier) {
-            _tryParseFunction(nextToken, token, asset);
+            _tryParseFunction(nextToken, asset);
           }
         }
         token = nextToken;
@@ -112,7 +94,7 @@ class TopLevelScanner {
     }
   }
 
-  void _tryParseFunction(Token nextToken, Token token, AssetFile asset) {
+  void _tryParseFunction(Token nextToken, AssetFile asset) {
     // Skip if it's a private function
     if (nextToken.lexeme.isEmpty || nextToken.lexeme[0] == '_') {
       return;
@@ -134,11 +116,11 @@ class TopLevelScanner {
       while (current != null && depth > 0 && iter < 10) {
         iter++;
         if (iter == 9) {
-          print('Error parsing generic function');
-          print(asset.uri);
-          print(nextToken.lexeme);
-          print(current);
-          print(token);
+          // print('Error parsing generic function');
+          // print(asset.uri);
+          // print(nextToken.lexeme);
+          // print(current);
+          // print(token);
         }
 
         current = current.next;
@@ -168,10 +150,7 @@ class TopLevelScanner {
     while (currentToken != null && currentToken.type != TokenType.SEMICOLON) {
       if (currentToken.isIdentifier) {
         var afterIdentifier = currentToken.next;
-        if (afterIdentifier != null &&
-            (afterIdentifier.type == TokenType.EQ ||
-                afterIdentifier.type == TokenType.SEMICOLON ||
-                afterIdentifier.type == TokenType.COMMA)) {
+        if (afterIdentifier != null && (afterIdentifier.type == TokenType.EQ)) {
           if (currentToken.lexeme.isNotEmpty && currentToken.lexeme[0] != '_') {
             results.addDeclaration(currentToken.lexeme, asset, IdentifierType.$variable);
           }
@@ -219,5 +198,59 @@ class TopLevelScanner {
     }
 
     return DirectiveStatement(type: type, asset: asset, show: show, hide: hide);
+  }
+
+  Token? parseTypeDef(Token? token, AssetFile asset) {
+    final identifiers = <Token>[];
+    int scopeTracker = 0;
+
+    while (token != null && token.type != TokenType.EOF) {
+      scopeTracker = max(0, scopeTracker + _scopeDelta(token.type));
+
+      if (scopeTracker == 0 && (token.isIdentifier || token.type == TokenType.EQ)) {
+        identifiers.add(token);
+      }
+      if (token.type == TokenType.SEMICOLON) {
+        token = token.next;
+        break;
+      }
+      token = token.next;
+    }
+
+    final eqIndex = identifiers.indexWhere((e) => e.type == TokenType.EQ);
+    final nameLexeme = eqIndex > 0 ? identifiers[eqIndex - 1].lexeme : identifiers.lastOrNull?.lexeme;
+    if (_isValidName(nameLexeme)) {
+      results.addDeclaration(nameLexeme!, asset, IdentifierType.$typeAlias);
+    }
+
+    return token;
+  }
+
+  bool _isValidName(String? identifier) {
+    return identifier != null && identifier.isNotEmpty && identifier[0] != '_';
+  }
+
+  int _scopeDelta(TokenType type) {
+    switch (type) {
+      case TokenType.OPEN_CURLY_BRACKET:
+      case TokenType.OPEN_PAREN:
+      case TokenType.OPEN_SQUARE_BRACKET:
+      case TokenType.STRING_INTERPOLATION_EXPRESSION:
+      case TokenType.LT:
+        return 1;
+      case TokenType.LT_LT:
+        return 2;
+      case TokenType.CLOSE_CURLY_BRACKET:
+      case TokenType.CLOSE_PAREN:
+      case TokenType.CLOSE_SQUARE_BRACKET:
+      case TokenType.GT:
+        return -1;
+      case TokenType.GT_GT:
+        return -2;
+      case TokenType.GT_GT_GT:
+        return -3;
+      default:
+        return 0;
+    }
   }
 }

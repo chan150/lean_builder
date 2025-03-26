@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:code_genie/src/resolvers/element_resolver.dart';
 import 'package:code_genie/src/resolvers/package_file_resolver.dart';
+import 'package:code_genie/src/resolvers/parsed_units_cache.dart';
 import 'package:code_genie/src/scanner/assets_graph.dart';
 import 'package:code_genie/src/scanner/isolate_scanner.dart';
 import 'package:code_genie/src/utils.dart';
@@ -15,60 +17,61 @@ void main(List<String> args) async {
     AssetsGraph.cacheFile.deleteSync(recursive: true);
   }
   final fileResolver = PackageFileResolver.forCurrentRoot(rootPackageName);
-  final AssetsGraph assetsGraph = AssetsGraph.init(fileResolver.packagesHash);
+  final assetsGraph = AssetsGraph.init(fileResolver.packagesHash);
   // final scanner = TopLevelScanner(assetsGraph, fileResolver);
   // final asset = fileResolver.buildAssetUri(Uri.parse('package:code_genie/test/test.dart'));
-
+  //
   // scanner.scanFile(asset);
   // AssetsGraph.cacheFile.writeAsString(jsonEncode(assetsGraph.toJson()));
 
   final isoTlScanner = IsolateTLScanner(assetsGraph: assetsGraph, fileResolver: fileResolver);
   await isoTlScanner.scanAssets();
+  final id = assetsGraph.getIdentifierRef('Future', '');
+  return;
 
-  final id = assetsGraph.getIdentifierRef('bool', '');
-  print(id);
-  // final parser = SrcParser();
-  // final resolver = ElementResolver(assetsGraph, fileResolver, parser);
-  // final packageAssets = assetsGraph.getAssetsForPackage(rootPackageName);
+  // print(id);
+  final parser = SrcParser();
+  final resolver = ElementResolver(assetsGraph, fileResolver, parser);
+  final packageAssets = assetsGraph.getAssetsForPackage(rootPackageName);
   //
-  // for (final asset in packageAssets) {
-  //   // print(assetsGraph.getIdentifierRef('Container', asset.id));
-  //   if (asset.hasAnnotation) {
-  //     final assetFile = fileResolver.buildAssetUri(asset.uri);
-  //     final library = resolver.resolveLibrary(assetFile);
-  //
-  //     for (final clazz in library.classes) {
-  //       print(clazz.name);
-  //       print(clazz.fields.map((e) => e.name));
-  //       print(clazz.methods.map((e) => e.name));
-  //     }
-  //
-  //     // final unit = parser.parse(assetFile.path);
-  //     // final clazz = unit.declarations.whereType<ClassDeclaration>().firstWhere((e) => e.metadata.isNotEmpty);
-  //     // final annotation = clazz.metadata.first;
-  //     // final annotationIdRef = assetsGraph.getIdentifierRef(annotation.name.name, assetFile.id)!;
-  //     // final type = resolver.resolve(annotationIdRef);
-  //     // print(type);
-  //
-  //     //
-  //     //   final unit = getUnitForAsset(fileResolver, fileAsset.path);
-  //     //   final clazz = unit.declarations.whereType<ClassDeclaration>().firstWhere((e) => e.metadata.isNotEmpty);
-  //     //   final superClass = clazz.extendsClause!.superclass.name2.lexeme;
-  //     //   print(superClass);
-  //     //
-  //     //   final ref = assetsGraph.getIdentifierRef(superClass, fileAsset.id);
-  //     //   if (ref != null) {
-  //     //     final superAsset = fileResolver.buildAssetUri(ref.srcUri);
-  //     //     final superUnit = getUnitForAsset(fileResolver, superAsset.path);
-  //     //     final superClazz = superUnit.declarations.whereType<ClassDeclaration>().firstWhere(
-  //     //       (e) => e.name.lexeme == ref.identifier,
-  //     //     );
-  //     //     print(superClazz);
-  //     //     print('src: ${ref.srcUri}');
-  //     //     print('provider: ${assetsGraph.assets[ref.providerId]?[0]}');
-  //     //   }
-  //   }
-  // }
+  for (final asset in packageAssets) {
+    // print(assetsGraph.getIdentifierRef('Container', asset.id));
+    if (asset.hasAnnotation) {
+      final assetFile = fileResolver.buildAssetUri(asset.uri);
+      final library = resolver.resolveLibrary(assetFile);
+
+      for (final clazz in library.classes) {
+        print(clazz.name);
+        print(clazz.fields.map((e) => e.name));
+        print(clazz.methods.map((e) => e.name));
+      }
+
+      // final unit = parser.parse(assetFile.path);
+      // final clazz = unit.declarations.whereType<ClassDeclaration>().firstWhere((e) => e.metadata.isNotEmpty);
+      // final annotation = clazz.metadata.first;
+      // final annotationIdRef = assetsGraph.getIdentifierRef(annotation.name.name, assetFile.id)!;
+      // final type = resolver.resolve(annotationIdRef);
+      // print(type);
+
+      //
+      //   final unit = getUnitForAsset(fileResolver, fileAsset.path);
+      //   final clazz = unit.declarations.whereType<ClassDeclaration>().firstWhere((e) => e.metadata.isNotEmpty);
+      //   final superClass = clazz.extendsClause!.superclass.name2.lexeme;
+      //   print(superClass);
+      //
+      //   final ref = assetsGraph.getIdentifierRef(superClass, fileAsset.id);
+      //   if (ref != null) {
+      //     final superAsset = fileResolver.buildAssetUri(ref.srcUri);
+      //     final superUnit = getUnitForAsset(fileResolver, superAsset.path);
+      //     final superClazz = superUnit.declarations.whereType<ClassDeclaration>().firstWhere(
+      //       (e) => e.name.lexeme == ref.identifier,
+      //     );
+      //     print(superClazz);
+      //     print('src: ${ref.srcUri}');
+      //     print('provider: ${assetsGraph.assets[ref.providerId]?[0]}');
+      //   }
+    }
+  }
 
   // await assetsGraphFile.writeAsString(jsonEncode(assetsGraph.toJson()));
   print('Time taken: ${stopWatch.elapsed.inMilliseconds} ms');
