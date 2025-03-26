@@ -22,50 +22,56 @@ class TopLevelScanner {
       results.addAsset(asset);
       var token = fasta.scan(bytes).tokens;
       final directives = <DirectiveStatement>{};
-
-      int scopeTracker = 0;
       bool hasTopLevelAnnotation = false;
-      while (token.type != TokenType.EOF) {
-        scopeTracker = max(0, scopeTracker + _scopeDelta(token.type));
-        Token nextToken = token.next!;
 
-        if (scopeTracker == 0) {
-          if (token.type == TokenType.AT) {
-            hasTopLevelAnnotation = true;
-          } else if (token.isTopLevelKeyword) {
-            final type = token.type;
-            final nextLexeme = nextToken.lexeme;
-            switch (type) {
-              case Keyword.IMPORT:
-              case Keyword.EXPORT:
-              case Keyword.PART:
-                if (type != Keyword.PART || nextToken.type != Keyword.OF) {
-                  final (directive, nextT) = _tryParseDirective(type, nextToken, asset);
-                  if (directive != null) {
-                    directives.add(directive);
-                  }
-                  token = nextT ?? token;
-                }
-                break;
-              case Keyword.TYPEDEF:
-                nextToken = parseTypeDef(nextToken, asset) ?? token;
-                break;
-              case Keyword.CLASS:
-              case Keyword.MIXIN:
-              case Keyword.ENUM:
-              case Keyword.EXTENSION:
-                if (_isValidName(nextLexeme)) {
-                  results.addDeclaration(nextLexeme, asset, IdentifierType.fromKeyword(type));
-                }
-                nextToken = _skipUntil(nextToken, TokenType.OPEN_CURLY_BRACKET);
-            }
-          } else if (token.type == Keyword.CONST) {
-            _tryParseConstVar(nextToken, asset);
-            nextToken = _skipUntil(nextToken, TokenType.SEMICOLON);
-          } else if (nextToken.isIdentifier) {
-            _tryParseFunction(nextToken, asset);
+      while (!token.isEof && token.next != null) {
+        token = _skipCurlyBrackets(token);
+        if (token.isEof) break;
+        Token nextToken = token.next!;
+        if (token.type == TokenType.AT) {
+          hasTopLevelAnnotation = true;
+          if (nextToken.next != null) {
+            token = _skipParenthesis(nextToken.next!);
           }
+          continue;
+        } else if (token.isTopLevelKeyword) {
+          final type = token.type;
+          final nextLexeme = nextToken.lexeme;
+          switch (type) {
+            case Keyword.IMPORT:
+            case Keyword.EXPORT:
+            case Keyword.PART:
+              if (type != Keyword.PART || nextToken.type != Keyword.OF) {
+                final (directive, nextT) = _tryParseDirective(type, nextToken, asset);
+                if (directive != null) {
+                  directives.add(directive);
+                }
+                nextToken = nextT ?? nextToken;
+              }
+              break;
+            case Keyword.TYPEDEF:
+              nextToken = parseTypeDef(nextToken, asset) ?? nextToken;
+              break;
+            case Keyword.CLASS:
+            case Keyword.MIXIN:
+            case Keyword.ENUM:
+            case Keyword.EXTENSION:
+              if (_isValidName(nextLexeme)) {
+                results.addDeclaration(nextLexeme, asset, IdentifierType.fromKeyword(type));
+              }
+              nextToken = _skipUntil(nextToken, TokenType.OPEN_CURLY_BRACKET);
+              break;
+          }
+        } else if ({Keyword.CONST, Keyword.FINAL, Keyword.VAR, Keyword.LATE}.contains(token.type) &&
+            nextToken.isIdentifier) {
+          if (token.type == Keyword.CONST) {
+            _tryParseConstVar(nextToken, asset);
+          }
+          nextToken = _skipUntil(nextToken, TokenType.SEMICOLON);
+        } else if (token.isIdentifier) {
+          nextToken = _tryParseFunction(token, asset) ?? nextToken;
         }
+
         token = nextToken;
       }
       results.updateFileInfo(asset, content: bytes, hasAnnotation: hasTopLevelAnnotation);
@@ -91,54 +97,42 @@ class TopLevelScanner {
     }
   }
 
-  void _tryParseFunction(Token nextToken, AssetFile asset) {
-    // Skip if it's a private function
-    if (nextToken.lexeme.isEmpty || nextToken.lexeme[0] == '_') {
-      return;
-    }
+  Token? _tryParseFunction(Token token, AssetFile asset) {
+    Token? current = _skipLTGT(token);
+    current = _skipParenthesis(current);
 
-    // Simple case: function_name(
-    if (nextToken.next?.type == TokenType.OPEN_PAREN) {
-      results.addDeclaration(nextToken.lexeme, asset, IdentifierType.$function);
-      return;
-    }
-
-    // Generic function case: function_name<
-    if (nextToken.next?.type == TokenType.LT) {
-      // Track the angle bracket nesting level
-      var current = nextToken.next;
-      var depth = 1;
-      var iter = 0;
-      // Find the matching '>'
-      while (current != null && depth > 0 && iter < 10) {
-        iter++;
-        if (iter == 9) {
-          // print('Error parsing generic function');
-          // print(asset.uri);
-          // print(nextToken.lexeme);
-          // print(current);
-          // print(token);
-        }
-
-        current = current.next;
-        if (current?.type == TokenType.LT) {
-          depth++;
-        } else if (current?.type == TokenType.LT_LT) {
-          depth += 2;
-        } else if (current?.type == TokenType.GT) {
-          depth--;
-        } else if (current?.type == TokenType.GT_GT) {
-          depth -= 2;
-        } else if (current?.type == TokenType.GT_GT_GT) {
-          depth -= 3;
-        }
+    bool funcFound = false;
+    final next = current.next;
+    if (current.type == Keyword.FUNCTION) {
+      current = current.next!;
+    } else if (next != null && _skipLTGT(next).type == TokenType.OPEN_PAREN) {
+      funcFound = true;
+      if (_isValidName(current.lexeme)) {
+        results.addDeclaration(current.lexeme, asset, IdentifierType.$function);
       }
-
-      // If we found '>' and it's followed by '(', we have a generic function
-      if (current != null && current.next?.type == TokenType.OPEN_PAREN) {
-        results.addDeclaration(nextToken.lexeme, asset, IdentifierType.$function);
-      }
+    } else if (next != null && next.type == TokenType.LT) {
+      return _skipLTGT(next);
     }
+
+    if (!funcFound) {
+      return current.next;
+    }
+
+    while (current != null &&
+        !current.isEof &&
+        current.type != TokenType.OPEN_CURLY_BRACKET &&
+        current.type != TokenType.FUNCTION &&
+        current.type != TokenType.SEMICOLON) {
+      current = current.next;
+    }
+    if (current?.type == TokenType.OPEN_CURLY_BRACKET) {
+      return current;
+    } else if (current != null && current.type == TokenType.FUNCTION) {
+      current = _skipUntil(current, TokenType.SEMICOLON).next;
+    } else if (current != null && current.type == TokenType.SEMICOLON) {
+      current = current.next;
+    }
+    return current;
   }
 
   void _tryParseConstVar(Token nextToken, AssetFile asset) {
@@ -203,10 +197,9 @@ class TopLevelScanner {
   Token? parseTypeDef(Token? token, AssetFile asset) {
     final identifiers = <Token>[];
     int scopeTracker = 0;
-
     while (token != null && token.type != TokenType.EOF) {
-      scopeTracker = max(0, scopeTracker + _scopeDelta(token.type));
-
+      token = _skipLTGT(token);
+      token = _skipParenthesis(token);
       if (scopeTracker == 0 && (token.isIdentifier || token.type == TokenType.EQ)) {
         identifiers.add(token);
       }
@@ -231,33 +224,77 @@ class TopLevelScanner {
   }
 
   Token _skipUntil(Token current, TokenType until) {
-    while (current.type != until && current.type != TokenType.EOF) {
+    while (current.type != until && !current.isEof) {
       current = current.next!;
     }
     return current;
   }
 
-  int _scopeDelta(TokenType type) {
-    switch (type) {
-      case TokenType.OPEN_CURLY_BRACKET:
-      case TokenType.OPEN_PAREN:
-      case TokenType.OPEN_SQUARE_BRACKET:
-      case TokenType.STRING_INTERPOLATION_EXPRESSION:
-      case TokenType.LT:
-        return 1;
-      case TokenType.LT_LT:
-        return 2;
-      case TokenType.CLOSE_CURLY_BRACKET:
-      case TokenType.CLOSE_PAREN:
-      case TokenType.CLOSE_SQUARE_BRACKET:
-      case TokenType.GT:
-        return -1;
-      case TokenType.GT_GT:
-        return -2;
-      case TokenType.GT_GT_GT:
-        return -3;
-      default:
-        return 0;
+  Token _skipCurlyBrackets(Token token) {
+    if (token.type != TokenType.OPEN_CURLY_BRACKET) {
+      return token;
     }
+    int scopeTracker = 1;
+    Token? current = token.next;
+    while (current != null && !current.isEof && scopeTracker != 0) {
+      switch (current.type) {
+        case TokenType.OPEN_CURLY_BRACKET:
+        case TokenType.STRING_INTERPOLATION_EXPRESSION:
+          scopeTracker += 1;
+          break;
+        case TokenType.CLOSE_CURLY_BRACKET:
+          scopeTracker = max(0, scopeTracker - 1);
+      }
+      current = current.next;
+    }
+    return current ?? token;
+  }
+
+  Token _skipLTGT(Token token) {
+    if (token.type != TokenType.LT) {
+      return token;
+    }
+    int scopeTracker = 1;
+    Token? current = token.next;
+    while (current != null && !current.isEof && scopeTracker != 0) {
+      switch (current.type) {
+        case TokenType.LT:
+          scopeTracker += 1;
+          break;
+        case TokenType.LT_LT:
+          scopeTracker += 2;
+          break;
+        case TokenType.GT:
+          scopeTracker = max(0, scopeTracker - 1);
+          break;
+        case TokenType.GT_GT:
+          scopeTracker = max(0, scopeTracker - 2);
+          break;
+        case TokenType.GT_GT_GT:
+          scopeTracker = max(0, scopeTracker - 3);
+          break;
+      }
+      current = current.next;
+    }
+    return current ?? token;
+  }
+
+  Token _skipParenthesis(Token token) {
+    if (token.type != TokenType.OPEN_PAREN) {
+      return token;
+    }
+    int scopeTracker = 1;
+    Token? current = token.next;
+    while (current != null && !current.isEof && scopeTracker != 0) {
+      switch (current.type) {
+        case TokenType.OPEN_PAREN:
+          scopeTracker += 1;
+          break;
+        case TokenType.CLOSE_PAREN:
+          scopeTracker = max(0, scopeTracker - 1);
+      }
+      current = current.next;
+    }
+    return current ?? token;
   }
 }

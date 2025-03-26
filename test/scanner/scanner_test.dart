@@ -47,6 +47,23 @@ main() {
     expect(assetsGraph.identifiers.isEmpty, true);
   });
 
+  // member variables/methods should be ignored
+  test('TopLevelScanner should ignore member variables and methods', () {
+    final file = AssetFileMock('''
+    class MyClass {
+      static const privateInt = 42;
+      final int finalInt = 42;
+      late final String lateString;
+      void privateMethod() {}
+      int get getter => 42;
+      set setter(int value) {}
+      abstract void abstractMethod();
+    }
+    ''');
+    scanner.scanFile(file);
+    expect(assetsGraph.identifiers.length, 1);
+  });
+
   test('TopLevelScanner should scan a file with enums', () {
     final file = AssetFileMock('''
     enum Enum { red, green, blue }
@@ -170,12 +187,12 @@ main() {
   // functions
   test('TopLevelScanner should scan a file with functions', () {
     final file = AssetFileMock('''
+    noReturn() {}
     void printMsg(String message) {}
     int add(int a, int b) => a + b;
     void configure({required String apiKey}) {}
     List<int> getRange(int start, [int end = 10]) => [];
-    List<List<T>> nestedList<T>(List<T> list) => [];
-    noReturn() {}
+    List<Set<T>> nestedList<T>(Mix<T> list) => [];
     T identity<T>(T value) => value;
     Future<String> fetchData() async => '';
     Stream<int> countStream(int max) async* {
@@ -188,12 +205,12 @@ main() {
 
     scanner.scanFile(file);
     final expected = [
+      ['noReturn', file.id, IdentifierType.$function.value],
       ['printMsg', file.id, IdentifierType.$function.value],
       ['add', file.id, IdentifierType.$function.value],
       ['configure', file.id, IdentifierType.$function.value],
       ['getRange', file.id, IdentifierType.$function.value],
       ['nestedList', file.id, IdentifierType.$function.value],
-      ['noReturn', file.id, IdentifierType.$function.value],
       ['identity', file.id, IdentifierType.$function.value],
       ['fetchData', file.id, IdentifierType.$function.value],
       ['countStream', file.id, IdentifierType.$function.value],
@@ -204,7 +221,40 @@ main() {
     expect(assetsGraph.identifiers, expected);
   });
 
-  // should parse simple import (import 'path.dart');
+  test('TopLevelScanner should scan advanced function syntax variants', () {
+    final file = AssetFileMock('''
+        Iterable<int> syncGenerator(int max) sync* {
+          for (int i = 0; i < max; i++) {
+            yield i;
+          }
+         }
+        external void nativeFunction();
+        Map<K, List<V>> groupBy<K, V>(List<V> items, K Function(V item) keySelector) => {};
+        Future<List<Map<String, List<int>>>> processComplexData() async => [];
+        int Function(int) makeAdder(int addBy) => (int a) => a + addBy;
+        T operator <T>(T other) => other;
+        int? nullableReturn() => null;
+        void functionWithRecords((String, int) record) {}
+        (String, int) returnRecord() => ('hello', 42);
+        ({String name, int age}) namedRecord({String name = '', int age = 0}) => (name: name, age: age);
+  ''');
+
+    scanner.scanFile(file);
+    final expected = [
+      ['syncGenerator', file.id, IdentifierType.$function.value],
+      ['nativeFunction', file.id, IdentifierType.$function.value],
+      ['groupBy', file.id, IdentifierType.$function.value],
+      ['processComplexData', file.id, IdentifierType.$function.value],
+      ['makeAdder', file.id, IdentifierType.$function.value],
+      ['operator', file.id, IdentifierType.$function.value],
+      ['nullableReturn', file.id, IdentifierType.$function.value],
+      ['functionWithRecords', file.id, IdentifierType.$function.value],
+      ['returnRecord', file.id, IdentifierType.$function.value],
+      ['namedRecord', file.id, IdentifierType.$function.value],
+    ];
+    expect(assetsGraph.identifiers, expected);
+  });
+
   test('Should parse simple import', () {
     final file = AssetFileMock("import 'path.dart';");
     scanner.scanFile(file);
