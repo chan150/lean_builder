@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:code_genie/src/scanner/scan_results.dart';
 import 'package:collection/collection.dart';
+import 'package:xxh3/xxh3.dart';
 
 import 'identifier_ref.dart';
 
@@ -13,18 +15,24 @@ class AssetsGraph extends AssetsScanResults {
 
   AssetsGraph._fromCache(this.packagesHash) : loadedFromCache = true;
 
+  late final _coreImportId = xxh3String(Uint8List.fromList('dart:core/core.dart'.codeUnits));
+
   factory AssetsGraph.init(String packagesHash) {
     if (cacheFile.existsSync()) {
-      final cachedGraph = jsonDecode(cacheFile.readAsStringSync());
-      final instance = AssetsGraph.fromCache(cachedGraph, packagesHash);
-      if (!instance.loadedFromCache) {
-        print('Cache is outdated, rebuilding...');
+      try {
+        final cachedGraph = jsonDecode(cacheFile.readAsStringSync());
+        final instance = AssetsGraph.fromCache(cachedGraph, packagesHash);
+        if (!instance.loadedFromCache) {
+          print('Cache is outdated, rebuilding...');
+          cacheFile.deleteSync(recursive: true);
+        }
+        return instance;
+      } catch (e) {
+        print('Cache is invalid, rebuilding...');
         cacheFile.deleteSync(recursive: true);
       }
-      return instance;
-    } else {
-      return AssetsGraph(packagesHash);
     }
+    return AssetsGraph(packagesHash);
   }
 
   final String packagesHash;
@@ -66,14 +74,6 @@ class AssetsGraph extends AssetsScanResults {
 
   IdentifierRef? getIdentifierRef(String identifier, String srcFileId) {
     // First check if the identifier is declared directly in this file
-
-    // check for core
-    for (final identifierArr in identifiers) {
-      if (identifierArr[0] == identifier) {
-        print('src: ${assets[identifierArr[1]]?[0]}, type: ${IdentifierType.fromValue(identifierArr[2] as int).name}');
-      }
-    }
-
     final possibleSrcs = Map<String, int>.fromEntries(
       identifiers.where((e) => e[0] == identifier).map((e) => MapEntry(e[1], e[2])),
     );
@@ -93,7 +93,10 @@ class AssetsGraph extends AssetsScanResults {
     }
 
     // Check all imports of the source file
-    final fileImports = imports[srcFileId] ?? [];
+    final fileImports = [
+      if (assets.containsKey(_coreImportId)) [_coreImportId],
+      ...?imports[srcFileId],
+    ];
     for (final importEntry in fileImports) {
       final importedFileHash = importEntry[0] as String;
       final shows = importEntry.elementAtOrNull(1) as List<dynamic>? ?? const [];
@@ -120,10 +123,17 @@ class AssetsGraph extends AssetsScanResults {
       // Case 2b: Check if the imported file re-exports the identifier
       Set<String> reExportedSrcs = {};
       Set<String> visitedFiles = {};
+
       _collectProviders(importedFileHash, identifier, reExportedSrcs, visitedFiles);
+      if (identifier == 'Iterable') {
+        print(possibleSrcs.keys.map(getUriForAsset));
+        for (final exp in reExportedSrcs.map(getUriForAsset)) {
+          print(exp);
+        }
+      }
       for (final entry in possibleSrcs.entries) {
         final srcId = entry.key;
-        if (reExportedSrcs.contains(srcId)) {
+        if (reExportedSrcs.contains(srcId) || reExportedSrcs.length == 1) {
           final srcUri = getUriForAsset(srcId);
           final importedUri = getUriForAsset(importedFileHash);
           return IdentifierRef(
@@ -149,11 +159,15 @@ class AssetsGraph extends AssetsScanResults {
     // Check all files that export this file
     final fileExports = exports[fileHash] ?? [];
     for (final expEntry in fileExports) {
-      final exportedFileHash = expEntry[0] as String;
+      final exportedFileHash = expEntry[0];
       final shows = expEntry.elementAtOrNull(1) as List<dynamic>? ?? const [];
       final hides = expEntry.elementAtOrNull(2) as List<dynamic>? ?? const [];
-      if (shows.isNotEmpty && !shows.contains(identifier)) continue;
       if (hides.contains(identifier)) continue;
+      if (shows.contains(identifier)) {
+        return;
+      } else if (shows.isNotEmpty) {
+        continue;
+      }
       _collectProviders(exportedFileHash, identifier, providers, visitedFiles);
     }
   }

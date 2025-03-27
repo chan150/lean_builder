@@ -37,7 +37,7 @@ class FileAssetReader {
   void _collectAssets(Directory directory, List<AssetFile> assets, [Set<String>? excludeDirs]) {
     for (final entity in directory.listSync()) {
       final baseName = p.basename(entity.path);
-      if (baseName.isEmpty || baseName[0] == '_') continue;
+      // if (baseName.isEmpty || baseName[0] == '_') continue;
       if (entity is Directory) {
         if (excludeDirs != null && excludeDirs.contains(baseName)) continue;
         _collectAssets(entity, assets);

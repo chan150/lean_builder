@@ -1,3 +1,5 @@
+import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/element/element.dart';
 import 'package:code_genie/src/resolvers/file_asset.dart';
 import 'package:code_genie/src/resolvers/package_file_resolver.dart';
 import 'package:code_genie/src/resolvers/parsed_units_cache.dart';
@@ -12,6 +14,12 @@ class TypeResolver {
   TypeResolver(this.parser, this.graph, this.fileResolver);
 
   DartType resolve(String identifier, AssetFile asset) {
+    throw UnimplementedError();
+  }
+
+  InterfaceType resolveInterfaceType(TypeAnnotation annotation, InterfaceElement element) {
+    final type = annotation.type;
+    if (type is NamedType) {}
     throw UnimplementedError();
   }
 }

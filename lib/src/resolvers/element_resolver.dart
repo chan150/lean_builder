@@ -13,6 +13,7 @@ class ElementResolver {
   final AssetsGraph graph;
   final SrcParser parser;
   final PackageFileResolver fileResolver;
+  final Map<String, LibraryElement> _libraryCache = {};
 
   ElementResolver(this.graph, this.fileResolver, this.parser);
 
@@ -20,36 +21,44 @@ class ElementResolver {
 
   LibraryElement resolveLibrary(AssetFile asset) {
     final unit = parser.parse(asset.path);
-    final visitor = ElementBuilderVisitor(this, asset);
+    final rootLibrary = libraryFor(asset);
+    final visitor = ElementResolverVisitor(this, asset, rootLibrary);
     unit.visitChildren(visitor);
-    return visitor.libraryElement;
+    return rootLibrary;
   }
 
-  TypeRef getTypeRef(String identifier, AssetFile asset) {
-    throw UnimplementedError();
-    // return _typeResolver.resolve(identifier, asset);
+  LibraryElement libraryFor(AssetFile asset) {
+    return _libraryCache.putIfAbsent(asset.id, () {
+      final name = asset.uri.pathSegments.last;
+      return LibraryElement(name: name, src: asset);
+    });
   }
 
-  AstNode astNodeFor(String identifier, AssetFile asset) {
-    final ref = graph.getIdentifierRef(identifier, asset.id);
-    assert(ref != null, 'Identifier $identifier not found in ${asset.uri}');
-    final assetFile = fileResolver.buildAssetUri(ref!.srcUri, relativeTo: asset);
+  (LibraryElement, AstNode) astNodeFor(String identifier, LibraryElement enclosingLibrary) {
+    final enclosingAsset = enclosingLibrary.src;
+    final ref = graph.getIdentifierRef(identifier, enclosingAsset.id);
+    assert(ref != null, 'Identifier $identifier not found in ${enclosingAsset.uri}');
+    final assetFile = fileResolver.buildAssetUri(ref!.srcUri, relativeTo: enclosingAsset);
+    final library = libraryFor(assetFile);
     final parsedUnit = parser.parse(assetFile.path);
     if (ref.type == IdentifierType.$class) {
-      return parsedUnit.declarations.whereType<ClassDeclaration>().firstWhere(
+      final unit = parsedUnit.declarations.whereType<ClassDeclaration>().firstWhere(
         (e) => e.name.lexeme == ref.identifier,
         orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
       );
+      return (library, unit);
     } else if (ref.type == IdentifierType.$function) {
-      return parsedUnit.declarations.whereType<FunctionDeclaration>().firstWhere(
+      final unit = parsedUnit.declarations.whereType<FunctionDeclaration>().firstWhere(
         (e) => e.name.lexeme == ref.identifier,
         orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
       );
+      return (library, unit);
     } else if (ref.type == IdentifierType.$variable) {
-      return parsedUnit.declarations.whereType<TopLevelVariableDeclaration>().firstWhere(
+      final unit = parsedUnit.declarations.whereType<TopLevelVariableDeclaration>().firstWhere(
         (e) => e.variables.variables.first.name.lexeme == ref.identifier,
         orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
       );
+      return (library, unit);
     } else {
       throw UnimplementedError();
     }

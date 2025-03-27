@@ -26,6 +26,7 @@ class TopLevelScanner {
 
       while (!token.isEof && token.next != null) {
         token = _skipCurlyBrackets(token);
+
         if (token.isEof) break;
         Token nextToken = token.next!;
         if (token.type == TokenType.AT) {
@@ -35,6 +36,10 @@ class TopLevelScanner {
           }
           continue;
         } else if (token.isTopLevelKeyword) {
+          if (nextToken.isTopLevelKeyword) {
+            token = nextToken;
+            continue;
+          }
           final type = token.type;
           final nextLexeme = nextToken.lexeme;
           switch (type) {
@@ -220,7 +225,7 @@ class TopLevelScanner {
   }
 
   bool _isValidName(String? identifier) {
-    return identifier != null && identifier.isNotEmpty && identifier[0] != '_';
+    return identifier != null && identifier.isNotEmpty;
   }
 
   Token _skipUntil(Token current, TokenType until) {

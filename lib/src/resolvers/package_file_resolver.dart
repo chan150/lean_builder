@@ -186,11 +186,10 @@ class PackageFileResolverImpl implements PackageFileResolver {
   @override
   AssetFile buildAssetUri(Uri uri, {AssetFile? relativeTo}) {
     final absoluteUri = resolveFileUri(uri, relativeTo: relativeTo?.uri);
-
     final packageName = packageFor(absoluteUri);
-    final shortPath = toShortUri(absoluteUri);
-    final hash = xxh3String(Uint8List.fromList(uri.toString().codeUnits));
-    return AssetFile(File.fromUri(absoluteUri), shortPath, hash, packageName == rootPackage);
+    final shortUri = toShortUri(absoluteUri);
+    final hash = xxh3String(Uint8List.fromList(shortUri.toString().codeUnits));
+    return AssetFile(File.fromUri(absoluteUri), shortUri, hash, packageName == rootPackage);
   }
 
   @override

@@ -1,13 +1,9 @@
+import 'package:code_genie/src/resolvers/file_asset.dart';
 import 'package:code_genie/src/resolvers/type/type.dart';
+import 'package:collection/collection.dart';
 
 abstract class Element {
   String get name;
-
-  @override
-  bool operator ==(Object other) => identical(this, other) || other is Element && runtimeType == other.runtimeType;
-
-  @override
-  int get hashCode => 0;
 
   @override
   String toString() => name;
@@ -15,15 +11,91 @@ abstract class Element {
   Element? get enclosingElement;
 
   LibraryElement get library;
+
+  String get identifier => '${library.src}#$name';
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is Element && runtimeType == other.runtimeType && identifier == other.identifier;
+
+  @override
+  int get hashCode => name.hashCode ^ library.hashCode;
+}
+
+class TypeParameterElement extends Element {
+  @override
+  final Element enclosingElement;
+  @override
+  final String name;
+
+  final DartType? bound;
+
+  TypeParameterElement(this.enclosingElement, this.name, [this.bound]);
+
+  @override
+  LibraryElement get library => enclosingElement.library;
+}
+
+abstract class TypeParametrizedElement extends Element {
+  List<TypeParameterElement> get typeParameters;
+}
+
+mixin TypeParameterizedElementMixin on Element implements TypeParametrizedElement {
+  final List<TypeParameterElement> _typeParameters = [];
+
+  @override
+  List<TypeParameterElement> get typeParameters => _typeParameters;
+
+  void addTypeParameter(TypeParameterElement typeParameter) {
+    _typeParameters.add(typeParameter);
+  }
+}
+
+abstract class InterfaceElement extends Element with TypeParameterizedElementMixin {
+  List<MethodElement> get methods;
+
+  List<FieldElement> get fields;
+
+  InterfaceType? get superType;
+
+  List<InterfaceType> get allSuperTypes;
+
+  List<InterfaceType> get mixins;
+
+  List<InterfaceType> get interfaces;
+
+  MethodElement? getMethod(String name) => methods.firstWhereOrNull((e) => e.name == name);
+
+  FieldElement? getField(String name) => fields.firstWhereOrNull((e) => e.name == name);
+
+  String toShortString() {
+    final buffer = StringBuffer();
+    buffer.write(name);
+    if (superType != null) {
+      buffer.write(' extends ${superType!.name}');
+    }
+    if (typeParameters.isNotEmpty) {
+      buffer.write('<${typeParameters.map((e) => '${e.name} extends ${e.bound?.name}').join(', ')}>');
+    }
+    if (interfaces.isNotEmpty) {
+      buffer.write(' implements ${interfaces.map((e) => e.name).join(', ')}');
+    }
+    if (mixins.isNotEmpty) {
+      buffer.write(' with ${mixins.map((e) => e.name).join(', ')}');
+    }
+    return buffer.toString();
+  }
 }
 
 class LibraryElement extends Element {
-  LibraryElement({required this.name, required this.srcId, required this.topLevelElements});
+  LibraryElement({required this.name, required this.src});
 
   @override
   final String name;
 
-  final String srcId;
+  final AssetFile src;
+
+  String get srcId => src.id;
 
   @override
   Null get enclosingElement => null;
@@ -31,12 +103,30 @@ class LibraryElement extends Element {
   @override
   LibraryElement get library => this;
 
-  final List<Element> topLevelElements;
+  List<Element> resolvedElements = [];
 
-  Iterable<ClassElement> get classes => topLevelElements.whereType<ClassElement>();
+  Iterable<ClassElementImpl> get classes => resolvedElements.whereType<ClassElementImpl>();
+
+  ClassElementImpl? getClass(String name) => classes.firstWhereOrNull((e) => e.name == name);
+
+  InterfaceElement? getInterfaceElement(String name) {
+    return resolvedElements.whereType<InterfaceElement>().firstWhereOrNull((e) => e.name == name);
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      super == other && other is LibraryElement && runtimeType == other.runtimeType && src.id == other.src.id;
+
+  @override
+  int get hashCode => src.id.hashCode;
+
+  Element? getElement(String name) {
+    return resolvedElements.firstWhereOrNull((e) => e.name == name);
+  }
 }
 
-abstract class VariableElement implements Element {
+abstract class VariableElement extends Element {
   bool get hasImplicitType;
 
   bool get isConst;
@@ -53,14 +143,14 @@ abstract class VariableElement implements Element {
   DartType get type;
 }
 
-abstract class ClassMemberElement implements Element {
+abstract class ClassMemberElement extends Element {
   bool get isStatic;
 
   @override
-  ClassElement get enclosingElement;
+  Element get enclosingElement;
 }
 
-class FieldElement implements ClassMemberElement, VariableElement {
+class FieldElement extends ClassMemberElement implements VariableElement {
   FieldElement({
     required this.isStatic,
     required this.name,
@@ -78,7 +168,7 @@ class FieldElement implements ClassMemberElement, VariableElement {
   });
 
   @override
-  final ClassElement enclosingElement;
+  final Element enclosingElement;
 
   @override
   final bool hasImplicitType;
@@ -110,7 +200,7 @@ class FieldElement implements ClassMemberElement, VariableElement {
   final LibraryElement library;
 }
 
-class ParameterElement implements VariableElement {
+class ParameterElement extends VariableElement {
   ParameterElement({
     required this.name,
     required this.library,
@@ -150,7 +240,7 @@ class ParameterElement implements VariableElement {
   bool get isStatic => false;
 }
 
-class MethodElement implements ClassMemberElement {
+class MethodElement extends ClassMemberElement {
   MethodElement({
     required this.isStatic,
     required this.name,
@@ -176,11 +266,53 @@ class MethodElement implements ClassMemberElement {
   final LibraryElement library;
 }
 
-class ClassElement extends Element {
-  List<FieldElement> fields = [];
-  List<MethodElement> methods = [];
+abstract class ClassElement extends InterfaceElement {}
 
-  ClassElement({required this.name, required this.library});
+class ClassElementImpl extends InterfaceElementImpl {
+  ClassElementImpl({required super.name, required super.library});
+}
+
+class InterfaceElementImpl extends InterfaceElement {
+  final List<InterfaceType> _mixins = [];
+  final List<InterfaceType> _interfaces = [];
+  final List<MethodElement> _methods = [];
+  final List<FieldElement> _fields = [];
+
+  InterfaceElementImpl({required this.name, required this.library});
+
+  @override
+  List<FieldElement> get fields => _fields;
+
+  @override
+  List<MethodElement> get methods => _methods;
+
+  @override
+  List<InterfaceType> get interfaces => _interfaces;
+
+  @override
+  List<InterfaceType> get mixins => _mixins;
+
+  @override
+  List<TypeParameterElement> get typeParameters => _typeParameters;
+
+  void addMixin(InterfaceType mixin) {
+    _mixins.add(mixin);
+  }
+
+  void addInterface(InterfaceType interface) {
+    _interfaces.add(interface);
+  }
+
+  void addMethod(MethodElement method) {
+    _methods.add(method);
+  }
+
+  void addField(FieldElement field) {
+    _fields.add(field);
+  }
+
+  @override
+  List<InterfaceType> get allSuperTypes => throw UnimplementedError();
 
   @override
   final String name;
@@ -190,4 +322,30 @@ class ClassElement extends Element {
 
   @override
   Element? get enclosingElement => library;
+
+  InterfaceType? _superType;
+
+  set superType(InterfaceType? value) {
+    _superType = value;
+  }
+
+  @override
+  InterfaceType? get superType => _superType;
+}
+
+class NullElement extends Element {
+  @override
+  final String name = 'Null';
+
+  @override
+  final Element? enclosingElement = null;
+
+  @override
+  final LibraryElement library = throw UnimplementedError();
+
+  @override
+  bool operator ==(Object other) => other is NullElement;
+
+  @override
+  int get hashCode => name.hashCode;
 }

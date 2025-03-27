@@ -57,7 +57,7 @@ class IsolateTLScanner {
     final assets = assetsReader.listAssetsFor(
       packagesToScan,
       exclude: {
-        PackageFileResolver.dartSdk: {'internal'},
+        // PackageFileResolver.dartSdk: {'internal'},
       },
     );
     final assetsList = assets.values.expand((e) => e).toList();
