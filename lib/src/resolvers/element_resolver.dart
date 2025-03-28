@@ -1,9 +1,8 @@
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:code_genie/src/resolvers/element.dart';
+import 'package:code_genie/src/resolvers/element/element.dart';
 import 'package:code_genie/src/resolvers/file_asset.dart';
 import 'package:code_genie/src/resolvers/package_file_resolver.dart';
 import 'package:code_genie/src/resolvers/parsed_units_cache.dart';
-import 'package:code_genie/src/resolvers/type/type.dart';
 import 'package:code_genie/src/resolvers/type/type_resolver.dart';
 import 'package:code_genie/src/resolvers/visitor/element_builder_visitor.dart';
 import 'package:code_genie/src/scanner/assets_graph.dart';
@@ -19,18 +18,18 @@ class ElementResolver {
 
   late final _typeResolver = TypeResolver(parser, graph, fileResolver);
 
-  LibraryElement resolveLibrary(AssetFile asset) {
-    final unit = parser.parse(asset.path);
-    final rootLibrary = libraryFor(asset);
-    final visitor = ElementResolverVisitor(this, asset, rootLibrary);
+  LibraryElement resolveLibrary(AssetSrc src) {
+    final unit = parser.parse(src.path);
+    final rootLibrary = libraryFor(src);
+    final visitor = ElementResolverVisitor(this, src, rootLibrary);
     unit.visitChildren(visitor);
     return rootLibrary;
   }
 
-  LibraryElement libraryFor(AssetFile asset) {
-    return _libraryCache.putIfAbsent(asset.id, () {
-      final name = asset.uri.pathSegments.last;
-      return LibraryElement(name: name, src: asset);
+  LibraryElement libraryFor(AssetSrc src) {
+    return _libraryCache.putIfAbsent(src.id, () {
+      final name = src.uri.pathSegments.last;
+      return LibraryElementImpl(name: name, src: src);
     });
   }
 
@@ -48,6 +47,30 @@ class ElementResolver {
         orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
       );
       return (library, unit);
+    } else if (ref.type == IdentifierType.$extension) {
+      final unit = parsedUnit.declarations.whereType<ExtensionDeclaration>().firstWhere(
+        (e) => e.name?.lexeme == ref.identifier,
+        orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
+      );
+      return (library, unit);
+    } else if (ref.type == IdentifierType.$mixin) {
+      final unit = parsedUnit.declarations.whereType<MixinDeclaration>().firstWhere(
+        (e) => e.name.lexeme == ref.identifier,
+        orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
+      );
+      return (library, unit);
+    } else if (ref.type == IdentifierType.$enum) {
+      final unit = parsedUnit.declarations.whereType<EnumDeclaration>().firstWhere(
+        (e) => e.name.lexeme == ref.identifier,
+        orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
+      );
+      return (library, unit);
+    } else if (ref.type == IdentifierType.$typeAlias) {
+      final unit = parsedUnit.declarations.whereType<TypeAlias>().firstWhere(
+        (e) => e.name.lexeme == ref.identifier,
+        orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
+      );
+      return (library, unit);
     } else if (ref.type == IdentifierType.$function) {
       final unit = parsedUnit.declarations.whereType<FunctionDeclaration>().firstWhere(
         (e) => e.name.lexeme == ref.identifier,
@@ -61,6 +84,7 @@ class ElementResolver {
       );
       return (library, unit);
     } else {
+      print('Unknown identifier type: ${ref.type}');
       throw UnimplementedError();
     }
   }

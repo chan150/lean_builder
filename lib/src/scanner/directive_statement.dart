@@ -4,7 +4,7 @@ import '../resolvers/file_asset.dart';
 
 class DirectiveStatement {
   final TokenType type;
-  final AssetFile asset;
+  final AssetSrc asset;
   final List<String> show;
   final List<String> hide;
 

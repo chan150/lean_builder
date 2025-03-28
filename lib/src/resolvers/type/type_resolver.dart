@@ -13,7 +13,7 @@ class TypeResolver {
 
   TypeResolver(this.parser, this.graph, this.fileResolver);
 
-  DartType resolve(String identifier, AssetFile asset) {
+  DartType resolve(String identifier, AssetSrc asset) {
     throw UnimplementedError();
   }
 

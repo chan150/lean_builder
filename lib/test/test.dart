@@ -12,6 +12,7 @@ class AnnotatedClass {
   final bool isAlive;
   final List<String> list = [];
   final double height = 5.6;
+  final ColorEnum color = ColorEnum.red;
 
   AnnotatedClass(this.type, this.name, this.age, this.isAlive);
 
@@ -24,4 +25,16 @@ class FieldType extends SuperClass {
 
 class IrrelevantClass {
   IrrelevantClass();
+}
+
+enum ColorEnum { red, green, blue }
+
+enum EnumWithArgs {
+  red('red'),
+  green('green'),
+  blue('blue');
+
+  final String value;
+
+  const EnumWithArgs(this.value);
 }

@@ -44,8 +44,8 @@ class MockPackageFileResolver implements PackageFileResolver {
   }
 
   @override
-  AssetFile buildAssetUri(Uri uri, {AssetFile? relativeTo}) {
-    return AssetFile(File.fromUri(uri), uri, 'mock-test-hash', true);
+  AssetSrc buildAssetUri(Uri uri, {AssetSrc? relativeTo}) {
+    return AssetSrc(File.fromUri(uri), uri, 'mock-test-hash', true);
   }
 
   @override

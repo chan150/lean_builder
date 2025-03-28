@@ -25,19 +25,19 @@ abstract class ScanResults {
 
   bool isVisited(String fileId);
 
-  void addImport(AssetFile importingFile, DirectiveStatement statement);
+  void addImport(AssetSrc importingFile, DirectiveStatement statement);
 
-  void addExport(AssetFile exportingFile, DirectiveStatement statement);
+  void addExport(AssetSrc exportingFile, DirectiveStatement statement);
 
   void merge(ScanResults results);
 
-  void addAsset(AssetFile asset, {bool isVisited = true});
+  void addAsset(AssetSrc asset, {bool isVisited = true});
 
-  void addDeclaration(String identifier, AssetFile declaringFile, IdentifierType type);
+  void addDeclaration(String identifier, AssetSrc declaringFile, IdentifierType type);
 
   void removeAsset(String id);
 
-  void updateFileInfo(AssetFile asset, {required Uint8List content, bool hasAnnotation = false});
+  void updateFileInfo(AssetSrc asset, {required Uint8List content, bool hasAnnotation = false});
 }
 
 class AssetsScanResults extends ScanResults {
@@ -75,7 +75,7 @@ class AssetsScanResults extends ScanResults {
   }
 
   @override
-  String addAsset(AssetFile asset, {bool isVisited = true}) {
+  String addAsset(AssetSrc asset, {bool isVisited = true}) {
     if (!assets.containsKey(asset.id)) {
       assets[asset.id] = [asset.shortPath.toString(), null, 0];
     }
@@ -84,7 +84,7 @@ class AssetsScanResults extends ScanResults {
   }
 
   @override
-  void addExport(AssetFile exportingFile, DirectiveStatement statement) {
+  void addExport(AssetSrc exportingFile, DirectiveStatement statement) {
     assert(assets.containsKey(exportingFile.id));
     final exportedFileHash = addAsset(statement.asset, isVisited: false);
     final exporters = exports[exportingFile.id] ?? [];
@@ -108,7 +108,7 @@ class AssetsScanResults extends ScanResults {
   }
 
   @override
-  void addImport(AssetFile importingFile, DirectiveStatement statement) {
+  void addImport(AssetSrc importingFile, DirectiveStatement statement) {
     assert(assets.containsKey(importingFile.id));
     final importedFileHash = addAsset(statement.asset, isVisited: false);
     final importsOfFile = imports[importingFile.id] ?? [];
@@ -132,7 +132,7 @@ class AssetsScanResults extends ScanResults {
   }
 
   @override
-  void addDeclaration(String identifier, AssetFile declaringFile, IdentifierType type) {
+  void addDeclaration(String identifier, AssetSrc declaringFile, IdentifierType type) {
     if (!assets.containsKey(declaringFile.id)) {
       throw Exception('Asset not found: $declaringFile');
     }
@@ -152,7 +152,7 @@ class AssetsScanResults extends ScanResults {
   }
 
   @override
-  void updateFileInfo(AssetFile asset, {required Uint8List content, bool hasAnnotation = false}) {
+  void updateFileInfo(AssetSrc asset, {required Uint8List content, bool hasAnnotation = false}) {
     assert(assets.containsKey(asset.id), 'Asset not found: $asset');
     final assetArr = assets[asset.id]!;
     assetArr[1] = xxh3String(content);

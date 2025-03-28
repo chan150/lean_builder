@@ -1,4 +1,4 @@
-import 'package:code_genie/src/resolvers/element.dart';
+import 'package:code_genie/src/resolvers/element/element.dart';
 
 abstract class DartType {
   String get name;
@@ -70,14 +70,14 @@ class InterfaceTypeImpl implements InterfaceType {
   InterfaceType? get superclass => element.superType;
 
   @override
-  final List<InterfaceType> superclassConstraints;
+  List<InterfaceType> get superclassConstraints {
+    if (element is MixinElement) {
+      return (element as MixinElement).superclassConstraints;
+    }
+    return const [];
+  }
 
-  InterfaceTypeImpl({
-    required this.name,
-    required this.element,
-    this.typeArguments = const [],
-    this.superclassConstraints = const [],
-  });
+  InterfaceTypeImpl({required this.name, required this.element, this.typeArguments = const []});
 
   @override
   String toString() {
@@ -109,7 +109,7 @@ class NeverType extends DartType {
   final String name = 'Never';
 
   @override
-  Element get element => NullElement();
+  Element get element => Element.nullElement;
 }
 
 class VoidType extends DartType {
@@ -117,7 +117,7 @@ class VoidType extends DartType {
   final String name = 'void';
 
   @override
-  Element get element => NullElement();
+  Element get element => Element.nullElement;
 }
 
 class DynamicType extends DartType {
@@ -125,5 +125,59 @@ class DynamicType extends DartType {
   final String name = 'dynamic';
 
   @override
-  Element get element => NullElement();
+  Element get element => Element.nullElement;
+}
+
+abstract class FunctionType implements DartType {
+  @override
+  NullElement get element;
+
+  Map<String, DartType> get namedParameterTypes;
+
+  List<DartType> get normalParameterTypes;
+
+  List<DartType> get optionalParameterTypes;
+
+  List<ParameterElement> get parameters;
+
+  List<TypeParameterElement> get typeParameters;
+
+  DartType get returnType;
+}
+
+class FunctionTypeImpl implements FunctionType {
+  @override
+  final String name;
+
+  @override
+  final NullElement element;
+
+  @override
+  final Map<String, DartType> namedParameterTypes;
+
+  @override
+  final List<DartType> normalParameterTypes;
+
+  @override
+  final List<DartType> optionalParameterTypes;
+
+  @override
+  final List<ParameterElement> parameters;
+
+  @override
+  final List<TypeParameterElement> typeParameters;
+
+  @override
+  final DartType returnType;
+
+  FunctionTypeImpl({
+    required this.name,
+    required this.element,
+    this.namedParameterTypes = const {},
+    this.normalParameterTypes = const [],
+    this.optionalParameterTypes = const [],
+    this.parameters = const [],
+    this.typeParameters = const [],
+    required this.returnType,
+  });
 }

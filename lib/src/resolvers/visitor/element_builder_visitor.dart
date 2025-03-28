@@ -1,13 +1,13 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:code_genie/src/ast_extensions.dart';
-import 'package:code_genie/src/resolvers/element.dart';
+import 'package:code_genie/src/resolvers/element/element.dart';
 import 'package:code_genie/src/resolvers/element_resolver.dart';
 import 'package:code_genie/src/resolvers/file_asset.dart';
 import 'package:code_genie/src/resolvers/type/type.dart';
 
 class ElementResolverVisitor extends UnifyingAstVisitor<void> {
-  final AssetFile src;
+  final AssetSrc src;
   final List<Element> _elementStack = [];
   final ElementResolver resolver;
 
@@ -52,7 +52,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> {
     if (bound != null) {
       boundType = _resolveType(bound, element) as InterfaceType;
     }
-    element.addTypeParameter(TypeParameterElement(element, node.name.lexeme, boundType));
+    element.addTypeParameter(TypeParameterElementImpl(element, node.name.lexeme, boundType));
   }
 
   @override
@@ -63,7 +63,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> {
     final libraryElement = currentElementAs<LibraryElement>();
     final ClassElementImpl classElement;
     if (libraryElement.getClass(node.name.lexeme) != null) {
-      classElement = libraryElement.getClass(node.name.lexeme)!;
+      return;
     } else {
       classElement = ClassElementImpl(name: node.name.lexeme, library: libraryElement);
       libraryElement.resolvedElements.add(classElement);
@@ -97,6 +97,90 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> {
     }
   }
 
+  @override
+  void visitMixinDeclaration(MixinDeclaration node) {
+    final libraryElement = currentElementAs<LibraryElement>();
+    final MixinElementImpl mixinElement;
+    if (libraryElement.getMixin(node.name.lexeme) != null) {
+      return;
+    } else {
+      mixinElement = MixinElementImpl(name: node.name.lexeme, library: libraryElement);
+      libraryElement.resolvedElements.add(mixinElement);
+    }
+    mixinElement.thisType = InterfaceTypeImpl(name: mixinElement.name, element: mixinElement);
+
+    _visitScoped(mixinElement, () {
+      node.typeParameters?.visitChildren(this);
+    });
+
+    for (final interface in [...?node.implementsClause?.interfaces]) {
+      final interfaceType = _resolveType(interface, mixinElement);
+      assert(interfaceType is InterfaceType, 'Interface type must be an interface type');
+      mixinElement.addInterface(interfaceType as InterfaceType);
+    }
+
+    for (final on in [...?node.onClause?.superclassConstraints]) {
+      final onType = _resolveType(on, mixinElement);
+      assert(onType is InterfaceType, 'On type must be an interface type');
+      mixinElement.addSuperConstrain(onType as InterfaceType);
+    }
+  }
+
+  @override
+  void visitEnumDeclaration(EnumDeclaration node) {
+    final libraryElement = currentElementAs<LibraryElement>();
+    final EnumElementImpl enumElement;
+    if (libraryElement.getEnum(node.name.lexeme) != null) {
+      return;
+    } else {
+      enumElement = EnumElementImpl(name: node.name.lexeme, library: libraryElement);
+      libraryElement.resolvedElements.add(enumElement);
+    }
+    enumElement.thisType = InterfaceTypeImpl(name: enumElement.name, element: enumElement);
+    _visitScoped(enumElement, () {
+      for (final constant in node.constants) {
+        final constantName = constant.name.lexeme;
+        final field = FieldElementImpl(
+          isStatic: true,
+          name: constantName,
+          isAbstract: false,
+          library: enumElement.library,
+          isCovariant: false,
+          isEnumConstant: true,
+          enclosingElement: enumElement,
+          hasImplicitType: false,
+          isConst: true,
+          isFinal: true,
+          isLate: false,
+          isExternal: false,
+          type: enumElement.thisType,
+        );
+        enumElement.addField(field);
+      }
+    });
+  }
+
+  @override
+  void visitFunctionTypeAlias(FunctionTypeAlias node) {
+    final libraryElement = currentElementAs<LibraryElement>();
+
+    // final FunctionTypeAliasElementImpl functionTypeAliasElement;
+    // if (libraryElement.getFunctionTypeAlias(node.name.lexeme) != null) {
+    //   return;
+    // } else {
+    //   functionTypeAliasElement = FunctionTypeAliasElementImpl(name: node.name.lexeme, library: libraryElement);
+    //   libraryElement.resolvedElements.add(functionTypeAliasElement);
+    // }
+    // functionTypeAliasElement.thisType = InterfaceTypeImpl(name: functionTypeAliasElement.name, element: functionTypeAliasElement);
+    //
+    // _visitScoped(functionTypeAliasElement, () {
+    //   node.typeParameters?.visitChildren(this);
+    //   for (final parameter in node.parameters.parameters) {
+    //     parameter.accept(this);
+    //   }
+    // });
+  }
+
   InterfaceElement _resolveInterfaceElement(String typename, LibraryElement enclosingLibrary) {
     final (library, decNode) = resolver.astNodeFor(typename, enclosingLibrary);
     InterfaceElement? decEle = library.getInterfaceElement(typename);
@@ -105,7 +189,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> {
     }
     _visitScoped(library, () => decNode.accept(this));
     decEle = library.getInterfaceElement(typename);
-    assert(decEle != null, 'Super type $typename could not be resolved');
+    assert(decEle != null, 'Super type $typename could not be resolved ${library.src.uri}');
     return decEle!;
   }
 
@@ -148,7 +232,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> {
     final fieldType = _resolveType(node.type, interfaceElement);
     // Process each variable in the field declaration
     for (final variable in node.fields.variables) {
-      final field = FieldElement(
+      final field = FieldElementImpl(
         isStatic: node.isStatic,
         name: variable.name.lexeme,
         isAbstract: node.abstractKeyword != null,

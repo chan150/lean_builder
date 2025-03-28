@@ -44,7 +44,7 @@ void main(List<String> args) async {
 
   final parser = SrcParser();
   final resolver = ElementResolver(assetsGraph, fileResolver, parser);
-  final packageAssets = assetsGraph.getAssetsForPackage(rootPackageName);
+  final packageAssets = assetsGraph.getAssetsForPackage('mofad_dashboard');
 
   for (final asset in packageAssets) {
     if (asset.hasAnnotation) {
@@ -58,75 +58,9 @@ void main(List<String> args) async {
           print(clazz.methods.map((e) => e.name));
         }
       }
-
-      // final unit = parser.parse(assetFile.path);
-      // final clazz = unit.declarations.whereType<ClassDeclaration>().firstWhere((e) => e.metadata.isNotEmpty);
-      // final annotation = clazz.metadata.first;
-      // final annotationIdRef = assetsGraph.getIdentifierRef(annotation.name.name, assetFile.id)!;
-      // final type = resolver.resolve(annotationIdRef);
-      // print(type);
-
-      //
-      //   final unit = getUnitForAsset(fileResolver, fileAsset.path);
-      //   final clazz = unit.declarations.whereType<ClassDeclaration>().firstWhere((e) => e.metadata.isNotEmpty);
-      //   final superClass = clazz.extendsClause!.superclass.name2.lexeme;
-      //   print(superClass);
-      //
-      //   final ref = assetsGraph.getIdentifierRef(superClass, fileAsset.id);
-      //   if (ref != null) {
-      //     final superAsset = fileResolver.buildAssetUri(ref.srcUri);
-      //     final superUnit = getUnitForAsset(fileResolver, superAsset.path);
-      //     final superClazz = superUnit.declarations.whereType<ClassDeclaration>().firstWhere(
-      //       (e) => e.name.lexeme == ref.identifier,
-      //     );
-      //     print(superClazz);
-      //     print('src: ${ref.srcUri}');
-      //     print('provider: ${assetsGraph.assets[ref.providerId]?[0]}');
-      //   }
     }
   }
 
   // await assetsGraphFile.writeAsString(jsonEncode(assetsGraph.toJson()));
   print('Time taken: ${stopWatch.elapsed.inMilliseconds} ms');
 }
-
-// Set<String> resolveIdentifiers(String identifier, ExportsGraph graph) {
-//   final source = graph.getSourceForIdentifier(identifier);
-//   if (source == null) return {};
-//   final CompilationUnit unit;
-//   if (_unitsCache.containsKey(source.path)) {
-//     unit = _unitsCache[source.path]!;
-//   } else {
-//     unit = parseFile(path: source.path, featureSet: FeatureSet.latestLanguageVersion()).unit;
-//     _unitsCache[source.path] = unit;
-//   }
-//   final identifierUnit = unit.declarations.whereType<NamedCompilationUnitMember>().firstWhere(
-//     (e) => e.name.lexeme == identifier,
-//   );
-//
-//   for (final import in unit.directives.whereType<ImportDirective>()) {
-//     final importUri = Uri.parse(import.uri.stringValue!);
-//   }
-//
-//   final identity = <String>{identifier};
-//   if (identifierUnit is ClassDeclaration) {
-//     if (identifierUnit.extendsClause != null) {
-//       final superClass = identifierUnit.extendsClause!.superclass.name2.lexeme;
-//       identity.addAll(resolveIdentifiers(superClass, graph));
-//     }
-//     if (identifierUnit.withClause != null) {
-//       for (final mixin in identifierUnit.withClause!.mixinTypes) {
-//         final mixinName = mixin.name2.lexeme;
-//         identity.addAll(resolveIdentifiers(mixinName, graph));
-//       }
-//     }
-//     if (identifierUnit.implementsClause != null) {
-//       for (final impl in identifierUnit.implementsClause!.interfaces) {
-//         final implName = impl.name2.lexeme;
-//         identity.addAll(resolveIdentifiers(implName, graph));
-//       }
-//     }
-//   }
-//
-//   return identity;
-// }

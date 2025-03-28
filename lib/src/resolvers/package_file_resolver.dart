@@ -31,7 +31,7 @@ abstract class PackageFileResolver {
   /// Converts a file URI to a package import string
   String uriToPackageImport(Uri uri);
 
-  AssetFile buildAssetUri(Uri uri, {AssetFile? relativeTo});
+  AssetSrc buildAssetUri(Uri uri, {AssetSrc? relativeTo});
 
   /// Returns the set of available packages
   Set<String> get packages;
@@ -181,12 +181,12 @@ class PackageFileResolverImpl implements PackageFileResolver {
   }
 
   @override
-  AssetFile buildAssetUri(Uri uri, {AssetFile? relativeTo}) {
+  AssetSrc buildAssetUri(Uri uri, {AssetSrc? relativeTo}) {
     final absoluteUri = resolveFileUri(uri, relativeTo: relativeTo?.uri);
     final packageName = packageFor(absoluteUri);
     final shortUri = toShortUri(absoluteUri);
     final hash = xxh3String(Uint8List.fromList(shortUri.toString().codeUnits));
-    return AssetFile(File.fromUri(absoluteUri), shortUri, hash, packageName == rootPackage);
+    return AssetSrc(File.fromUri(absoluteUri), shortUri, hash, packageName == rootPackage);
   }
 
   @override
