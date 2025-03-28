@@ -50,7 +50,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> {
     final bound = node.bound;
     InterfaceType? boundType;
     if (bound != null) {
-      boundType = _resolveType(bound, element.library) as InterfaceType;
+      boundType = _resolveType(bound, element) as InterfaceType;
     }
     element.addTypeParameter(TypeParameterElement(element, node.name.lexeme, boundType));
   }
@@ -68,6 +68,8 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> {
       classElement = ClassElementImpl(name: node.name.lexeme, library: libraryElement);
       libraryElement.resolvedElements.add(classElement);
     }
+    classElement.thisType = InterfaceTypeImpl(name: classElement.name, element: classElement);
+
     _visitScoped(classElement, () {
       node.typeParameters?.visitChildren(this);
       for (final field in node.fields) {
@@ -77,19 +79,19 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> {
 
     final superType = node.extendsClause?.superclass;
     if (superType != null) {
-      final resolvedSuperType = _resolveType(superType, libraryElement);
+      final resolvedSuperType = _resolveType(superType, classElement);
       assert(resolvedSuperType is InterfaceType, 'Super type must be an interface type');
       classElement.superType = resolvedSuperType as InterfaceType;
     }
 
     for (final mixin in [...?node.withClause?.mixinTypes]) {
-      final mixinType = _resolveType(mixin, libraryElement);
+      final mixinType = _resolveType(mixin, classElement);
       assert(mixinType is InterfaceType, 'Mixin type must be an interface type');
       classElement.addMixin(mixinType as InterfaceType);
     }
 
     for (final interface in [...?node.implementsClause?.interfaces]) {
-      final interfaceType = _resolveType(interface, libraryElement);
+      final interfaceType = _resolveType(interface, classElement);
       assert(interfaceType is InterfaceType, 'Interface type must be an interface type');
       classElement.addInterface(interfaceType as InterfaceType);
     }
@@ -107,20 +109,31 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> {
     return decEle!;
   }
 
-  DartType _resolveType(TypeAnnotation? typeAnno, LibraryElement enclosingLibrary) {
+  DartType _resolveType(TypeAnnotation? typeAnno, TypeParameterizedElement enclosingEle) {
     if (typeAnno == null) {
       return NeverType();
     }
     if (typeAnno is NamedType) {
       final typename = typeAnno.name;
+
+      for (final typeParams in enclosingEle.typeParameters) {
+        if (typeParams.name == typename) {
+          return TypeParameterType(typeParams, typeParams.bound ?? DynamicType());
+        }
+      }
+
       if (typename == null) {
         return NeverType();
       }
-      final element = _resolveInterfaceElement(typename, enclosingLibrary);
+      final element = _resolveInterfaceElement(typename, enclosingEle.library);
       final typeArgsAnnotations = typeAnno.typeArguments?.arguments.toList();
       if (typeArgsAnnotations != null) {
-        // final typeArgs = typeArgsAnnotations.map((e) => _resolveType(e, element.library)).toList();
-        // return InterfaceTypeImpl(name: typename, element: element, typeArguments: typeArgs);
+        final typeArgs = <DartType>[];
+        for (final typeArg in typeArgsAnnotations) {
+          final typeArgType = _resolveType(typeArg, enclosingEle);
+          typeArgs.add(typeArgType);
+        }
+        return InterfaceTypeImpl(name: typename, element: element, typeArguments: typeArgs);
       }
       return InterfaceTypeImpl(name: typename, element: element);
     }
@@ -132,7 +145,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> {
   @override
   void visitFieldDeclaration(FieldDeclaration node) {
     final interfaceElement = currentElementAs<InterfaceElementImpl>();
-    final fieldType = _resolveType(node.type, interfaceElement.library);
+    final fieldType = _resolveType(node.type, interfaceElement);
     // Process each variable in the field declaration
     for (final variable in node.fields.variables) {
       final field = FieldElement(

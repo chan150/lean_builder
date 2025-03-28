@@ -147,9 +147,6 @@ class PackageFileResolverImpl implements PackageFileResolver {
     }
     if (bestMatch == null) {
       print('Could not find package for $path');
-      for (final entry in pathToPackage.entries) {
-        print('entry: ${entry.key} => ${entry.value}');
-      }
     }
 
     assert(bestMatch != null, 'Could not find package for $path');

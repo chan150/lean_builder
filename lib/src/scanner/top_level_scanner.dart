@@ -147,9 +147,7 @@ class TopLevelScanner {
       if (currentToken.isIdentifier) {
         var afterIdentifier = currentToken.next;
         if (afterIdentifier != null && (afterIdentifier.type == TokenType.EQ)) {
-          if (currentToken.lexeme.isNotEmpty && currentToken.lexeme[0] != '_') {
-            results.addDeclaration(currentToken.lexeme, asset, IdentifierType.$variable);
-          }
+          results.addDeclaration(currentToken.lexeme, asset, IdentifierType.$variable);
           break;
         }
       }
@@ -164,10 +162,12 @@ class TopLevelScanner {
     }
     final url = lexeme.substring(1, lexeme.length - 1);
     final uri = Uri.parse(url);
-    if (uri.path[0] == '_') return (null, _skipUntil(token, TokenType.SEMICOLON));
+    // skip private package imports
+    if (uri.scheme == 'package' && uri.path.isNotEmpty && uri.path[0] == '_') {
+      return (null, _skipUntil(token, TokenType.SEMICOLON));
+    }
 
     final asset = fileResolver.buildAssetUri(uri, relativeTo: enclosingAsset);
-
     Token? current = token.next;
     // Extract show/hide combinators
     final show = <String>[];

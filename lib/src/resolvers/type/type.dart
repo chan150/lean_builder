@@ -92,6 +92,18 @@ class InterfaceTypeImpl implements InterfaceType {
   }
 }
 
+class TypeParameterType extends DartType {
+  final DartType bound;
+
+  TypeParameterType(this.element, this.bound);
+
+  @override
+  final TypeParameterElement element;
+
+  @override
+  String get name => element.name;
+}
+
 class NeverType extends DartType {
   @override
   final String name = 'Never';

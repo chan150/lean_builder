@@ -72,30 +72,40 @@ class AssetsGraph extends AssetsScanResults {
     return assets;
   }
 
-  IdentifierRef? getIdentifierRef(String identifier, String srcFileId) {
-    // First check if the identifier is declared directly in this file
+  IdentifierRef _buildRef(String identifier, MapEntry<String, int> srcEntry, {String? providerId}) {
+    final srcUri = getUriForAsset(srcEntry.key);
+    final providerUri = providerId != null ? getUriForAsset(providerId) : srcUri;
+    return IdentifierRef(
+      identifier: identifier,
+      srcId: srcEntry.key,
+      srcUri: srcUri,
+      providerId: providerId ?? srcEntry.key,
+      providerUri: providerUri,
+      type: IdentifierType.fromValue(srcEntry.value),
+    );
+  }
+
+  IdentifierRef? getIdentifierRef(String identifier, String rootSrcId, {bool requireProvider = true}) {
     final possibleSrcs = Map<String, int>.fromEntries(
       identifiers.where((e) => e[0] == identifier).map((e) => MapEntry(e[1], e[2])),
     );
 
+    // if [requireProvider] is false, we only care about the identifier src, not the provider
+    if (!requireProvider && possibleSrcs.length == 1) {
+      return _buildRef(identifier, possibleSrcs.entries.first);
+    }
+
+    // First check if the identifier is declared directly in this file
     for (final entry in possibleSrcs.entries) {
-      if (entry.key == srcFileId) {
-        final uri = getUriForAsset(srcFileId);
-        return IdentifierRef(
-          identifier: identifier,
-          srcId: srcFileId,
-          srcUri: uri,
-          providerId: srcFileId,
-          providerUri: uri,
-          type: IdentifierType.fromValue(entry.value),
-        );
+      if (entry.key == rootSrcId) {
+        return _buildRef(identifier, entry, providerId: rootSrcId);
       }
     }
 
     // Check all imports of the source file
     final fileImports = [
       if (assets.containsKey(_coreImportId)) [_coreImportId],
-      ...?imports[srcFileId],
+      ...?imports[rootSrcId],
     ];
     for (final importEntry in fileImports) {
       final importedFileHash = importEntry[0] as String;
@@ -105,18 +115,10 @@ class AssetsGraph extends AssetsScanResults {
       if (shows.isNotEmpty && !shows.contains(identifier)) continue;
       if (hides.contains(identifier)) continue;
 
-      // Check if the imported file directly declares the identifier\
+      // Check if the imported file directly declares the identifier
       for (final entry in possibleSrcs.entries) {
         if (entry.key == importedFileHash) {
-          final uri = getUriForAsset(importedFileHash);
-          return IdentifierRef(
-            identifier: identifier,
-            srcId: importedFileHash,
-            srcUri: uri,
-            providerId: importedFileHash,
-            providerUri: uri,
-            type: IdentifierType.fromValue(entry.value),
-          );
+          return _buildRef(identifier, entry, providerId: importedFileHash);
         }
       }
 
@@ -125,25 +127,12 @@ class AssetsGraph extends AssetsScanResults {
       Set<String> visitedFiles = {};
 
       _collectProviders(importedFileHash, identifier, reExportedSrcs, visitedFiles);
-      if (identifier == 'Iterable') {
-        print(possibleSrcs.keys.map(getUriForAsset));
-        for (final exp in reExportedSrcs.map(getUriForAsset)) {
-          print(exp);
-        }
-      }
       for (final entry in possibleSrcs.entries) {
         final srcId = entry.key;
-        if (reExportedSrcs.contains(srcId) || reExportedSrcs.length == 1) {
-          final srcUri = getUriForAsset(srcId);
-          final importedUri = getUriForAsset(importedFileHash);
-          return IdentifierRef(
-            identifier: identifier,
-            srcId: srcId,
-            srcUri: srcUri,
-            providerId: importedFileHash,
-            providerUri: importedUri,
-            type: IdentifierType.fromValue(entry.value),
-          );
+        if (reExportedSrcs.contains(srcId) || reExportedSrcs.length == 1 || reExportedSrcs.contains(rootSrcId)) {
+          final providedBySourceRoot = reExportedSrcs.contains(rootSrcId);
+          final importedSrcHash = providedBySourceRoot ? rootSrcId : importedFileHash;
+          return _buildRef(identifier, entry, providerId: importedSrcHash);
         }
       }
     }

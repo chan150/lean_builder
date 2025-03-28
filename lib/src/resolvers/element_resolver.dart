@@ -36,9 +36,10 @@ class ElementResolver {
 
   (LibraryElement, AstNode) astNodeFor(String identifier, LibraryElement enclosingLibrary) {
     final enclosingAsset = enclosingLibrary.src;
-    final ref = graph.getIdentifierRef(identifier, enclosingAsset.id);
+    final ref = graph.getIdentifierRef(identifier, enclosingAsset.id, requireProvider: false);
     assert(ref != null, 'Identifier $identifier not found in ${enclosingAsset.uri}');
     final assetFile = fileResolver.buildAssetUri(ref!.srcUri, relativeTo: enclosingAsset);
+
     final library = libraryFor(assetFile);
     final parsedUnit = parser.parse(assetFile.path);
     if (ref.type == IdentifierType.$class) {

@@ -36,11 +36,11 @@ class TypeParameterElement extends Element {
   LibraryElement get library => enclosingElement.library;
 }
 
-abstract class TypeParametrizedElement extends Element {
+abstract class TypeParameterizedElement extends Element {
   List<TypeParameterElement> get typeParameters;
 }
 
-mixin TypeParameterizedElementMixin on Element implements TypeParametrizedElement {
+mixin TypeParameterizedElementMixin on Element implements TypeParameterizedElement {
   final List<TypeParameterElement> _typeParameters = [];
 
   @override
@@ -51,11 +51,17 @@ mixin TypeParameterizedElementMixin on Element implements TypeParametrizedElemen
   }
 }
 
-abstract class InterfaceElement extends Element with TypeParameterizedElementMixin {
-  List<MethodElement> get methods;
-
+abstract class InstanceElement extends Element implements TypeParameterizedElement {
+  /// The declared accessors (getters and setters).
+  // List<PropertyAccessorElement> get accessors;
   List<FieldElement> get fields;
 
+  List<MethodElement> get methods;
+
+  DartType get thisType;
+}
+
+abstract class InterfaceElement extends InstanceElement with TypeParameterizedElementMixin {
   InterfaceType? get superType;
 
   List<InterfaceType> get allSuperTypes;
@@ -277,6 +283,8 @@ class InterfaceElementImpl extends InterfaceElement {
   final List<InterfaceType> _interfaces = [];
   final List<MethodElement> _methods = [];
   final List<FieldElement> _fields = [];
+  InterfaceType? _superType;
+  InterfaceType? _thisType;
 
   InterfaceElementImpl({required this.name, required this.library});
 
@@ -323,14 +331,19 @@ class InterfaceElementImpl extends InterfaceElement {
   @override
   Element? get enclosingElement => library;
 
-  InterfaceType? _superType;
-
   set superType(InterfaceType? value) {
     _superType = value;
   }
 
   @override
   InterfaceType? get superType => _superType;
+
+  set thisType(InterfaceType? value) {
+    _thisType = value;
+  }
+
+  @override
+  InterfaceType get thisType => _thisType!;
 }
 
 class NullElement extends Element {
