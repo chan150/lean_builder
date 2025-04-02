@@ -16,20 +16,27 @@ abstract class DartType {
   }
 
   Element get element;
-}
 
-class TypeRef extends DartType {
-  @override
-  final String name;
+  static final dynamicType = DynamicType();
 
-  TypeRef(this.name);
+  static final voidType = VoidType();
 
-  @override
-  Element get element => throw UnimplementedError();
+  static final neverType = NeverType();
 }
 
 abstract class ParameterizedType implements DartType {
   List<DartType> get typeArguments;
+}
+
+mixin ParameterizedTypeMixin implements ParameterizedType {
+  @override
+  List<DartType> get typeArguments => _typeArguments;
+
+  final List<DartType> _typeArguments = [];
+
+  void addTypeArgument(DartType typeArgument) {
+    _typeArguments.add(typeArgument);
+  }
 }
 
 abstract class InterfaceType implements ParameterizedType {
@@ -47,15 +54,12 @@ abstract class InterfaceType implements ParameterizedType {
   List<InterfaceType> get superclassConstraints;
 }
 
-class InterfaceTypeImpl implements InterfaceType {
-  @override
-  final String name;
-
+class InterfaceTypeImpl with ParameterizedTypeMixin implements InterfaceType {
   @override
   final InterfaceElement element;
 
   @override
-  final List<DartType> typeArguments;
+  String get name => element.name;
 
   @override
   List<InterfaceType> get interfaces => element.interfaces;
@@ -77,7 +81,10 @@ class InterfaceTypeImpl implements InterfaceType {
     return const [];
   }
 
-  InterfaceTypeImpl({required this.name, required this.element, this.typeArguments = const []});
+  @override
+  final List<DartType> typeArguments;
+
+  InterfaceTypeImpl(this.element, [this.typeArguments = const []]);
 
   @override
   String toString() {
@@ -150,34 +157,65 @@ class FunctionTypeImpl implements FunctionType {
   final String name;
 
   @override
-  final NullElement element;
+  NullElement get element => Element.nullElement;
 
   @override
-  final Map<String, DartType> namedParameterTypes;
+  Map<String, DartType> get namedParameterTypes {
+    final Map<String, DartType> namedParameters = {};
+    for (final parameter in parameters) {
+      if (true) {
+        namedParameters[parameter.name] = parameter.type;
+      }
+    }
+    return namedParameters;
+  }
 
   @override
-  final List<DartType> normalParameterTypes;
+  List<DartType> get normalParameterTypes => List.unmodifiable(parameters.map((e) => e.type));
 
   @override
-  final List<DartType> optionalParameterTypes;
+  List<DartType> get optionalParameterTypes => [];
 
   @override
   final List<ParameterElement> parameters;
 
   @override
-  final List<TypeParameterElement> typeParameters;
+  List<TypeParameterElement> typeParameters;
 
   @override
   final DartType returnType;
 
   FunctionTypeImpl({
     required this.name,
-    required this.element,
-    this.namedParameterTypes = const {},
-    this.normalParameterTypes = const [],
-    this.optionalParameterTypes = const [],
     this.parameters = const [],
     this.typeParameters = const [],
     required this.returnType,
   });
+
+  @override
+  String toString() {
+    final buffer = StringBuffer();
+    print(name);
+    buffer.write(returnType.toString());
+    buffer.write(' Function');
+    if (typeParameters.isNotEmpty) {
+      buffer.write('<');
+      buffer.writeAll(typeParameters.map((e) => e.toString()), ', ');
+      buffer.write('>');
+    }
+    buffer.write('(');
+    buffer.writeAll(normalParameterTypes.map((e) => e.toString()), ', ');
+    if (optionalParameterTypes.isNotEmpty) {
+      buffer.write('[');
+      buffer.writeAll(optionalParameterTypes.map((e) => e.toString()), ', ');
+      buffer.write(']');
+    }
+    if (namedParameterTypes.isNotEmpty) {
+      buffer.write('{');
+      buffer.writeAll(namedParameterTypes.entries.map((e) => '${e.key}: ${e.value}'), ', ');
+      buffer.write('}');
+    }
+    buffer.write(')');
+    return buffer.toString();
+  }
 }

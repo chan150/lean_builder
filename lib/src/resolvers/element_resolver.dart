@@ -21,7 +21,7 @@ class ElementResolver {
   LibraryElement resolveLibrary(AssetSrc src) {
     final unit = parser.parse(src.path);
     final rootLibrary = libraryFor(src);
-    final visitor = ElementResolverVisitor(this, src, rootLibrary);
+    final visitor = ElementResolverVisitor(this, rootLibrary);
     unit.visitChildren(visitor);
     return rootLibrary;
   }
@@ -41,52 +41,12 @@ class ElementResolver {
 
     final library = libraryFor(assetFile);
     final parsedUnit = parser.parse(assetFile.path);
-    if (ref.type == IdentifierType.$class) {
-      final unit = parsedUnit.declarations.whereType<ClassDeclaration>().firstWhere(
-        (e) => e.name.lexeme == ref.identifier,
-        orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
-      );
-      return (library, unit);
-    } else if (ref.type == IdentifierType.$extension) {
-      final unit = parsedUnit.declarations.whereType<ExtensionDeclaration>().firstWhere(
-        (e) => e.name?.lexeme == ref.identifier,
-        orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
-      );
-      return (library, unit);
-    } else if (ref.type == IdentifierType.$mixin) {
-      final unit = parsedUnit.declarations.whereType<MixinDeclaration>().firstWhere(
-        (e) => e.name.lexeme == ref.identifier,
-        orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
-      );
-      return (library, unit);
-    } else if (ref.type == IdentifierType.$enum) {
-      final unit = parsedUnit.declarations.whereType<EnumDeclaration>().firstWhere(
-        (e) => e.name.lexeme == ref.identifier,
-        orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
-      );
-      return (library, unit);
-    } else if (ref.type == IdentifierType.$typeAlias) {
-      final unit = parsedUnit.declarations.whereType<TypeAlias>().firstWhere(
-        (e) => e.name.lexeme == ref.identifier,
-        orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
-      );
-      return (library, unit);
-    } else if (ref.type == IdentifierType.$function) {
-      final unit = parsedUnit.declarations.whereType<FunctionDeclaration>().firstWhere(
-        (e) => e.name.lexeme == ref.identifier,
-        orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
-      );
-      return (library, unit);
-    } else if (ref.type == IdentifierType.$variable) {
-      final unit = parsedUnit.declarations.whereType<TopLevelVariableDeclaration>().firstWhere(
-        (e) => e.variables.variables.first.name.lexeme == ref.identifier,
-        orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
-      );
-      return (library, unit);
-    } else {
-      print('Unknown identifier type: ${ref.type}');
-      throw UnimplementedError();
-    }
+
+    final unit = parsedUnit.declarations.whereType<NamedCompilationUnitMember>().firstWhere(
+      (e) => e.name.lexeme == ref.identifier,
+      orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
+    );
+    return (library, unit);
   }
 
   // Element resolve(IdentifierRef ref) {

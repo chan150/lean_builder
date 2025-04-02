@@ -3,8 +3,8 @@ import 'package:code_genie/src/resolvers/type/type.dart';
 import 'package:collection/collection.dart';
 
 part 'executable_element.dart';
-
 part 'element_impl.dart';
+part 'executable_element_impl.dart';
 
 abstract class Element {
   String get name;
@@ -122,7 +122,40 @@ abstract class FieldElement extends ClassMemberElement implements VariableElemen
   bool get isExternal;
 }
 
-abstract class ParameterElement extends VariableElement {}
+abstract class ParameterElement extends VariableElement {
+  String? get defaultValueCode;
+
+  bool get hasDefaultValue;
+
+  bool get isCovariant;
+
+  bool get isInitializingFormal;
+
+  bool get isNamed;
+
+  bool get isOptional;
+
+  bool get isOptionalNamed;
+
+  bool get isOptionalPositional;
+
+  bool get isPositional;
+
+  bool get isRequired;
+
+  bool get isRequiredNamed;
+
+  bool get isRequiredPositional;
+
+  bool get isSuperFormal;
+
+  @override
+  String get name;
+
+  List<ParameterElement> get parameters;
+
+  List<TypeParameterElement> get typeParameters;
+}
 
 abstract class ClassElement extends InterfaceElement {}
 

@@ -233,7 +233,7 @@ class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixi
   }
 }
 
-class VariableElementImpl extends ElementImpl implements VariableElement {
+abstract class VariableElementImpl extends ElementImpl implements VariableElement {
   VariableElementImpl({
     required this.name,
     required this.enclosingElement,
@@ -241,7 +241,6 @@ class VariableElementImpl extends ElementImpl implements VariableElement {
     required this.isConst,
     required this.isFinal,
     required this.isLate,
-    required this.type,
     required this.isStatic,
   });
 
@@ -264,25 +263,61 @@ class VariableElementImpl extends ElementImpl implements VariableElement {
 
   @override
   final String name;
+}
+
+class FieldElementImpl extends VariableElementImpl implements ClassMemberElement, FieldElement {
+  FieldElementImpl({
+    required super.isStatic,
+    required super.name,
+    required super.enclosingElement,
+    required super.hasImplicitType,
+    required super.isConst,
+    required super.isFinal,
+    required super.isLate,
+    required this.isAbstract,
+    required this.isCovariant,
+    required this.isEnumConstant,
+    required this.isExternal,
+    required this.library,
+    required this.type,
+  });
+
+  @override
+  final bool isAbstract;
+  @override
+  final bool isCovariant;
+  @override
+  final bool isEnumConstant;
+  @override
+  final bool isExternal;
+  @override
+  final LibraryElement library;
+
   @override
   final DartType type;
 }
 
-class FieldElementImpl extends ElementImpl implements ClassMemberElement, VariableElement, FieldElement {
-  FieldElementImpl({
-    required this.isStatic,
+class ParameterElementImpl extends ElementImpl implements ParameterElement, VariableElement {
+  ParameterElementImpl({
     required this.name,
-    required this.isAbstract,
-    required this.library,
-    required this.isCovariant,
-    required this.isEnumConstant,
-    required this.isExternal,
     required this.enclosingElement,
     required this.hasImplicitType,
     required this.isConst,
     required this.isFinal,
     required this.isLate,
     required this.type,
+    required this.isCovariant,
+    required this.isInitializingFormal,
+    required this.isNamed,
+    required this.isOptional,
+    required this.isOptionalNamed,
+    required this.isOptionalPositional,
+    required this.isPositional,
+    required this.isRequired,
+    required this.isRequiredPositional,
+    required this.isRequiredNamed,
+    required this.isSuperFormal,
+    required this.defaultValueCode,
   });
 
   @override
@@ -304,62 +339,57 @@ class FieldElementImpl extends ElementImpl implements ClassMemberElement, Variab
   final DartType type;
 
   @override
-  final bool isStatic;
-
-  @override
   final String name;
 
   @override
-  final bool isAbstract;
-  @override
-  final bool isCovariant;
-  @override
-  final bool isEnumConstant;
-  @override
-  final bool isExternal;
-
-  @override
-  final LibraryElement library;
-}
-
-class ParameterElementImpl extends ElementImpl implements VariableElement {
-  ParameterElementImpl({
-    required this.name,
-    required this.library,
-    required this.enclosingElement,
-    required this.hasImplicitType,
-    required this.isConst,
-    required this.isFinal,
-    required this.isLate,
-    required this.type,
-  });
-
-  @override
-  final ClassElement enclosingElement;
-
-  @override
-  final bool hasImplicitType;
-
-  @override
-  final bool isConst;
-
-  @override
-  final bool isFinal;
-
-  @override
-  final bool isLate;
-
-  @override
-  final DartType type;
-
-  @override
-  final String name;
-
-  @override
-  final LibraryElement library;
+  LibraryElement get library => enclosingElement.library;
 
   @override
   bool get isStatic => false;
+
+  @override
+  final String? defaultValueCode;
+
+  @override
+  bool get hasDefaultValue => defaultValueCode != null;
+
+  @override
+  final bool isCovariant;
+
+  @override
+  final bool isInitializingFormal;
+
+  @override
+  final bool isNamed;
+
+  @override
+  final bool isOptional;
+
+  @override
+  final bool isOptionalNamed;
+
+  @override
+  final bool isOptionalPositional;
+
+  @override
+  final bool isPositional;
+  @override
+  final bool isRequired;
+
+  @override
+  final bool isRequiredPositional;
+
+  @override
+  final bool isRequiredNamed;
+
+  @override
+  final bool isSuperFormal;
+
+  @override
+  List<ParameterElement> get parameters => throw UnimplementedError();
+
+  @override
+  List<TypeParameterElement> get typeParameters => throw UnimplementedError();
 }
 
 class ClassElementImpl extends InterfaceElementImpl implements ClassElement {
