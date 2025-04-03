@@ -20,6 +20,7 @@ abstract class ElementImpl implements Element {
   }
 
   final List<ElementAnnotation> _metadata = [];
+
   void addMetadata(ElementAnnotation annotation) {
     _metadata.add(annotation);
   }
@@ -246,8 +247,7 @@ class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixi
 
   @override
   MethodElement? getMethod(String name) {
-    // TODO: implement getMethod
-    throw UnimplementedError();
+    return _methods.firstWhereOrNull((e) => e.name == name);
   }
 }
 
@@ -296,7 +296,6 @@ class FieldElementImpl extends VariableElementImpl implements ClassMemberElement
     required this.isCovariant,
     required this.isEnumConstant,
     required this.isExternal,
-    required this.library,
     required this.type,
   });
 
@@ -308,8 +307,9 @@ class FieldElementImpl extends VariableElementImpl implements ClassMemberElement
   final bool isEnumConstant;
   @override
   final bool isExternal;
+
   @override
-  final LibraryElement library;
+  LibraryElement get library => enclosingElement.library;
 
   @override
   final DartType type;

@@ -92,3 +92,17 @@ class FunctionElementImpl extends ExecutableElementImpl with TypeParameterizedEl
   @override
   bool get isEntryPoint => name == FunctionElement.kMainFunctionName;
 }
+
+class MethodElementImpl extends ExecutableElementImpl with TypeParameterizedElementMixin implements MethodElement {
+  MethodElementImpl({
+    required super.name,
+    super.isAbstract,
+    super.isAsynchronous,
+    super.isExternal,
+    super.isGenerator,
+    super.isOperator,
+    super.isStatic,
+    super.isSynchronous,
+    required Element enclosingElement,
+  }) : super(library: enclosingElement.library, enclosingElement: enclosingElement);
+}

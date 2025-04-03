@@ -39,9 +39,9 @@ void main(List<String> args) async {
         //     print('${field.type} ${field.name} ');
         //   }
         // }
-        // if (clazz.methods.isNotEmpty) {
-        //   print(clazz.methods.map((e) => e.name));
-        // }
+        if (clazz.methods.isNotEmpty) {
+          print(clazz.methods.map((e) => "${e.type} ${e.name}").toList());
+        }
       }
     }
   }

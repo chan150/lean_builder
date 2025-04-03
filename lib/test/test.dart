@@ -1,14 +1,25 @@
 import 'package:code_genie/test/test2.dart';
 
-class Annotation {
+class Annotation<T> {
   const Annotation();
-  static const constVar = Utils.value;
+
+  static const constFunc2 = Utils2.constFunc2;
+}
+
+class Utils {
+  static void targetFunc<T>() {}
+}
+
+class Utils2 {
+  static const constFunc2 = Utils.targetFunc;
 }
 
 @Annotation()
-class X {}
+class TestClass {
+  // void method1() {}
+}
 
-const constVar = Annotation.constVar;
+const constFunc2 = Annotation.constFunc2;
 
 //
 // @Annotation()

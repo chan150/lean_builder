@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:analyzer/dart/element/element.dart';
 import 'package:code_genie/src/resolvers/file_asset.dart';
 import 'package:code_genie/src/resolvers/type/type.dart';
@@ -114,9 +116,6 @@ abstract class VariableElement extends Element {
 
 abstract class ClassMemberElement extends Element {
   bool get isStatic;
-
-  @override
-  Element get enclosingElement;
 }
 
 abstract class FieldElement extends ClassMemberElement implements VariableElement {
