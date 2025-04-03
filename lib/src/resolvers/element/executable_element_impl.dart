@@ -70,7 +70,7 @@ abstract class ExecutableElementImpl extends ElementImpl implements ExecutableEl
     _parameters.add(parameter);
   }
 
-  void setType(FunctionType type) {
+  set type(FunctionType type) {
     _type = type;
   }
 }
@@ -88,9 +88,6 @@ class FunctionElementImpl extends ExecutableElementImpl with TypeParameterizedEl
     super.isSynchronous,
     super.enclosingElement,
   });
-
-  @override
-  bool get isDartCoreIdentical => name == 'identical';
 
   @override
   bool get isEntryPoint => name == FunctionElement.kMainFunctionName;

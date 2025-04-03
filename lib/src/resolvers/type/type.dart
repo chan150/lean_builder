@@ -163,7 +163,7 @@ class FunctionTypeImpl implements FunctionType {
   Map<String, DartType> get namedParameterTypes {
     final Map<String, DartType> namedParameters = {};
     for (final parameter in parameters) {
-      if (true) {
+      if (parameter.isNamed) {
         namedParameters[parameter.name] = parameter.type;
       }
     }
@@ -171,10 +171,18 @@ class FunctionTypeImpl implements FunctionType {
   }
 
   @override
-  List<DartType> get normalParameterTypes => List.unmodifiable(parameters.map((e) => e.type));
+  List<DartType> get normalParameterTypes => List.unmodifiable(
+    parameters.where((e) => !e.isOptional && !e.isNamed).map((e) {
+      return e.type;
+    }),
+  );
 
   @override
-  List<DartType> get optionalParameterTypes => [];
+  List<DartType> get optionalParameterTypes => List.unmodifiable(
+    parameters.where((e) => e.isOptional && !e.isNamed).map((e) {
+      return e.type;
+    }),
+  );
 
   @override
   final List<ParameterElement> parameters;
@@ -195,16 +203,17 @@ class FunctionTypeImpl implements FunctionType {
   @override
   String toString() {
     final buffer = StringBuffer();
-    print(name);
     buffer.write(returnType.toString());
-    buffer.write(' Function');
+    buffer.write(' $name');
     if (typeParameters.isNotEmpty) {
       buffer.write('<');
       buffer.writeAll(typeParameters.map((e) => e.toString()), ', ');
       buffer.write('>');
     }
     buffer.write('(');
-    buffer.writeAll(normalParameterTypes.map((e) => e.toString()), ', ');
+    if (normalParameterTypes.isNotEmpty) {
+      buffer.writeAll(normalParameterTypes.map((e) => e.toString()), ', ');
+    }
     if (optionalParameterTypes.isNotEmpty) {
       buffer.write('[');
       buffer.writeAll(optionalParameterTypes.map((e) => e.toString()), ', ');
@@ -212,7 +221,7 @@ class FunctionTypeImpl implements FunctionType {
     }
     if (namedParameterTypes.isNotEmpty) {
       buffer.write('{');
-      buffer.writeAll(namedParameterTypes.entries.map((e) => '${e.key}: ${e.value}'), ', ');
+      buffer.writeAll(namedParameterTypes.entries.map((e) => '${e.value} ${e.key}'), ', ');
       buffer.write('}');
     }
     buffer.write(')');

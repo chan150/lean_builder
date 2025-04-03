@@ -1,15 +1,17 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:code_genie/src/ast_extensions.dart';
+import 'package:code_genie/src/resolvers/const/const_evaluator.dart';
 import 'package:code_genie/src/resolvers/element/element.dart';
+import 'package:code_genie/src/resolvers/element/element_annotation.dart';
 import 'package:code_genie/src/resolvers/element_resolver.dart';
 import 'package:code_genie/src/resolvers/type/type.dart';
-import 'package:code_genie/src/resolvers/visitor/scope_stack.dart';
+import 'package:code_genie/src/resolvers/visitor/element_stack.dart';
 
-class ElementResolverVisitor extends UnifyingAstVisitor<void> with ScopeStack {
-  final ElementResolver resolver;
+class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack {
+  final ElementResolver _resolver;
 
-  ElementResolverVisitor(this.resolver, LibraryElement rootLibrary) {
+  ElementResolverVisitor(this._resolver, LibraryElement rootLibrary) {
     pushElement(rootLibrary);
   }
 
@@ -145,19 +147,23 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ScopeStack {
     // });
   }
 
-  InterfaceElement _resolveInterfaceElement(String typename, LibraryElement enclosingLibrary) {
-    final (library, decNode) = resolver.astNodeFor(typename, enclosingLibrary);
-    InterfaceElement? decEle = library.getInterfaceElement(typename);
+  Element _resolveElement(String typename, LibraryElement enclosingLibrary) {
+    final (library, decNode) = _resolver.astNodeFor(typename, enclosingLibrary);
+    Element? decEle = library.getElement(typename);
     if (decEle != null) {
       return decEle;
     }
     visitElementScoped(library, () => decNode.accept(this));
-    decEle = library.getInterfaceElement(typename);
+    decEle = library.getElement(typename);
     assert(decEle != null, 'Super type $typename could not be resolved ${library.src.uri}');
     return decEle!;
   }
 
-  DartType _resolveType(TypeAnnotation? typeAnno, Element enclosingEle, List<TypeParameterElement> typeParams) {
+  DartType _resolveType(
+    TypeAnnotation? typeAnno,
+    Element enclosingEle, [
+    List<TypeParameterElement> typeParams = const [],
+  ]) {
     for (final typeParam in typeParams) {
       if (typeParam.name == typeAnno?.name) {
         return TypeParameterType(typeParam, typeParam.bound ?? DynamicType());
@@ -202,7 +208,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ScopeStack {
       return DartType.dynamicType;
     }
 
-    final element = _resolveInterfaceElement(typename, enclosingEle.library);
+    final element = _resolveElement(typename, enclosingEle.library) as InterfaceElement;
     final typeArgs = <DartType>[];
     for (final typeArg in [...?typeAnno.typeArguments?.arguments]) {
       typeArgs.add(_resolveType(typeArg, enclosingEle, typeParams));
@@ -232,35 +238,62 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ScopeStack {
         isLate: node.fields.isLate,
         type: fieldType,
       );
+
+      // final constVisitor = ConstantEvaluator();
+      // final constantValue = variable.initializer?.accept(constVisitor);
+      // print('${fieldEle.name}: ${constantValue}');
       interfaceElement.addField(fieldEle);
     }
   }
 
   @override
+  void visitAnnotation(Annotation node) {
+    final element = currentElementAs<ElementImpl>();
+    final typeArgs = <DartType>[];
+    for (final typeArg in [...?node.typeArguments?.arguments]) {
+      typeArgs.add(_resolveType(typeArg, element, []));
+    }
+    final elementAnnotation = ElementAnnotationImpl(node.name.name, element);
+
+    // final type = _resolveType(node, element, typeParams)
+  }
+
+  @override
   void visitFunctionDeclaration(FunctionDeclaration node) {
-    print('visiting function declaration: ${node.runtimeType}');
-    // node.functionExpression.parameters?.visitChildren(this);
-    // final libraryElement = currentElementAs<LibraryElement>();
-    // final body = node.functionExpression.body;
-    // node.returnType?.accept(this);
-    // node.functionExpression.parameters?.accept(this);
-    // final functionElement = FunctionElementImpl(
-    //   name: node.name.lexeme,
-    //   library: libraryElement,
-    //   returnType: _resolveType(node.returnType, libraryElement),
-    //   isStatic: false,
-    //   isAsynchronous: body.isAsynchronous,
-    //   isExternal: node.externalKeyword != null,
-    //   isGenerator: body.isGenerator,
-    //   isOperator: false, // check
-    //   isSynchronous: body.isSynchronous,
-    // );
+    final libraryElement = currentElementAs<LibraryElement>();
+    if (libraryElement.getFunction(node.name.lexeme) != null) {
+      return;
+    }
+    final body = node.functionExpression.body;
+    final funcElement = FunctionElementImpl(
+      name: node.name.lexeme,
+      library: libraryElement,
+      isExternal: node.externalKeyword != null,
+      isOperator: false,
+      isAsynchronous: body.isAsynchronous,
+      isGenerator: body.isGenerator,
+      isSynchronous: body.isSynchronous,
+    );
+    libraryElement.resolvedElements.add(funcElement);
+    visitElementScoped(funcElement, () {
+      node.functionExpression.typeParameters?.visitChildren(this);
+      node.functionExpression.parameters?.visitChildren(this);
+    });
+    final returnType = _resolveType(node.returnType, funcElement, funcElement.typeParameters);
+    funcElement.setReturnType(returnType);
+    funcElement.type = FunctionTypeImpl(
+      name: funcElement.name,
+      returnType: returnType,
+      typeParameters: funcElement.typeParameters,
+      parameters: funcElement.parameters,
+    );
   }
 
   @override
   void visitSimpleFormalParameter(SimpleFormalParameter node) {
     final executableElement = currentElementAs<ExecutableElementImpl>();
     final parameterType = _resolveType(node.type, executableElement, executableElement.typeParameters);
+
     final parameterElement = ParameterElementImpl(
       name: node.name?.lexeme ?? '',
       isConst: node.isConst,
@@ -286,19 +319,14 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ScopeStack {
   }
 
   @override
-  void visitGenericFunctionType(GenericFunctionType node) {
-    // final libraryElement = currentElementAs<LibraryElement>();
-    // final functionType = FunctionTypeImpl(
-    //   name: node.name ?? '',
-    //   returnType: _resolveType(node.returnType, libraryElement),
-    // );
-    // libraryElement.resolvedElements.add(functionType);
-    // _visitScoped(functionType, () {
-    //   node.typeParameters?.accept(this);
-    //   for (final parameter in node.parameters.parameters) {
-    //     parameter.accept(this);
-    //   }
-    // });
+  void visitTopLevelVariableDeclaration(TopLevelVariableDeclaration node) {
+    for (final variable in node.variables.variables) {
+      if (variable.initializer != null) {
+        final constantEvaluator = ConstantEvaluator(_resolver, currentElementAs().library);
+        final constValue = constantEvaluator.evaluate(variable.initializer!);
+        print('${node.name} -> $constValue of type ${constValue.runtimeType}');
+      }
+    }
   }
 
   @override

@@ -11,3 +11,9 @@ class SuperClass extends SuperSuperClass<int> {
 class SuperSuperClass<T> {
   void superSuperMethod() {}
 }
+
+class Utils {
+  static const value = Utils.value0;
+
+  static const value0 = 'value0';
+}

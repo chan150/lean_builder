@@ -13,6 +13,16 @@ abstract class ElementImpl implements Element {
 
   @override
   int get hashCode => name.hashCode ^ library.hashCode;
+
+  @override
+  List<ElementAnnotation> get metadata {
+    return _metadata;
+  }
+
+  final List<ElementAnnotation> _metadata = [];
+  void addMetadata(ElementAnnotation annotation) {
+    _metadata.add(annotation);
+  }
 }
 
 class LibraryElementImpl extends ElementImpl implements LibraryElement {
@@ -52,6 +62,9 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   Iterable<EnumElementImpl> get enums => resolvedElements.whereType<EnumElementImpl>();
 
   @override
+  Iterable<FunctionElement> get functions => resolvedElements.whereType<FunctionElement>();
+
+  @override
   ClassElementImpl? getClass(String name) => classes.firstWhereOrNull((e) => e.name == name);
 
   @override
@@ -72,6 +85,11 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   @override
   EnumElementImpl? getEnum(String name) {
     return enums.firstWhereOrNull((e) => e.name == name);
+  }
+
+  @override
+  FunctionElement? getFunction(String name) {
+    return functions.firstWhereOrNull((e) => e.name == name);
   }
 
   @override
@@ -386,10 +404,22 @@ class ParameterElementImpl extends ElementImpl implements ParameterElement, Vari
   final bool isSuperFormal;
 
   @override
-  List<ParameterElement> get parameters => throw UnimplementedError();
+  List<ParameterElement> get parameters {
+    final type = this.type;
+    if (type is FunctionType) {
+      return type.parameters;
+    }
+    return [];
+  }
 
   @override
-  List<TypeParameterElement> get typeParameters => throw UnimplementedError();
+  List<TypeParameterElement> get typeParameters {
+    final type = this.type;
+    if (type is FunctionType) {
+      return type.typeParameters;
+    }
+    return [];
+  }
 }
 
 class ClassElementImpl extends InterfaceElementImpl implements ClassElement {

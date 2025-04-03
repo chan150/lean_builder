@@ -1,3 +1,4 @@
+import 'package:analyzer/dart/element/element.dart';
 import 'package:code_genie/src/resolvers/file_asset.dart';
 import 'package:code_genie/src/resolvers/type/type.dart';
 import 'package:collection/collection.dart';
@@ -17,6 +18,8 @@ abstract class Element {
   LibraryElement get library;
 
   String get identifier;
+
+  List<ElementAnnotation> get metadata;
 
   static final nullElement = NullElementImpl();
 }
@@ -77,6 +80,8 @@ abstract class LibraryElement extends Element {
 
   Iterable<EnumElementImpl> get enums;
 
+  Iterable<FunctionElement> get functions;
+
   ClassElementImpl? getClass(String name);
 
   InterfaceElement? getInterfaceElement(String name);
@@ -86,6 +91,8 @@ abstract class LibraryElement extends Element {
   MixinElementImpl? getMixin(String name);
 
   EnumElementImpl? getEnum(String name);
+
+  FunctionElement? getFunction(String name);
 }
 
 abstract class VariableElement extends Element {
