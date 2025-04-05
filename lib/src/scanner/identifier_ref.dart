@@ -1,7 +1,7 @@
 import 'package:code_genie/src/scanner/scan_results.dart';
 
-class IdentifierRef {
-  IdentifierRef({
+class IdentifierSrc {
+  IdentifierSrc({
     required this.identifier,
     required this.srcId,
     required this.providerId,
@@ -15,7 +15,7 @@ class IdentifierRef {
   final String providerId;
   final Uri srcUri;
   final Uri providerUri;
-  final IdentifierType type;
+  final TopLevelIdentifierType type;
 
   @override
   String toString() {
@@ -26,7 +26,7 @@ class IdentifierRef {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
 
-    return other is IdentifierRef &&
+    return other is IdentifierSrc &&
         other.identifier == identifier &&
         other.srcId == srcId &&
         other.srcUri == srcUri &&

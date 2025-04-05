@@ -5,14 +5,14 @@ abstract class Constant<T> {
 
   final T value;
 
-  @override
-  String toString() => value.toString();
-
   static const Constant invalid = _InvalidConstValue();
 }
 
 class _InvalidConstValue extends Constant<Null> {
   const _InvalidConstValue() : super(null);
+
+  @override
+  String toString() => 'INVALID_CONST';
 }
 
 // represents a primitive constant value
@@ -71,10 +71,31 @@ class ConstEnumValue extends ConstValue<String> {
   String toString() => '$enumName.$value';
 }
 
-class ConstFunctionReference extends Constant {
+abstract class ConstFunctionReference extends Constant<String> {
+  const ConstFunctionReference(super.value);
+
+  FunctionType? get type;
+
+  List<DartType> get typeArguments;
+}
+
+class ConstFunctionReferenceImpl extends ConstFunctionReference {
+  @override
   final FunctionType? type;
 
-  ConstFunctionReference(super.value, this.type);
+  ConstFunctionReferenceImpl(super.value, this.type);
+
+  @override
+  String toString() => value;
+
+  @override
+  List<DartType> get typeArguments => _typeArguments;
+
+  final List<DartType> _typeArguments = [];
+
+  void addTypeArgument(DartType type) {
+    _typeArguments.add(type);
+  }
 }
 
 class ConstList extends Constant<List<Constant>> {

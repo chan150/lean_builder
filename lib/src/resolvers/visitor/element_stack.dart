@@ -11,6 +11,11 @@ mixin ElementStack on UnifyingAstVisitor<void> {
     return _currentElement as T;
   }
 
+  LibraryElementImpl get currentLibrary {
+    assert(_elementStack.isNotEmpty, 'Element stack is empty');
+    return _currentElement.library as LibraryElementImpl;
+  }
+
   void pushElement(Element element) {
     _elementStack.add(element);
   }

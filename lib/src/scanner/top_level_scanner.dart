@@ -62,7 +62,7 @@ class TopLevelScanner {
             case Keyword.ENUM:
             case Keyword.EXTENSION:
               if (_isValidName(nextLexeme)) {
-                results.addDeclaration(nextLexeme, asset, IdentifierType.fromKeyword(type));
+                results.addDeclaration(nextLexeme, asset, TopLevelIdentifierType.fromKeyword(type));
               }
               nextToken = _skipUntil(nextToken, TokenType.OPEN_CURLY_BRACKET);
               break;
@@ -113,7 +113,7 @@ class TopLevelScanner {
     } else if (next != null && _skipLTGT(next).type == TokenType.OPEN_PAREN) {
       funcFound = true;
       if (_isValidName(current.lexeme)) {
-        results.addDeclaration(current.lexeme, asset, IdentifierType.$function);
+        results.addDeclaration(current.lexeme, asset, TopLevelIdentifierType.$function);
       }
     } else if (next != null && next.type == TokenType.LT) {
       return _skipLTGT(next);
@@ -147,7 +147,7 @@ class TopLevelScanner {
       if (currentToken.isIdentifier) {
         var afterIdentifier = currentToken.next;
         if (afterIdentifier != null && (afterIdentifier.type == TokenType.EQ)) {
-          results.addDeclaration(currentToken.lexeme, asset, IdentifierType.$variable);
+          results.addDeclaration(currentToken.lexeme, asset, TopLevelIdentifierType.$variable);
           break;
         }
       }
@@ -218,7 +218,7 @@ class TopLevelScanner {
     final eqIndex = identifiers.indexWhere((e) => e.type == TokenType.EQ);
     final nameLexeme = eqIndex > 0 ? identifiers[eqIndex - 1].lexeme : identifiers.lastOrNull?.lexeme;
     if (_isValidName(nameLexeme)) {
-      results.addDeclaration(nameLexeme!, asset, IdentifierType.$typeAlias);
+      results.addDeclaration(nameLexeme!, asset, TopLevelIdentifierType.$typeAlias);
     }
 
     return token;

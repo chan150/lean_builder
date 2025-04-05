@@ -125,6 +125,15 @@ mixin TypeParameterizedElementMixin on Element implements TypeParameterizedEleme
   void addTypeParameter(TypeParameterElement typeParameter) {
     _typeParameters.add(typeParameter);
   }
+
+  List<TypeParameterElement> get allTypeParameters {
+    final List<TypeParameterElement> allTypeParameters = [];
+    allTypeParameters.addAll(typeParameters);
+    if (enclosingElement is TypeParameterizedElementMixin) {
+      allTypeParameters.addAll((enclosingElement as TypeParameterizedElementMixin).allTypeParameters);
+    }
+    return allTypeParameters;
+  }
 }
 
 class TypeAliasElementImpl extends ElementImpl implements TypeParameterizedElement {
@@ -281,6 +290,15 @@ abstract class VariableElementImpl extends ElementImpl implements VariableElemen
 
   @override
   final String name;
+
+  @override
+  Constant? get constantValue => _constantValue;
+
+  Constant? _constantValue;
+
+  set constantValue(Constant? value) {
+    _constantValue = value;
+  }
 }
 
 class FieldElementImpl extends VariableElementImpl implements ClassMemberElement, FieldElement {
@@ -315,14 +333,14 @@ class FieldElementImpl extends VariableElementImpl implements ClassMemberElement
   final DartType type;
 }
 
-class ParameterElementImpl extends ElementImpl implements ParameterElement, VariableElement {
+class ParameterElementImpl extends VariableElementImpl implements ParameterElement, VariableElement {
   ParameterElementImpl({
-    required this.name,
-    required this.enclosingElement,
-    required this.hasImplicitType,
-    required this.isConst,
-    required this.isFinal,
-    required this.isLate,
+    required super.name,
+    required super.enclosingElement,
+    required super.hasImplicitType,
+    required super.isConst,
+    required super.isFinal,
+    required super.isLate,
     required this.type,
     required this.isCovariant,
     required this.isInitializingFormal,
@@ -336,34 +354,10 @@ class ParameterElementImpl extends ElementImpl implements ParameterElement, Vari
     required this.isRequiredNamed,
     required this.isSuperFormal,
     required this.defaultValueCode,
-  });
-
-  @override
-  final Element enclosingElement;
-
-  @override
-  final bool hasImplicitType;
-
-  @override
-  final bool isConst;
-
-  @override
-  final bool isFinal;
-
-  @override
-  final bool isLate;
-
-  @override
-  final DartType type;
-
-  @override
-  final String name;
+  }) : super(isStatic: false);
 
   @override
   LibraryElement get library => enclosingElement.library;
-
-  @override
-  bool get isStatic => false;
 
   @override
   final String? defaultValueCode;
@@ -402,6 +396,9 @@ class ParameterElementImpl extends ElementImpl implements ParameterElement, Vari
 
   @override
   final bool isSuperFormal;
+
+  @override
+  final DartType type;
 
   @override
   List<ParameterElement> get parameters {

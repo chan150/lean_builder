@@ -1,26 +1,30 @@
 import 'package:code_genie/test/test2.dart';
 
-const annotation = Annotation();
+// const annotation = Annotation();
 
 class Annotation {
-  const Annotation();
+  final num number;
+  final String? str;
+  final String str2 = 'Hello';
+
+  const Annotation(this.number, {this.str});
 }
 
 class Utils {
   static void targetFunc<T>() {}
+
+  static const constFunc = Utils2.constFunc2;
 }
 
 class Utils2 {
   static const constFunc2 = Utils.targetFunc;
 }
 
-// const constVar = 'constVar';
-//
-// const constFunc = Utils.targetFunc;
+// final constFun = Utils.constFunc;
 
-@annotation
+@Annotation(1, str: 'Hello')
 class TestClass {
-  // void method1() {}
+  final String str = 'Hello';
 }
 
 // @Annotation()
@@ -39,15 +43,15 @@ class TestClass {
 //
 //   void method() {}
 // }
-//
-// class FieldType extends SuperClass {
-//   FieldType();
-// }
-//
-// class IrrelevantClass {
-//   IrrelevantClass();
-// }
-//
+
+class FieldType extends SuperClass {
+  FieldType();
+}
+
+class IrrelevantClass {
+  IrrelevantClass();
+}
+
 enum ColorEnum { red, green, blue }
 
 //

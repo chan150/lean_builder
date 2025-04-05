@@ -7,6 +7,7 @@ import 'package:code_genie/src/resolvers/parsed_units_cache.dart';
 import 'package:code_genie/src/resolvers/visitor/element_resolver_visitor.dart';
 import 'package:code_genie/src/scanner/assets_graph.dart';
 import 'package:code_genie/src/scanner/scan_results.dart';
+import 'package:collection/collection.dart';
 
 class ElementResolver {
   final AssetsGraph graph;
@@ -31,42 +32,83 @@ class ElementResolver {
     });
   }
 
-  (LibraryElement, AstNode) astNodeFor(String identifier, LibraryElement enclosingLibrary) {
+  (LibraryElement, AstNode) astNodeFor(IdentifierRef identifier, LibraryElement enclosingLibrary) {
     final enclosingAsset = enclosingLibrary.src;
-    final ref = graph.getIdentifierRef(identifier, enclosingAsset.id, requireProvider: true);
+    final ref = graph.getIdentifierSrc(identifier.rootName, enclosingAsset.id, requireProvider: false);
     assert(ref != null, 'Identifier $identifier not found in ${enclosingAsset.uri}');
     final assetFile = fileResolver.buildAssetUri(ref!.srcUri, relativeTo: enclosingAsset);
 
     final library = libraryFor(assetFile);
     final parsedUnit = parser.parse(assetFile.path);
 
-    if (ref.type == IdentifierType.$variable) {
+    if (ref.type == TopLevelIdentifierType.$variable) {
       final unit = parsedUnit.declarations.whereType<TopLevelVariableDeclaration>().firstWhere(
         (e) => e.name == ref.identifier,
         orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
       );
       return (library, unit);
+    } else if (ref.type == TopLevelIdentifierType.$function) {
+      final unit = parsedUnit.declarations.whereType<FunctionDeclaration>().firstWhere(
+        (e) => e.name.lexeme == ref.identifier,
+        orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
+      );
+      return (library, unit);
     }
 
-    final unit = parsedUnit.declarations.whereType<NamedCompilationUnitMember>().firstWhere(
+    final unit = parsedUnit.declarations.whereType<NamedCompilationUnitMember>().firstWhereOrNull(
       (e) => e.name.lexeme == ref.identifier,
-      orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
     );
+
+    if (unit == null) {
+      throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}');
+    } else if (identifier.isPrefixed) {
+      final targetIdentifier = identifier.name;
+      for (final member in unit.childEntities) {
+        if (member is FieldDeclaration) {
+          if (member.name == targetIdentifier) {
+            return (library, member);
+          }
+        } else if (member is MethodDeclaration) {
+          if (member.name.lexeme == targetIdentifier) {
+            return (library, member);
+          }
+        } else if (member is EnumConstantDeclaration) {
+          if (member.name.lexeme == targetIdentifier) {
+            return (library, member);
+          }
+        }
+      }
+      throw Exception('Identifier $targetIdentifier not found in ${ref.srcUri}');
+    }
 
     return (library, unit);
   }
+}
 
-  // Element resolve(IdentifierRef ref) {
-  //
-  //
-  //   final asset = fileResolver.buildAssetUri(ref.srcUri);
-  //   final unit = parser.parse(asset.path);
-  //
-  //   final namedUnit = unit.declarations.whereType<NamedCompilationUnitMember>().firstWhere(
-  //     (e) => e.name.lexeme == ref.identifier,
-  //     orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
-  //   );
-  //
-  //
-  // }
+class IdentifierRef {
+  final String name;
+  final String? prefix;
+
+  IdentifierRef(this.name, [this.prefix]);
+
+  bool get isPrefixed => prefix != null;
+
+  String get rootName => prefix != null ? prefix! : name;
+
+  factory IdentifierRef.from(Identifier identifier) {
+    if (identifier is PrefixedIdentifier) {
+      return IdentifierRef(identifier.identifier.name, identifier.prefix.name);
+    } else {
+      return IdentifierRef(identifier.name, null);
+    }
+  }
+
+  @override
+  String toString() {
+    return prefix != null ? '$prefix.$name' : name;
+  }
+
+  IdentifierRef withTarget(String name) {
+    return IdentifierRef(name, prefix);
+  }
 }

@@ -72,20 +72,20 @@ class AssetsGraph extends AssetsScanResults {
     return assets;
   }
 
-  IdentifierRef _buildRef(String identifier, MapEntry<String, int> srcEntry, {String? providerId}) {
+  IdentifierSrc _buildRef(String identifier, MapEntry<String, int> srcEntry, {String? providerId}) {
     final srcUri = getUriForAsset(srcEntry.key);
     final providerUri = providerId != null ? getUriForAsset(providerId) : srcUri;
-    return IdentifierRef(
+    return IdentifierSrc(
       identifier: identifier,
       srcId: srcEntry.key,
       srcUri: srcUri,
       providerId: providerId ?? srcEntry.key,
       providerUri: providerUri,
-      type: IdentifierType.fromValue(srcEntry.value),
+      type: TopLevelIdentifierType.fromValue(srcEntry.value),
     );
   }
 
-  IdentifierRef? getIdentifierRef(String identifier, String rootSrcId, {bool requireProvider = true}) {
+  IdentifierSrc? getIdentifierSrc(String identifier, String rootSrcId, {bool requireProvider = true}) {
     final possibleSrcs = Map<String, int>.fromEntries(
       identifiers.where((e) => e[0] == identifier).map((e) => MapEntry(e[1], e[2])),
     );

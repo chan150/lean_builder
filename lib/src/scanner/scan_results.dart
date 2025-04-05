@@ -33,7 +33,7 @@ abstract class ScanResults {
 
   void addAsset(AssetSrc asset, {bool isVisited = true});
 
-  void addDeclaration(String identifier, AssetSrc declaringFile, IdentifierType type);
+  void addDeclaration(String identifier, AssetSrc declaringFile, TopLevelIdentifierType type);
 
   void removeAsset(String id);
 
@@ -132,7 +132,7 @@ class AssetsScanResults extends ScanResults {
   }
 
   @override
-  void addDeclaration(String identifier, AssetSrc declaringFile, IdentifierType type) {
+  void addDeclaration(String identifier, AssetSrc declaringFile, TopLevelIdentifierType type) {
     if (!assets.containsKey(declaringFile.id)) {
       throw Exception('Asset not found: $declaringFile');
     }
@@ -195,7 +195,7 @@ class AssetsScanResults extends ScanResults {
   }
 }
 
-enum IdentifierType {
+enum TopLevelIdentifierType {
   $class(0),
   $mixin(1),
   $extension(2),
@@ -206,9 +206,9 @@ enum IdentifierType {
 
   final int value;
 
-  const IdentifierType(this.value);
+  const TopLevelIdentifierType(this.value);
 
-  static IdentifierType fromValue(int value) {
+  static TopLevelIdentifierType fromValue(int value) {
     switch (value) {
       case 0:
         return $class;
@@ -229,7 +229,7 @@ enum IdentifierType {
     }
   }
 
-  static IdentifierType fromKeyword(TokenType type) {
+  static TopLevelIdentifierType fromKeyword(TokenType type) {
     switch (type) {
       case Keyword.CLASS:
         return $class;

@@ -234,7 +234,9 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> {
   Constant? visitParenthesizedExpression(ParenthesizedExpression node) => node.expression.accept(this);
 
   @override
-  Constant? visitPrefixedIdentifier(PrefixedIdentifier node) => _getConstantValue(node, _library);
+  Constant? visitPrefixedIdentifier(PrefixedIdentifier node) {
+    return _getConstantValue(IdentifierRef.from(node), _library);
+  }
 
   @override
   Constant? visitPrefixExpression(PrefixExpression node) {
@@ -293,7 +295,22 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> {
   }
 
   @override
-  Constant? visitSimpleIdentifier(SimpleIdentifier node) => _getConstantValue(node, _library);
+  Constant? visitSimpleIdentifier(SimpleIdentifier node) {
+    final enclosingNode = node.thisOrAncestorOfType<NamedCompilationUnitMember>();
+    return _getConstantValue(IdentifierRef(node.name, enclosingNode?.name.lexeme), _library);
+  }
+
+  @override
+  Constant? visitFunctionReference(FunctionReference node) {
+    final value = node.function.accept(this);
+    if (value is ConstFunctionReferenceImpl) {
+      for (final typeArg in [...?node.typeArguments?.arguments]) {
+        final type = _elementResolverVisitor.resolveType(typeArg, _library);
+        value.addTypeArgument(type);
+      }
+    }
+    return value;
+  }
 
   @override
   Constant? visitSimpleStringLiteral(SimpleStringLiteral node) => ConstString(node.value);
@@ -325,109 +342,48 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> {
 
   /// Return the constant value of the static constant represented by the given
   /// [type].
-  Constant _getConstantValue(Identifier identifier, LibraryElement library) {
-    if (identifier is SimpleIdentifier) {
-      final (lib, node) = _resolver.astNodeFor(identifier.name, library);
-      if (node is TopLevelVariableDeclaration) {
-        final variable = node.variables.variables.firstWhere(
-          (e) => e.name.lexeme == identifier.name,
-          orElse: () => throw Exception('Identifier ${identifier.name} not found in ${lib.src.uri}'),
-        );
-        final initializer = variable.initializer;
-        if (initializer != null) {
-          final resolved = initializer.accept(this);
-          if (resolved != null && !identical(resolved, Constant.invalid)) {
-            return resolved;
-          }
+  Constant _getConstantValue(IdentifierRef ref, LibraryElement library) {
+    final (lib, node) = _resolver.astNodeFor(ref, library);
+    if (node is TopLevelVariableDeclaration) {
+      final variable = node.variables.variables.firstWhere(
+        (e) => e.name.lexeme == ref.rootName,
+        orElse: () => throw Exception('Identifier ${ref.rootName} not found in ${lib.src.uri}'),
+      );
+      final initializer = variable.initializer;
+      if (initializer != null) {
+        final resolved = initializer.accept(this);
+        if (resolved != null && !identical(resolved, Constant.invalid)) {
+          return resolved;
         }
-      } else if (node is FunctionDeclaration) {
-        _elementResolverVisitor.visitFunctionDeclaration(node);
-        final function = lib.getFunction(node.name.lexeme);
-        return ConstFunctionReference(node.name.lexeme, function?.type);
       }
-    } else if (identifier is PrefixedIdentifier) {
-      final targetVarName = identifier.identifier.name;
-      final (lib, enclosingNode) = _resolver.astNodeFor(identifier.prefix.name, _library);
-      final declaration = _lookupMemberWithName(enclosingNode, targetVarName);
-      if (declaration is VariableDeclaration) {
-        final initializer = declaration.initializer;
-        if (initializer != null) {
-          final resolved = initializer.accept(this);
-          if (resolved != null && !identical(resolved, Constant.invalid)) {
-            return resolved;
-          }
+    } else if (node is FunctionDeclaration) {
+      _elementResolverVisitor.visitFunctionDeclaration(node);
+      final function = lib.getFunction(node.name.lexeme);
+      return ConstFunctionReferenceImpl(node.name.lexeme, function?.type);
+    } else if (node is MethodDeclaration) {
+      assert(node.isStatic, 'Methods reference in const context should be static');
+      final tempInterfaceElm = InterfaceElementImpl(name: '_', library: lib);
+      _elementResolverVisitor.visitElementScoped(tempInterfaceElm, () {
+        _elementResolverVisitor.visitMethodDeclaration(node);
+      });
+      final method = tempInterfaceElm.getMethod(node.name.lexeme);
+      return ConstFunctionReferenceImpl(node.name.lexeme, method?.type);
+    } else if (node is EnumConstantDeclaration) {
+      return ConstEnumValue(node.name.lexeme, '');
+    } else if (node is FieldDeclaration) {
+      assert(node.isStatic, 'Fields reference in const context should be static');
+      final variable = node.fields.variables.firstWhere(
+        (e) => e.name.lexeme == ref.name,
+        orElse: () => throw Exception('Identifier ${ref.name} not found in ${lib.src.uri}'),
+      );
+      final initializer = variable.initializer;
+      if (initializer != null) {
+        final resolved = initializer.accept(this);
+        if (resolved != null && !identical(resolved, Constant.invalid)) {
+          return resolved;
         }
-      } else if (declaration is MethodDeclaration) {
-        final tempInterfaceElm = InterfaceElementImpl(name: '_', library: lib);
-        _elementResolverVisitor.visitElementScoped(tempInterfaceElm, () {
-          _elementResolverVisitor.visitMethodDeclaration(declaration);
-        });
-        final method = tempInterfaceElm.getMethod(declaration.name.lexeme);
-        return ConstFunctionReference(declaration.name.lexeme, method?.type);
-      } else if (declaration is EnumConstantDeclaration) {
-        return ConstEnumValue(declaration.name.lexeme, '');
       }
     }
     return Constant.invalid;
-  }
-
-  Declaration? _getFieldVariable(FieldDeclaration fieldNode, String varName) {
-    final variable = fieldNode.fields.variables.firstWhere(
-      (e) => e.name.lexeme == varName,
-      orElse: () => throw Exception('Identifier $varName not found in ${fieldNode.fields}'),
-    );
-    final initializer = variable.initializer;
-    if (initializer is SimpleIdentifier) {
-      final fieldNode2 = _lookupMemberWithName(fieldNode.parent!, initializer.name);
-      if (fieldNode2 is FieldDeclaration) {
-        return _getFieldVariable(fieldNode2, varName);
-      } else if (fieldNode2 != null) {
-        return fieldNode2;
-      }
-    }
-    return variable;
-  }
-
-  Declaration? _lookupMemberWithName(AstNode enclosingNode, String name) {
-    final Declaration? declaration;
-    if (enclosingNode is ClassDeclaration) {
-      declaration = enclosingNode.members.firstWhere((e) {
-        if (e is MethodDeclaration) {
-          return e.name.lexeme == name;
-        } else if (e is FieldDeclaration) {
-          return e.fields.variables.any((e) => e.name.lexeme == name);
-        }
-        return false;
-      }, orElse: () => throw Exception('Identifier $name not found inside ${enclosingNode.name}'));
-    } else if (enclosingNode is MixinDeclaration) {
-      declaration = enclosingNode.members.firstWhere((e) {
-        if (e is MethodDeclaration) {
-          return e.name.lexeme == name;
-        } else if (e is FieldDeclaration) {
-          return e.fields.variables.any((e) => e.name.lexeme == name);
-        }
-        return false;
-      }, orElse: () => throw Exception('Identifier $name not found in ${enclosingNode.name}'));
-    } else if (enclosingNode is ExtensionDeclaration) {
-      declaration = enclosingNode.members.firstWhere((e) {
-        if (e is MethodDeclaration) {
-          return e.name.lexeme == name;
-        } else if (e is FieldDeclaration) {
-          return e.fields.variables.any((e) => e.name.lexeme == name);
-        }
-        return false;
-      }, orElse: () => throw Exception('Identifier $name not found in ${enclosingNode.name}'));
-    } else if (enclosingNode is EnumDeclaration) {
-      declaration = enclosingNode.constants.firstWhere(
-        (e) => e.name.lexeme == name,
-        orElse: () => throw Exception('Identifier $name not found in ${enclosingNode.name}'),
-      );
-    } else {
-      throw Exception('Unsupported node type: ${enclosingNode.runtimeType}');
-    }
-    if (declaration is FieldDeclaration) {
-      return _getFieldVariable(declaration, name);
-    }
-    return declaration;
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:analyzer/dart/element/element.dart';
+import 'package:code_genie/src/resolvers/const/constant.dart';
 import 'package:code_genie/src/resolvers/file_asset.dart';
 import 'package:code_genie/src/resolvers/type/type.dart';
 import 'package:collection/collection.dart';
@@ -112,6 +113,8 @@ abstract class VariableElement extends Element {
   String get name;
 
   DartType get type;
+
+  Constant? get constantValue;
 }
 
 abstract class ClassMemberElement extends Element {
