@@ -3,7 +3,6 @@ import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:code_genie/src/ast_extensions.dart';
 import 'package:code_genie/src/resolvers/const/const_evaluator.dart';
 import 'package:code_genie/src/resolvers/element/element.dart';
-import 'package:code_genie/src/resolvers/element/element_annotation.dart';
 import 'package:code_genie/src/resolvers/element_resolver.dart';
 import 'package:code_genie/src/resolvers/type/type.dart';
 import 'package:code_genie/src/resolvers/visitor/element_stack.dart';
@@ -27,6 +26,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
 
     visitElementScoped(classElement, () {
       node.typeParameters?.visitChildren(this);
+      node.metadata.accept(this);
       for (final field in node.fields) {
         field.accept(this);
       }
@@ -149,15 +149,15 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     // });
   }
 
-  Element _resolveElement(String typename, LibraryElement enclosingLibrary) {
-    final (library, decNode) = _resolver.astNodeFor(typename, enclosingLibrary);
-    Element? decEle = library.getElement(typename);
+  Element _resolveTopLevelElement(String name, LibraryElement enclosingLibrary) {
+    final (library, decNode) = _resolver.astNodeFor(name, enclosingLibrary);
+    Element? decEle = library.getElement(name);
     if (decEle != null) {
       return decEle;
     }
     visitElementScoped(library, () => decNode.accept(this));
-    decEle = library.getElement(typename);
-    assert(decEle != null, 'Super type $typename could not be resolved ${library.src.uri}');
+    decEle = library.getElement(name);
+    assert(decEle != null, 'Element $name could not be resolved ${library.src.uri}');
     return decEle!;
   }
 
@@ -210,7 +210,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
       return DartType.dynamicType;
     }
 
-    final element = _resolveElement(typename, enclosingEle.library) as InterfaceElement;
+    final element = _resolveTopLevelElement(typename, enclosingEle.library) as InterfaceElement;
     final typeArgs = <DartType>[];
     for (final typeArg in [...?typeAnno.typeArguments?.arguments]) {
       typeArgs.add(resolveType(typeArg, enclosingEle, typeParams));
@@ -249,12 +249,27 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
 
   @override
   void visitAnnotation(Annotation node) {
-    final element = currentElementAs<ElementImpl>();
-    final typeArgs = <DartType>[];
-    for (final typeArg in [...?node.typeArguments?.arguments]) {
-      typeArgs.add(resolveType(typeArg, element, []));
-    }
-    final elementAnnotation = ElementAnnotationImpl(node.name.name, element);
+    // final element = currentElementAs<ElementImpl>();
+    // // final constVisitor = ConstantEvaluator(_resolver, element.library, this);
+    //
+    // // final constValue = constVisitor.evaluate(node);
+    //
+    // final (lib, targetNode) = _resolver.astNodeFor(node.name.name, element.library);
+    // // print('targetNode: ${targetNode.runtimeType}');
+    // print(targetNode.runtimeType);
+    //
+
+    // final elem = _resolveTopLevelElement(node.name.name, element.library);
+    // print(elem.runtimeType);
+    // if (elem is ClassElement) {
+    //   print(elem.fields);
+    // }
+
+    // final typeArgs = <DartType>[];
+    // for (final typeArg in [...?node.typeArguments?.arguments]) {
+    //   typeArgs.add(resolveType(typeArg, element, []));
+    // }
+    // final elementAnnotation = ElementAnnotationImpl(node.name.name, element);
 
     // final type = _resolveType(node, element, typeParams)
   }
@@ -321,9 +336,12 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
   @override
   void visitTopLevelVariableDeclaration(TopLevelVariableDeclaration node) {
     for (final variable in node.variables.variables) {
-      if (variable.initializer != null) {
+      final initializer = variable.initializer;
+
+      if (initializer != null) {
         final constantEvaluator = ConstantEvaluator(_resolver, currentElementAs().library, this);
         final constValue = constantEvaluator.evaluate(variable.initializer!);
+
         print('${node.name} -> $constValue of type ${constValue.runtimeType}');
       }
     }

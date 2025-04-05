@@ -19,7 +19,7 @@ import 'package:yaml/yaml.dart';
 /// typedef VoidFunc = void Function();
 /// ```
 ///
-/// This function will return `'VoidFunc'`, unlike [DartType.element.name].
+/// This function will return `'VoidFunc'`, unlike [DartType.type.name].
 String typeNameOf(DartType type) {
   final aliasElement = type.alias?.element;
   if (aliasElement != null) {

@@ -9,13 +9,11 @@ import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:code_genie/src/resolvers/element/element.dart';
 import 'package:code_genie/src/resolvers/element_resolver.dart';
-import 'package:code_genie/src/resolvers/visitor/element_builder_visitor.dart';
+import 'package:code_genie/src/resolvers/visitor/element_resolver_visitor.dart';
 
-class ConstantEvaluator extends GeneralizingAstVisitor<Object> {
-  /// The value returned for expressions (or non-expression nodes) that are not
-  /// compile-time constant expressions.
-  static Object notAConstant = Object();
+import 'constant.dart';
 
+class ConstantEvaluator extends GeneralizingAstVisitor<Constant> {
   final ElementResolver _resolver;
 
   final ElementResolverVisitor _elementResolverVisitor;
@@ -24,283 +22,297 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Object> {
 
   ConstantEvaluator(this._resolver, this._library, this._elementResolverVisitor);
 
-  Object? evaluate(AstNode node) {
-    return node.accept(this);
+  Constant evaluate(AstNode node) {
+    return node.accept(this) ?? Constant.invalid;
   }
 
   @override
-  Object? visitAdjacentStrings(AdjacentStrings node) {
+  Constant? visitAdjacentStrings(AdjacentStrings node) {
     StringBuffer buffer = StringBuffer();
     for (StringLiteral string in node.strings) {
       var value = string.accept(this);
-      if (identical(value, notAConstant)) {
+      if (identical(value, Constant.invalid)) {
         return value;
       }
       buffer.write(value);
     }
-    return buffer.toString();
+    return ConstString(buffer.toString());
   }
 
   @override
-  Object? visitBinaryExpression(BinaryExpression node) {
-    var leftOperand = node.leftOperand.accept(this);
-    if (identical(leftOperand, notAConstant)) {
+  Constant? visitBinaryExpression(BinaryExpression node) {
+    var leftOperand = node.leftOperand.accept(this)?.value;
+    if (identical(leftOperand, Constant.invalid)) {
       return leftOperand;
     }
-    var rightOperand = node.rightOperand.accept(this);
-    if (identical(rightOperand, notAConstant)) {
+    var rightOperand = node.rightOperand.accept(this)?.value;
+    if (identical(rightOperand, Constant.invalid)) {
       return rightOperand;
     }
     while (true) {
       if (node.operator.type == TokenType.AMPERSAND) {
         // integer or {@code null}
         if (leftOperand is int && rightOperand is int) {
-          return leftOperand & rightOperand;
+          return ConstInt(leftOperand & rightOperand);
         }
       } else if (node.operator.type == TokenType.AMPERSAND_AMPERSAND) {
         // boolean or {@code null}
         if (leftOperand is bool && rightOperand is bool) {
-          return leftOperand && rightOperand;
+          return ConstBool(leftOperand && rightOperand);
         }
       } else if (node.operator.type == TokenType.BANG_EQ) {
         // numeric, string, boolean, or {@code null}
         if (leftOperand is bool && rightOperand is bool) {
-          return leftOperand != rightOperand;
+          return ConstBool(leftOperand != rightOperand);
         } else if (leftOperand is num && rightOperand is num) {
-          return leftOperand != rightOperand;
+          return ConstBool(leftOperand != rightOperand);
         } else if (leftOperand is String && rightOperand is String) {
-          return leftOperand != rightOperand;
+          return ConstBool(leftOperand != rightOperand);
         }
       } else if (node.operator.type == TokenType.BAR) {
         // integer or {@code null}
         if (leftOperand is int && rightOperand is int) {
-          return leftOperand | rightOperand;
+          return ConstInt(leftOperand | rightOperand);
         }
       } else if (node.operator.type == TokenType.BAR_BAR) {
         // boolean or {@code null}
         if (leftOperand is bool && rightOperand is bool) {
-          return leftOperand || rightOperand;
+          return ConstBool(leftOperand || rightOperand);
         }
       } else if (node.operator.type == TokenType.CARET) {
         // integer or {@code null}
         if (leftOperand is int && rightOperand is int) {
-          return leftOperand ^ rightOperand;
+          return ConstInt(leftOperand ^ rightOperand);
         }
       } else if (node.operator.type == TokenType.EQ_EQ) {
         // numeric, string, boolean, or {@code null}
         if (leftOperand is bool && rightOperand is bool) {
-          return leftOperand == rightOperand;
+          return ConstBool(leftOperand == rightOperand);
         } else if (leftOperand is num && rightOperand is num) {
-          return leftOperand == rightOperand;
+          return ConstBool(leftOperand == rightOperand);
         } else if (leftOperand is String && rightOperand is String) {
-          return leftOperand == rightOperand;
+          return ConstBool(leftOperand == rightOperand);
         }
       } else if (node.operator.type == TokenType.GT) {
         // numeric or {@code null}
         if (leftOperand is num && rightOperand is num) {
-          return leftOperand.compareTo(rightOperand) > 0;
+          return ConstBool(leftOperand.compareTo(rightOperand) > 0);
         }
       } else if (node.operator.type == TokenType.GT_EQ) {
         // numeric or {@code null}
         if (leftOperand is num && rightOperand is num) {
-          return leftOperand.compareTo(rightOperand) >= 0;
+          return ConstBool(leftOperand.compareTo(rightOperand) >= 0);
         }
       } else if (node.operator.type == TokenType.GT_GT) {
         // integer or {@code null}
         if (leftOperand is int && rightOperand is int) {
-          return leftOperand >> rightOperand;
+          return ConstInt(leftOperand >> rightOperand);
         }
       } else if (node.operator.type == TokenType.GT_GT_GT) {
         if (leftOperand is int && rightOperand is int) {
-          // TODO(srawlins): Replace with native VM implementation once stable.
-          return rightOperand >= 64 ? 0 : (leftOperand >> rightOperand) & ((1 << (64 - rightOperand)) - 1);
+          return ConstInt(rightOperand >= 64 ? 0 : (leftOperand >> rightOperand) & ((1 << (64 - rightOperand)) - 1));
         }
       } else if (node.operator.type == TokenType.LT) {
         // numeric or {@code null}
         if (leftOperand is num && rightOperand is num) {
-          return leftOperand.compareTo(rightOperand) < 0;
+          return ConstBool(leftOperand.compareTo(rightOperand) < 0);
         }
       } else if (node.operator.type == TokenType.LT_EQ) {
         // numeric or {@code null}
         if (leftOperand is num && rightOperand is num) {
-          return leftOperand.compareTo(rightOperand) <= 0;
+          return ConstBool(leftOperand.compareTo(rightOperand) <= 0);
         }
       } else if (node.operator.type == TokenType.LT_LT) {
         // integer or {@code null}
         if (leftOperand is int && rightOperand is int) {
-          return leftOperand << rightOperand;
+          return ConstInt(leftOperand << rightOperand);
         }
       } else if (node.operator.type == TokenType.MINUS) {
         // numeric or {@code null}
         if (leftOperand is num && rightOperand is num) {
-          return leftOperand - rightOperand;
+          return ConstNum(leftOperand - rightOperand);
         }
       } else if (node.operator.type == TokenType.PERCENT) {
         // numeric or {@code null}
         if (leftOperand is num && rightOperand is num) {
-          return leftOperand.remainder(rightOperand);
+          return ConstNum(leftOperand.remainder(rightOperand));
         }
       } else if (node.operator.type == TokenType.PLUS) {
         // numeric or {@code null}
         if (leftOperand is num && rightOperand is num) {
-          return leftOperand + rightOperand;
+          return ConstNum(leftOperand + rightOperand);
         }
         if (leftOperand is String && rightOperand is String) {
-          return leftOperand + rightOperand;
+          return ConstString(leftOperand + rightOperand);
         }
       } else if (node.operator.type == TokenType.STAR) {
         // numeric or {@code null}
         if (leftOperand is num && rightOperand is num) {
-          return leftOperand * rightOperand;
+          return ConstNum(leftOperand * rightOperand);
         }
       } else if (node.operator.type == TokenType.SLASH) {
         // numeric or {@code null}
         if (leftOperand is num && rightOperand is num) {
-          return leftOperand / rightOperand;
+          return ConstNum(leftOperand / rightOperand);
         }
       } else if (node.operator.type == TokenType.TILDE_SLASH) {
         // numeric or {@code null}
         if (leftOperand is num && rightOperand is num) {
-          return leftOperand ~/ rightOperand;
+          return ConstNum(leftOperand ~/ rightOperand);
         }
       }
       break;
     }
-    // TODO(brianwilkerson): This doesn't handle numeric conversions.
+    // TODO This doesn't handle numeric conversions.
     return visitExpression(node);
   }
 
   @override
-  Object? visitDoubleLiteral(DoubleLiteral node) => node.value;
-
-  @override
-  Object? visitIntegerLiteral(IntegerLiteral node) => node.value;
-
-  @override
-  Object? visitInterpolationExpression(InterpolationExpression node) {
-    var value = node.expression.accept(this);
-    if (value == null || value is bool || value is String || value is num) {
-      return value;
-    }
-    return notAConstant;
+  Constant? visitInstanceCreationExpression(InstanceCreationExpression node) {
+    print('InstanceCreationExpression: ${node.constructorName}');
+    return Constant.invalid;
   }
 
   @override
-  Object? visitInterpolationString(InterpolationString node) => node.value;
+  Constant? visitAnnotation(Annotation node) {
+    var value = node.arguments?.accept(this);
+    if (value == null || value is ConstBool || value is ConstString || value is ConstNum) {
+      return value;
+    }
+    return Constant.invalid;
+  }
 
   @override
-  Object? visitListLiteral(ListLiteral node) {
-    List<Object?> list = <Object>[];
+  Constant? visitDoubleLiteral(DoubleLiteral node) => ConstDouble(node.value);
+
+  @override
+  Constant? visitIntegerLiteral(IntegerLiteral node) => node.value == null ? null : ConstInt(node.value!);
+
+  @override
+  Constant? visitInterpolationExpression(InterpolationExpression node) {
+    var value = node.expression.accept(this);
+    if (value == null || value is ConstBool || value is ConstString || value is ConstNum) {
+      return value;
+    }
+    return Constant.invalid;
+  }
+
+  @override
+  Constant? visitInterpolationString(InterpolationString node) => ConstString(node.value);
+
+  @override
+  Constant? visitListLiteral(ListLiteral node) {
+    List<Constant> list = <Constant>[];
     for (CollectionElement element in node.elements) {
       if (element is Expression) {
         var value = element.accept(this);
-        if (identical(value, notAConstant)) {
+        if (value == null || identical(value, Constant.invalid)) {
           return value;
         }
         list.add(value);
       } else {
         // There are a lot of constants that this class does not support, so we
         // didn't add support for the extended collection support.
-        return notAConstant;
+        return Constant.invalid;
       }
     }
-    return list;
+    return ConstList(list);
   }
 
   @override
-  Object? visitMethodInvocation(MethodInvocation node) {
+  Constant? visitMethodInvocation(MethodInvocation node) {
     return visitNode(node);
   }
 
   @override
-  Object? visitNode(AstNode node) => notAConstant;
+  Constant? visitNode(AstNode node) => Constant.invalid;
 
   @override
-  Object? visitNullLiteral(NullLiteral node) => null;
+  Constant? visitNullLiteral(NullLiteral node) => null;
 
   @override
-  Object? visitParenthesizedExpression(ParenthesizedExpression node) => node.expression.accept(this);
+  Constant? visitParenthesizedExpression(ParenthesizedExpression node) => node.expression.accept(this);
 
   @override
-  Object? visitPrefixedIdentifier(PrefixedIdentifier node) => _getConstantValue(node, _library);
+  Constant? visitPrefixedIdentifier(PrefixedIdentifier node) => _getConstantValue(node, _library);
 
   @override
-  Object? visitPrefixExpression(PrefixExpression node) {
-    var operand = node.operand.accept(this);
-    if (identical(operand, notAConstant)) {
+  Constant? visitPrefixExpression(PrefixExpression node) {
+    var operand = node.operand.accept(this)?.value;
+    if (identical(operand, Constant.invalid)) {
       return operand;
     }
     while (true) {
       if (node.operator.type == TokenType.BANG) {
         if (identical(operand, true)) {
-          return false;
+          return ConstBool(false);
         } else if (identical(operand, false)) {
-          return true;
+          return ConstBool(true);
         }
       } else if (node.operator.type == TokenType.TILDE) {
         if (operand is int) {
-          return ~operand;
+          return ConstInt(~operand);
         }
       } else if (node.operator.type == TokenType.MINUS) {
         if (operand == null) {
           return null;
         } else if (operand is num) {
-          return -operand;
+          return ConstNum(-operand);
         }
       } else {}
       break;
     }
-    return notAConstant;
+    return Constant.invalid;
   }
 
   // @override
   // Object? visitPropertyAccess(PropertyAccess node) => _getConstantValue(null);
 
   @override
-  Object? visitSetOrMapLiteral(SetOrMapLiteral node) {
+  Constant? visitSetOrMapLiteral(SetOrMapLiteral node) {
     // There are a lot of constants that this class does not support, so we
     // didn't add support for set literals. As a result, this assumes that we're
     // looking at a map literal until we prove otherwise.
-    Map<String, Object?> map = HashMap<String, Object>();
+    Map<String, Constant> map = HashMap<String, Constant>();
     for (CollectionElement element in node.elements) {
       if (element is MapLiteralEntry) {
-        var key = element.key.accept(this);
+        var key = element.key.accept(this)?.value;
         var value = element.value.accept(this);
-        if (key is String && !identical(value, notAConstant)) {
+        if (key is String && value != null && !identical(value, Constant.invalid)) {
           map[key] = value;
         } else {
-          return notAConstant;
+          return Constant.invalid;
         }
       } else {
         // There are a lot of constants that this class does not support, so
         // we didn't add support for the extended collection support.
-        return notAConstant;
+        return Constant.invalid;
       }
     }
-    return map;
+    return ConstMap(map);
   }
 
   @override
-  Object? visitSimpleIdentifier(SimpleIdentifier node) => _getConstantValue(node, _library);
+  Constant? visitSimpleIdentifier(SimpleIdentifier node) => _getConstantValue(node, _library);
 
   @override
-  Object? visitSimpleStringLiteral(SimpleStringLiteral node) => node.value;
+  Constant? visitSimpleStringLiteral(SimpleStringLiteral node) => ConstString(node.value);
 
   @override
-  Object? visitStringInterpolation(StringInterpolation node) {
+  Constant? visitStringInterpolation(StringInterpolation node) {
     StringBuffer buffer = StringBuffer();
     for (InterpolationElement element in node.elements) {
       var value = element.accept(this);
-      if (identical(value, notAConstant)) {
+      if (identical(value, Constant.invalid)) {
         return value;
       }
       buffer.write(value);
     }
-    return buffer.toString();
+    return ConstString(buffer.toString());
   }
 
   @override
-  Object? visitSymbolLiteral(SymbolLiteral node) {
+  Constant? visitSymbolLiteral(SymbolLiteral node) {
     StringBuffer buffer = StringBuffer();
     for (Token component in node.components) {
       if (buffer.length > 0) {
@@ -308,28 +320,14 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Object> {
       }
       buffer.write(component.lexeme);
     }
-    return buffer.toString();
-  }
-
-  @override
-  Object? visitFieldDeclaration(FieldDeclaration node) {
-    // final variable = _getFieldVariable(node.parent!, node, targetVarName);
-    // final initializer = variable?.initializer;
-    // if (initializer != null) {
-    //   final resolved = initializer.accept(this);
-    //   if (resolved != null && resolved != notAConstant) {
-    //     return resolved;
-    //   }
-    // }
-    // return notAConstant;
+    return ConstSymbol(buffer.toString());
   }
 
   /// Return the constant value of the static constant represented by the given
-  /// [element].
-  Object? _getConstantValue(Identifier identifier, LibraryElement library) {
+  /// [type].
+  Constant _getConstantValue(Identifier identifier, LibraryElement library) {
     if (identifier is SimpleIdentifier) {
       final (lib, node) = _resolver.astNodeFor(identifier.name, library);
-
       if (node is TopLevelVariableDeclaration) {
         final variable = node.variables.variables.firstWhere(
           (e) => e.name.lexeme == identifier.name,
@@ -338,15 +336,14 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Object> {
         final initializer = variable.initializer;
         if (initializer != null) {
           final resolved = initializer.accept(this);
-          if (resolved != null && resolved != notAConstant) {
+          if (resolved != null && !identical(resolved, Constant.invalid)) {
             return resolved;
           }
         }
       } else if (node is FunctionDeclaration) {
         _elementResolverVisitor.visitFunctionDeclaration(node);
         final function = lib.getFunction(node.name.lexeme);
-        print('Function: ${function}');
-        return function?.name;
+        return ConstFunctionReference(node.name.lexeme, function?.type);
       }
     } else if (identifier is PrefixedIdentifier) {
       final targetVarName = identifier.identifier.name;
@@ -356,7 +353,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Object> {
         final initializer = declaration.initializer;
         if (initializer != null) {
           final resolved = initializer.accept(this);
-          if (resolved != null && resolved != notAConstant) {
+          if (resolved != null && !identical(resolved, Constant.invalid)) {
             return resolved;
           }
         }
@@ -366,13 +363,12 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Object> {
           _elementResolverVisitor.visitMethodDeclaration(declaration);
         });
         final method = tempInterfaceElm.getMethod(declaration.name.lexeme);
-        print('Method: $method');
-        return method?.name;
+        return ConstFunctionReference(declaration.name.lexeme, method?.type);
       } else if (declaration is EnumConstantDeclaration) {
-        return declaration.name.lexeme;
+        return ConstEnumValue(declaration.name.lexeme, '');
       }
     }
-    return notAConstant;
+    return Constant.invalid;
   }
 
   Declaration? _getFieldVariable(FieldDeclaration fieldNode, String varName) {
@@ -434,11 +430,4 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Object> {
     }
     return declaration;
   }
-
-  // final initializer = variable?.initializer;
-  // if (initializer is SimpleIdentifier) {
-  // return _lookupMemberField(enclosingNode, initializer.name);
-  // }
-  //
-  // return variable;
 }
