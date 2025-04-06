@@ -312,6 +312,28 @@ abstract class VariableElementImpl extends ElementImpl implements VariableElemen
   Constant? _constantValue;
 }
 
+class TopLevelVariableElementImpl extends VariableElementImpl implements TopLevelVariableElement {
+  TopLevelVariableElementImpl({
+    required super.name,
+    required super.enclosingElement,
+    required super.hasImplicitType,
+    required super.isConst,
+    required super.isFinal,
+    required super.isLate,
+    required this.isExternal,
+    required this.type,
+  }) : super(isStatic: false);
+
+  @override
+  final bool isExternal;
+
+  @override
+  LibraryElement get library => enclosingElement.library;
+
+  @override
+  final DartType type;
+}
+
 class FieldElementImpl extends VariableElementImpl implements ClassMemberElement, FieldElement {
   FieldElementImpl({
     required super.isStatic,

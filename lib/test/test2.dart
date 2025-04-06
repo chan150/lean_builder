@@ -1,3 +1,5 @@
+import 'package:code_genie/test/test.dart';
+
 class TypeT extends RoutePage {}
 
 class RoutePage {
@@ -16,4 +18,8 @@ class Utils {
   static const value = Utils.value0;
 
   static const value0 = 'value0';
+}
+
+class RedirectedClass extends AnnotatedClass {
+  RedirectedClass.red();
 }

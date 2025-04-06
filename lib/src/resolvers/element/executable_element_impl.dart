@@ -127,7 +127,6 @@ class ConstructorElementImpl extends ExecutableElementImpl implements Constructo
     required this.isDefaultConstructor,
     required this.isFactory,
     required this.isGenerative,
-    this.redirectedConstructor,
     this.superConstructor,
   }) : super(library: enclosingElement.library, enclosingElement: enclosingElement, isAsynchronous: false);
 
@@ -144,8 +143,14 @@ class ConstructorElementImpl extends ExecutableElementImpl implements Constructo
   final bool isGenerative;
 
   @override
-  final ConstructorElement? redirectedConstructor;
+  ConstructorElement? get redirectedConstructor => _redirectedConstructor;
 
   @override
   final ConstructorElement? superConstructor;
+
+  ConstructorElement? _redirectedConstructor;
+
+  set redirectedConstructor(ConstructorElement? constructor) {
+    _redirectedConstructor = constructor;
+  }
 }

@@ -1,4 +1,10 @@
 import 'package:code_genie/test/test2.dart';
+export 'package:code_genie/test/test2.dart';
+
+typedef FunctionTypeDef = int Function(String str, {int? number});
+typedef FunctionGenericTypeDef<T> = T Function(String str);
+typedef InterfaceTypeDef = List<String>;
+typedef GenericTypeDef<T> = List<T>;
 
 // const annotation = Annotation();
 
@@ -25,6 +31,7 @@ class Annotation {
 @Annotation()
 class AnnotatedClass {
   AnnotatedClass();
+
   // final FieldType type = FieldType('Hello', 1);
   // // final String name = constVar;
   // // final int age = 30;
@@ -40,10 +47,8 @@ class AnnotatedClass {
   // void method([String x = 'default']) {}
 
   factory AnnotatedClass.redirected() = RedirectedClass.red;
-}
 
-class RedirectedClass extends AnnotatedClass {
-  RedirectedClass.red();
+  factory AnnotatedClass.redirected2() = AnnotatedClass;
 }
 
 // class FieldType extends SuperClass {

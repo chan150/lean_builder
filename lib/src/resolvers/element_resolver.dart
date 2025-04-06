@@ -1,4 +1,5 @@
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/element/type.dart';
 import 'package:code_genie/src/resolvers/element/element.dart';
 import 'package:code_genie/src/resolvers/file_asset.dart';
 import 'package:code_genie/src/resolvers/package_file_resolver.dart';
@@ -117,8 +118,27 @@ class IdentifierRef {
   String toString() {
     return prefix != null ? '$prefix.$name' : name;
   }
+}
 
-  IdentifierRef withTarget(String name) {
-    return IdentifierRef(name, prefix);
+class TypeRef<T extends TypeAnnotation> {
+  final T? annotation;
+  final String? nameOverride;
+
+  TypeRef(this.annotation, [this.nameOverride]);
+
+  String get name {
+    if (nameOverride != null) {
+      return nameOverride!;
+    }
+    if (annotation is NamedType) {
+      return (annotation as NamedType).name2.lexeme;
+    } else if (annotation is GenericFunctionType) {
+      return '';
+    } else if (annotation is TypeParameterType) {
+      return (annotation as TypeParameterType).element.name;
+    } else if (annotation is TypeLiteral) {
+      return (annotation as TypeLiteral).type.toString();
+    }
+    throw Exception('Unknown type annotation: ${annotation.runtimeType}');
   }
 }

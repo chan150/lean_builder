@@ -225,6 +225,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> {
   @override
   Constant? visitMethodInvocation(MethodInvocation node) {
     print('MethodInvocation: ${node.methodName}');
+    return Constant.invalid;
     final element = _elementResolverVisitor.resolveTopLevelElement(IdentifierRef.from(node.methodName), _library);
 
     if (element is! InterfaceElement) return Constant.invalid;
@@ -339,7 +340,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> {
     final value = node.function.accept(this);
     if (value is ConstFunctionReferenceImpl) {
       for (final typeArg in [...?node.typeArguments?.arguments]) {
-        final type = _elementResolverVisitor.resolveType(typeArg, _library);
+        final type = _elementResolverVisitor.resolveType(TypeRef(typeArg), _library);
         value.addTypeArgument(type);
       }
     }

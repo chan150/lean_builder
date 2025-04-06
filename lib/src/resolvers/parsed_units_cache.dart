@@ -59,7 +59,7 @@ class SrcParser {
       lineInfo: lineInfo,
       allowNativeClause: false,
     );
-    parser.parseFunctionBodies = false;
+    // parser.parseFunctionBodies = false;
     return parser.parseCompilationUnit(token);
   }
 }

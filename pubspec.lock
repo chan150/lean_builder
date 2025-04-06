@@ -58,7 +58,7 @@ packages:
     source: hosted
     version: "0.1.25"
   auto_route:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: auto_route
       sha256: "1d1bd908a1fec327719326d5d0791edd37f16caff6493c01003689fb03315ad7"
@@ -411,7 +411,7 @@ packages:
     source: hosted
     version: "1.0.0"
   flutter:
-    dependency: transitive
+    dependency: "direct main"
     description: flutter
     source: sdk
     version: "0.0.0"

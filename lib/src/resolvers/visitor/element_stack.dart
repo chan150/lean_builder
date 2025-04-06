@@ -7,11 +7,14 @@ mixin ElementStack on UnifyingAstVisitor<void> {
   Element get _currentElement => _elementStack.last;
 
   T currentElementAs<T extends Element>() {
-    assert(_currentElement is T, 'Current element is not of type $T');
+    assert(
+      _currentElement is T,
+      'Current element is not of type $T, it is ${_currentElement.runtimeType}\n${StackTrace.current}',
+    );
     return _currentElement as T;
   }
 
-  LibraryElementImpl get currentLibrary {
+  LibraryElementImpl currentLibrary() {
     assert(_elementStack.isNotEmpty, 'Element stack is empty');
     return _currentElement.library as LibraryElementImpl;
   }
