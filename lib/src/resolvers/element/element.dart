@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:analyzer/dart/element/element.dart';
 import 'package:code_genie/src/resolvers/const/constant.dart';
 import 'package:code_genie/src/resolvers/file_asset.dart';
@@ -166,7 +164,13 @@ abstract class ParameterElement extends VariableElement {
   List<TypeParameterElement> get typeParameters;
 }
 
-abstract class ClassElement extends InterfaceElement {}
+abstract class ClassElement extends InterfaceElement {
+  List<ConstructorElement> get constructors;
+
+  ConstructorElement? getConstructor(String name);
+
+  ConstructorElement? get unnamedConstructor;
+}
 
 abstract class EnumElement implements InterfaceElement {}
 

@@ -32,15 +32,24 @@ void main(List<String> args) async {
     if (asset.hasAnnotation) {
       final assetFile = fileResolver.buildAssetUri(asset.uri);
       final library = resolver.resolveLibrary(assetFile);
-
+      return;
       for (final clazz in library.classes) {
-        // if (clazz.fields.isNotEmpty) {
-        //   for (final field in clazz.fields) {
-        //     print('${field.type} ${field.name} ');
-        //   }
-        // }
+        print('Class: ${clazz.name} --------------------- *** ');
+        print('Fields -----------');
+        for (final field in clazz.fields) {
+          print('${field.type} ${field.name} ${field.constantValue}');
+        }
+        print('Params -----------');
+        for (final param in [...?clazz.constructors.firstOrNull?.parameters]) {
+          print('${param.type} ${param.name} ${param.constantValue}');
+        }
+
         if (clazz.methods.isNotEmpty) {
-          print(clazz.methods.map((e) => "${e.type} ${e.name}").toList());
+          for (final method in clazz.methods) {
+            for (final param in method.parameters) {
+              print('${param.type} ${param.name} ${param.constantValue}');
+            }
+          }
         }
       }
     }

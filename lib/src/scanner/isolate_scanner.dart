@@ -63,10 +63,8 @@ class IsolateTLScanner {
     } else {
       // Use single-threaded approach incremental updates
       final scanner = TopLevelScanner(assetsGraph, fileResolver);
-      for (final package in assets.keys) {
-        for (final asset in assets[package]!) {
-          scanner.scanFile(asset);
-        }
+      for (final asset in assetsList) {
+        scanner.scanFile(asset);
       }
       updateIncrementalAssets(scanner);
     }

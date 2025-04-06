@@ -3,56 +3,62 @@ import 'package:code_genie/test/test2.dart';
 // const annotation = Annotation();
 
 class Annotation {
-  final num number;
-  final String? str;
-  final String str2 = 'Hello';
-
-  const Annotation(this.number, {this.str});
+  // final num number;
+  // final String? str;
+  // final String str2 = 'Hello';
+  //
+  // const Annotation(this.number, {this.str});
+  const Annotation();
 }
-
-class Utils {
-  static void targetFunc<T>() {}
-
-  static const constFunc = Utils2.constFunc2;
-}
-
-class Utils2 {
-  static const constFunc2 = Utils.targetFunc;
-}
-
-// final constFun = Utils.constFunc;
-
-@Annotation(1, str: 'Hello')
-class TestClass {
-  final String str = 'Hello';
-}
-
-// @Annotation()
-// class AnnotatedClass {
-//   final FieldType type = FieldType();
-//   final String name = constVar;
-//   final int age = 30;
-//   final bool isAlive = true;
-//   final List<String> list = [];
-//   final double height = 5.6;
-//   final ColorEnum color = ColorEnum.red;
-//   void x;
-//   dynamic dynamicField;
 //
-//   // AnnotatedClass(this.type, this.name, this.age, this.isAlive);
+// class Utils {
+//   static const String str = 'Hello';
+// }
 //
-//   void method() {}
+// const constVar = Utils.str;
+
+// @Annotation(1, str: 'str')
+// class TestClass {
+//   final String str = 'Hello';
 // }
 
-class FieldType extends SuperClass {
-  FieldType();
+@Annotation()
+class AnnotatedClass {
+  AnnotatedClass();
+  // final FieldType type = FieldType('Hello', 1);
+  // // final String name = constVar;
+  // // final int age = 30;
+  // // final bool isAlive = true;
+  // // final List<String> list = ['one', 'two', 'three'];
+  // // final double height = 5.6;
+  // // final ColorEnum color = ColorEnum.red;
+  // // void x;
+  // // dynamic dynamicField;
+  //
+  // // AnnotatedClass(this.type, this.name, this.age, this.isAlive);
+  //
+  // void method([String x = 'default']) {}
+
+  factory AnnotatedClass.redirected() = RedirectedClass.red;
 }
 
-class IrrelevantClass {
-  IrrelevantClass();
+class RedirectedClass extends AnnotatedClass {
+  RedirectedClass.red();
 }
 
-enum ColorEnum { red, green, blue }
+// class FieldType extends SuperClass {
+//   FieldType([this.strValue = 'def']) : number = 1;
+//
+//   final String strValue;
+//   final int number;
+//   final String finalStr = 'Hello';
+// }
+
+// class IrrelevantClass {
+//   IrrelevantClass();
+// }
+//
+// enum ColorEnum { red, green, blue }
 
 //
 // enum EnumWithArgs {

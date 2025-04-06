@@ -250,13 +250,22 @@ class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixi
 
   @override
   FieldElement? getField(String name) {
-    // TODO: implement getField
-    throw UnimplementedError();
+    for (final field in _fields) {
+      if (field.name == name) {
+        return field;
+      }
+    }
+    return null;
   }
 
   @override
   MethodElement? getMethod(String name) {
-    return _methods.firstWhereOrNull((e) => e.name == name);
+    for (final method in _methods) {
+      if (method.name == name) {
+        return method;
+      }
+    }
+    return null;
   }
 }
 
@@ -291,14 +300,16 @@ abstract class VariableElementImpl extends ElementImpl implements VariableElemen
   @override
   final String name;
 
+  Constant? Function()? computeConstantValue;
+
+  void setConstantComputeValue(Constant? Function()? computeConstantValue) {
+    this.computeConstantValue = computeConstantValue;
+  }
+
   @override
-  Constant? get constantValue => _constantValue;
+  Constant? get constantValue => _constantValue ??= computeConstantValue?.call();
 
   Constant? _constantValue;
-
-  set constantValue(Constant? value) {
-    _constantValue = value;
-  }
 }
 
 class FieldElementImpl extends VariableElementImpl implements ClassMemberElement, FieldElement {
@@ -353,17 +364,16 @@ class ParameterElementImpl extends VariableElementImpl implements ParameterEleme
     required this.isRequiredPositional,
     required this.isRequiredNamed,
     required this.isSuperFormal,
-    required this.defaultValueCode,
   }) : super(isStatic: false);
 
   @override
   LibraryElement get library => enclosingElement.library;
 
   @override
-  final String? defaultValueCode;
+  String? get defaultValueCode => constantValue?.toString();
 
   @override
-  bool get hasDefaultValue => defaultValueCode != null;
+  bool get hasDefaultValue => computeConstantValue != null;
 
   @override
   final bool isCovariant;
@@ -421,6 +431,23 @@ class ParameterElementImpl extends VariableElementImpl implements ParameterEleme
 
 class ClassElementImpl extends InterfaceElementImpl implements ClassElement {
   ClassElementImpl({required super.name, required super.library});
+
+  @override
+  List<ConstructorElement> get constructors => _constructors;
+
+  final List<ConstructorElement> _constructors = [];
+
+  void addConstructor(ConstructorElement constructor) {
+    _constructors.add(constructor);
+  }
+
+  @override
+  ConstructorElement? getConstructor(String name) {
+    return _constructors.firstWhereOrNull((e) => e.name == name);
+  }
+
+  @override
+  ConstructorElement? get unnamedConstructor => _constructors.firstWhereOrNull((e) => e.name.isEmpty);
 }
 
 class EnumElementImpl extends InterfaceElementImpl implements EnumElement {

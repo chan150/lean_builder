@@ -24,7 +24,7 @@ class ConstString extends ConstValue<String> {
   ConstString(super.value);
 
   @override
-  String toString() => '"$value"';
+  String toString() => value;
 }
 
 class ConstNum extends ConstValue<num> {

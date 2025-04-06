@@ -1,5 +1,4 @@
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:code_genie/src/ast_extensions.dart';
 import 'package:code_genie/src/resolvers/element/element.dart';
 import 'package:code_genie/src/resolvers/file_asset.dart';
 import 'package:code_genie/src/resolvers/package_file_resolver.dart';
@@ -14,6 +13,7 @@ class ElementResolver {
   final SrcParser parser;
   final PackageFileResolver fileResolver;
   final Map<String, LibraryElement> _libraryCache = {};
+  final Map<String, (LibraryElement, AstNode)> _parsedUnitCache = {};
 
   ElementResolver(this.graph, this.fileResolver, this.parser);
 
@@ -34,6 +34,11 @@ class ElementResolver {
 
   (LibraryElement, AstNode) astNodeFor(IdentifierRef identifier, LibraryElement enclosingLibrary) {
     final enclosingAsset = enclosingLibrary.src;
+    final unitId = '${enclosingAsset.id}#${identifier.toString()}';
+    if (_parsedUnitCache.containsKey(unitId)) {
+      return _parsedUnitCache[unitId]!;
+    }
+
     final ref = graph.getIdentifierSrc(identifier.rootName, enclosingAsset.id, requireProvider: false);
     assert(ref != null, 'Identifier $identifier not found in ${enclosingAsset.uri}');
     final assetFile = fileResolver.buildAssetUri(ref!.srcUri, relativeTo: enclosingAsset);
@@ -43,16 +48,16 @@ class ElementResolver {
 
     if (ref.type == TopLevelIdentifierType.$variable) {
       final unit = parsedUnit.declarations.whereType<TopLevelVariableDeclaration>().firstWhere(
-        (e) => e.name == ref.identifier,
+        (e) => e.variables.variables.any((v) => v.name.lexeme == ref.identifier),
         orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
       );
-      return (library, unit);
+      return _parsedUnitCache[unitId] = (library, unit);
     } else if (ref.type == TopLevelIdentifierType.$function) {
       final unit = parsedUnit.declarations.whereType<FunctionDeclaration>().firstWhere(
         (e) => e.name.lexeme == ref.identifier,
         orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
       );
-      return (library, unit);
+      return _parsedUnitCache[unitId] = (library, unit);
     }
 
     final unit = parsedUnit.declarations.whereType<NamedCompilationUnitMember>().firstWhereOrNull(
@@ -63,25 +68,30 @@ class ElementResolver {
       throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}');
     } else if (identifier.isPrefixed) {
       final targetIdentifier = identifier.name;
+
       for (final member in unit.childEntities) {
         if (member is FieldDeclaration) {
-          if (member.name == targetIdentifier) {
-            return (library, member);
+          if (member.fields.variables.any((v) => v.name.lexeme == targetIdentifier)) {
+            return _parsedUnitCache[unitId] = (library, member);
+          }
+        } else if (member is ConstructorDeclaration) {
+          if (member.name?.lexeme == targetIdentifier) {
+            return _parsedUnitCache[unitId] = (library, member);
           }
         } else if (member is MethodDeclaration) {
           if (member.name.lexeme == targetIdentifier) {
-            return (library, member);
+            return _parsedUnitCache[unitId] = (library, member);
           }
         } else if (member is EnumConstantDeclaration) {
           if (member.name.lexeme == targetIdentifier) {
-            return (library, member);
+            return _parsedUnitCache[unitId] = (library, member);
           }
         }
       }
-      throw Exception('Identifier $targetIdentifier not found in ${ref.srcUri}');
+      throw Exception('Identifier $targetIdentifier (${identifier.toString()}) not found in ${ref.srcUri}');
     }
 
-    return (library, unit);
+    return _parsedUnitCache[unitId] = (library, unit);
   }
 }
 

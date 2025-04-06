@@ -1,6 +1,8 @@
 part of 'element.dart';
 
-abstract class ExecutableElementImpl extends ElementImpl implements ExecutableElement {
+abstract class ExecutableElementImpl extends ElementImpl
+    with TypeParameterizedElementMixin
+    implements ExecutableElement {
   ExecutableElementImpl({
     required this.name,
     this.isAbstract = false,
@@ -56,7 +58,17 @@ abstract class ExecutableElementImpl extends ElementImpl implements ExecutableEl
   @override
   DartType get returnType => _returnType!;
 
-  void setReturnType(DartType type) {
+  @override
+  ParameterElement? getParameter(String name) {
+    for (final parameter in _parameters) {
+      if (parameter.name == name) {
+        return parameter;
+      }
+    }
+    return null;
+  }
+
+  set returnType(DartType type) {
     _returnType = type;
   }
 
@@ -75,7 +87,7 @@ abstract class ExecutableElementImpl extends ElementImpl implements ExecutableEl
   }
 }
 
-class FunctionElementImpl extends ExecutableElementImpl with TypeParameterizedElementMixin implements FunctionElement {
+class FunctionElementImpl extends ExecutableElementImpl implements FunctionElement {
   FunctionElementImpl({
     required super.name,
     required super.library,
@@ -93,7 +105,7 @@ class FunctionElementImpl extends ExecutableElementImpl with TypeParameterizedEl
   bool get isEntryPoint => name == FunctionElement.kMainFunctionName;
 }
 
-class MethodElementImpl extends ExecutableElementImpl with TypeParameterizedElementMixin implements MethodElement {
+class MethodElementImpl extends ExecutableElementImpl implements MethodElement {
   MethodElementImpl({
     required super.name,
     super.isAbstract,
@@ -105,4 +117,35 @@ class MethodElementImpl extends ExecutableElementImpl with TypeParameterizedElem
     super.isSynchronous,
     required Element enclosingElement,
   }) : super(library: enclosingElement.library, enclosingElement: enclosingElement);
+}
+
+class ConstructorElementImpl extends ExecutableElementImpl implements ConstructorElement {
+  ConstructorElementImpl({
+    required super.name,
+    required Element enclosingElement,
+    required this.isConst,
+    required this.isDefaultConstructor,
+    required this.isFactory,
+    required this.isGenerative,
+    this.redirectedConstructor,
+    this.superConstructor,
+  }) : super(library: enclosingElement.library, enclosingElement: enclosingElement, isAsynchronous: false);
+
+  @override
+  final bool isConst;
+
+  @override
+  final bool isDefaultConstructor;
+
+  @override
+  final bool isFactory;
+
+  @override
+  final bool isGenerative;
+
+  @override
+  final ConstructorElement? redirectedConstructor;
+
+  @override
+  final ConstructorElement? superConstructor;
 }

@@ -9,6 +9,8 @@ abstract class FunctionTypedElement implements TypeParameterizedElement {
 
   /// The type defined by this element.
   FunctionType get type;
+
+  ParameterElement? getParameter(String name);
 }
 
 abstract class ExecutableElement implements FunctionTypedElement {

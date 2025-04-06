@@ -198,6 +198,9 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> {
   }
 
   @override
+  Constant? visitBooleanLiteral(BooleanLiteral node) => ConstBool(node.value);
+
+  @override
   Constant? visitInterpolationString(InterpolationString node) => ConstString(node.value);
 
   @override
@@ -221,7 +224,34 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> {
 
   @override
   Constant? visitMethodInvocation(MethodInvocation node) {
-    return visitNode(node);
+    print('MethodInvocation: ${node.methodName}');
+    final element = _elementResolverVisitor.resolveTopLevelElement(IdentifierRef.from(node.methodName), _library);
+
+    if (element is! InterfaceElement) return Constant.invalid;
+    for (final field in element.fields) {
+      print('${field.name} ${field.constantValue}');
+    }
+
+    Map<String, Constant> argumentValues = {};
+    final argumentList = node.argumentList.arguments;
+    if (argumentList.isNotEmpty) {
+      for (var i = 0; i < argumentList.length; i++) {
+        final arg = argumentList[i];
+        if (arg is NamedExpression) {
+          final name = arg.name.label.name;
+          final value = arg.expression.accept(this);
+          if (value != null) {
+            argumentValues[name] = value;
+          }
+        } else {
+          final value = arg.accept(this);
+          if (value != null) {
+            argumentValues['$i'] = value;
+          }
+        }
+      }
+    }
+    print(argumentValues);
   }
 
   @override
@@ -296,6 +326,10 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> {
 
   @override
   Constant? visitSimpleIdentifier(SimpleIdentifier node) {
+    if (node.parent is VariableDeclaration) {
+      // this coming from initializer of a variable
+      return _getConstantValue(IdentifierRef(node.name), _library);
+    }
     final enclosingNode = node.thisOrAncestorOfType<NamedCompilationUnitMember>();
     return _getConstantValue(IdentifierRef(node.name, enclosingNode?.name.lexeme), _library);
   }
@@ -344,6 +378,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> {
   /// [type].
   Constant _getConstantValue(IdentifierRef ref, LibraryElement library) {
     final (lib, node) = _resolver.astNodeFor(ref, library);
+
     if (node is TopLevelVariableDeclaration) {
       final variable = node.variables.variables.firstWhere(
         (e) => e.name.lexeme == ref.rootName,
@@ -369,7 +404,8 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> {
       final method = tempInterfaceElm.getMethod(node.name.lexeme);
       return ConstFunctionReferenceImpl(node.name.lexeme, method?.type);
     } else if (node is EnumConstantDeclaration) {
-      return ConstEnumValue(node.name.lexeme, '');
+      final enumDeclaration = node.thisOrAncestorOfType<EnumDeclaration>();
+      return ConstEnumValue(enumDeclaration?.name.lexeme ?? '', node.name.lexeme);
     } else if (node is FieldDeclaration) {
       assert(node.isStatic, 'Fields reference in const context should be static');
       final variable = node.fields.variables.firstWhere(
