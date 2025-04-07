@@ -1,5 +1,4 @@
 import 'package:code_genie/test/test.dart';
-part 'test_part.dart';
 
 class TypeT extends RoutePage {}
 
@@ -24,3 +23,5 @@ class Utils {
 class RedirectedClass extends AnnotatedClass {
   RedirectedClass.red();
 }
+
+void funcDecl() {}

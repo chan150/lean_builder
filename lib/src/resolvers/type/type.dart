@@ -3,25 +3,24 @@ import 'package:code_genie/src/resolvers/element/element.dart';
 abstract class DartType {
   String get name;
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) || other is DartType && runtimeType == other.runtimeType && element == other.element;
-
-  @override
-  int get hashCode => 0;
-
-  @override
-  String toString() {
-    return name;
-  }
+  InstantiatedTypeAlias? get alias;
 
   Element get element;
+
+  bool get isNullable;
 
   static final dynamicType = DynamicType();
 
   static final voidType = VoidType();
 
   static final neverType = NeverType();
+}
+
+class InstantiatedTypeAlias {
+  final TypeAliasElement element;
+  final List<DartType> typeArguments;
+
+  InstantiatedTypeAlias(this.element, this.typeArguments);
 }
 
 abstract class ParameterizedType implements DartType {
@@ -54,7 +53,30 @@ abstract class InterfaceType implements ParameterizedType {
   List<InterfaceType> get superclassConstraints;
 }
 
-class InterfaceTypeImpl with ParameterizedTypeMixin implements InterfaceType {
+abstract class DartTypeImpl extends DartType {
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is DartType && runtimeType == other.runtimeType && element == other.element;
+
+  @override
+  int get hashCode => 0;
+
+  @override
+  String toString() {
+    return name + (isNullable ? '?' : '');
+  }
+
+  @override
+  InstantiatedTypeAlias? get alias => _alias;
+
+  InstantiatedTypeAlias? _alias;
+
+  set alias(InstantiatedTypeAlias? value) {
+    _alias = value;
+  }
+}
+
+class InterfaceTypeImpl extends DartTypeImpl with ParameterizedTypeMixin implements InterfaceType {
   @override
   final InterfaceElement element;
 
@@ -84,55 +106,76 @@ class InterfaceTypeImpl with ParameterizedTypeMixin implements InterfaceType {
   @override
   final List<DartType> typeArguments;
 
-  InterfaceTypeImpl(this.element, [this.typeArguments = const []]);
+  @override
+  final InstantiatedTypeAlias? alias;
+
+  @override
+  final bool isNullable;
+
+  InterfaceTypeImpl(this.element, {this.typeArguments = const [], required this.isNullable, this.alias});
 
   @override
   String toString() {
     final buffer = StringBuffer();
     buffer.write(name);
+
     if (typeArguments.isNotEmpty) {
       buffer.write('<');
       buffer.writeAll(typeArguments.map((e) => e.toString()), ', ');
       buffer.write('>');
     }
+    if (isNullable) {
+      buffer.write('?');
+    }
     return buffer.toString();
   }
 }
 
-class TypeParameterType extends DartType {
+class TypeParameterType extends DartTypeImpl {
   final DartType bound;
 
-  TypeParameterType(this.element, this.bound);
+  TypeParameterType(this.element, {required this.bound, required this.isNullable});
 
   @override
   final TypeParameterElement element;
 
   @override
   String get name => element.name;
+  @override
+  final bool isNullable;
 }
 
-class NeverType extends DartType {
+class NeverType extends DartTypeImpl {
   @override
   final String name = 'Never';
 
   @override
   Element get element => Element.nullElement;
+
+  @override
+  bool get isNullable => false;
 }
 
-class VoidType extends DartType {
+class VoidType extends DartTypeImpl {
   @override
   final String name = 'void';
 
   @override
   Element get element => Element.nullElement;
+
+  @override
+  bool get isNullable => false;
 }
 
-class DynamicType extends DartType {
+class DynamicType extends DartTypeImpl {
   @override
   final String name = 'dynamic';
 
   @override
   Element get element => Element.nullElement;
+
+  @override
+  bool get isNullable => true;
 }
 
 abstract class FunctionType implements DartType {
@@ -152,12 +195,15 @@ abstract class FunctionType implements DartType {
   DartType get returnType;
 }
 
-class FunctionTypeImpl implements FunctionType {
+class FunctionTypeImpl extends DartTypeImpl implements FunctionType {
   @override
   final String name;
 
   @override
   NullElement get element => Element.nullElement;
+
+  @override
+  final bool isNullable;
 
   @override
   Map<String, DartType> get namedParameterTypes {
@@ -193,11 +239,16 @@ class FunctionTypeImpl implements FunctionType {
   @override
   final DartType returnType;
 
+  @override
+  final InstantiatedTypeAlias? alias;
+
   FunctionTypeImpl({
     required this.name,
     this.parameters = const [],
     this.typeParameters = const [],
     required this.returnType,
+    required this.isNullable,
+    this.alias,
   });
 
   @override
@@ -225,6 +276,9 @@ class FunctionTypeImpl implements FunctionType {
       buffer.write('}');
     }
     buffer.write(')');
+    if (isNullable) {
+      buffer.write('?');
+    }
     return buffer.toString();
   }
 }

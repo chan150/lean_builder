@@ -32,25 +32,28 @@ void main(List<String> args) async {
     if (asset.hasAnnotation) {
       final assetFile = fileResolver.buildAssetUri(asset.uri);
       final library = resolver.resolveLibrary(assetFile);
+      for (final typeAlias in library.typeAliases) {
+        print('${typeAlias.name}<${typeAlias.typeParameters.map((e) => e.name).join(',')}>: ${typeAlias.aliasedType}');
+      }
 
       for (final clazz in library.classes) {
         print('Class: ${clazz.name} --------------------- *** ');
         print('Fields -----------');
         for (final field in clazz.fields) {
-          print('${field.type} ${field.name} ');
+          print('${field.type} ${field.name}  ${field.constantValue}');
         }
-        print('Params -----------');
-        for (final param in [...?clazz.constructors.firstOrNull?.parameters]) {
-          print('${param.type} ${param.name} ');
-        }
-
-        if (clazz.methods.isNotEmpty) {
-          for (final method in clazz.methods) {
-            for (final param in method.parameters) {
-              print('${param.type} ${param.name} ');
-            }
-          }
-        }
+        // print('Params -----------');
+        // for (final param in [...?clazz.constructors.firstOrNull?.parameters]) {
+        //   print('${param.type} ${param.name} ');
+        // }
+        //
+        // if (clazz.methods.isNotEmpty) {
+        //   for (final method in clazz.methods) {
+        //     for (final param in method.parameters) {
+        //       print('${param.type} ${param.name} ');
+        //     }
+        //   }
+        // }
       }
     }
   }

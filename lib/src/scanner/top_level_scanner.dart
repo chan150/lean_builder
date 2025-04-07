@@ -58,6 +58,16 @@ class TopLevelScanner {
               nextToken = parseTypeDef(nextToken, asset) ?? nextToken;
               break;
             case Keyword.CLASS:
+              if (_isValidName(nextLexeme)) {
+                // it could be a class type alias
+                nextToken = _skipUntilAny(nextToken, {TokenType.OPEN_CURLY_BRACKET, TokenType.SEMICOLON});
+                final type =
+                    nextToken.type == TokenType.SEMICOLON
+                        ? TopLevelIdentifierType.$typeAlias
+                        : TopLevelIdentifierType.$class;
+                results.addDeclaration(nextLexeme, asset, type);
+              }
+              break;
             case Keyword.MIXIN:
             case Keyword.ENUM:
             case Keyword.EXTENSION:
@@ -169,19 +179,22 @@ class TopLevelScanner {
 
     final asset = fileResolver.buildAssetUri(uri, relativeTo: enclosingAsset);
     Token? current = token.next;
-    // Extract show/hide combinators
     final show = <String>[];
     final hide = <String>[];
+    String? prefix;
     var showMode = true;
     var skipNext = false;
 
     for (current; current != null && !current.isEof; current = current.next) {
-      if (skipNext) {
-        skipNext = false;
-        continue;
-      }
+      // if (skipNext) {
+      //   skipNext = false;
+      //   continue;
+      // }
       if (current.type == TokenType.AS) {
-        skipNext = true;
+        current = current.next;
+        prefix = current?.lexeme;
+        if (current?.next == null) break;
+        current = current!.next!;
       } else if (current.type == Keyword.SHOW) {
         showMode = true;
       } else if (current.type == Keyword.HIDE) {
@@ -196,7 +209,7 @@ class TopLevelScanner {
       if (current.type == TokenType.SEMICOLON) break;
     }
 
-    return (DirectiveStatement(type: type, asset: asset, show: show, hide: hide), current);
+    return (DirectiveStatement(type: type, asset: asset, show: show, hide: hide, prefix: prefix), current);
   }
 
   Token? parseTypeDef(Token? token, AssetSrc asset) {
@@ -230,6 +243,13 @@ class TopLevelScanner {
 
   Token _skipUntil(Token current, TokenType until) {
     while (current.type != until && !current.isEof) {
+      current = current.next!;
+    }
+    return current;
+  }
+
+  Token _skipUntilAny(Token current, Set<TokenType> until) {
+    while (!current.isEof && !until.contains(current.type)) {
       current = current.next!;
     }
     return current;

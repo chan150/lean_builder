@@ -89,6 +89,11 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   }
 
   @override
+  TypeAliasElement? getTypeAlias(String name) {
+    return typeAliases.firstWhereOrNull((e) => e.name == name);
+  }
+
+  @override
   FunctionElement? getFunction(String name) {
     return functions.firstWhereOrNull((e) => e.name == name);
   }
@@ -100,6 +105,9 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
 
   @override
   int get hashCode => src.id.hashCode;
+
+  @override
+  Iterable<TypeAliasElement> get typeAliases => resolvedElements.whereType<TypeAliasElement>();
 }
 
 class TypeParameterElementImpl extends ElementImpl implements TypeParameterElement {
@@ -108,9 +116,9 @@ class TypeParameterElementImpl extends ElementImpl implements TypeParameterEleme
   @override
   final String name;
   @override
-  final DartType? bound;
+  final DartType bound;
 
-  TypeParameterElementImpl(this.enclosingElement, this.name, [this.bound]);
+  TypeParameterElementImpl(this.enclosingElement, this.name, this.bound);
 
   @override
   LibraryElement get library => enclosingElement.library;
@@ -134,32 +142,6 @@ mixin TypeParameterizedElementMixin on Element implements TypeParameterizedEleme
     }
     return allTypeParameters;
   }
-}
-
-class TypeAliasElementImpl extends ElementImpl implements TypeParameterizedElement {
-  Element? get aliasedElement => throw UnimplementedError();
-
-  @override
-  Element? get enclosingElement => throw UnimplementedError();
-
-  @override
-  // TODO: implement library
-  LibraryElement get library => throw UnimplementedError();
-
-  @override
-  // TODO: implement name
-  String get name => throw UnimplementedError();
-
-  @override
-  // TODO: implement typeParameters
-  List<TypeParameterElement> get typeParameters => throw UnimplementedError();
-
-  /// The aliased type.
-  ///
-  /// If non-function type aliases feature is enabled for the enclosing library,
-  /// this type might be just anything. If the feature is disabled, return
-  /// a [FunctionType].
-  // DartType get aliasedType;
 }
 
 // abstract class InstanceElementImpl extends InstanceElement implements TypeParameterizedElement {
@@ -310,6 +292,15 @@ abstract class VariableElementImpl extends ElementImpl implements VariableElemen
   Constant? get constantValue => _constantValue ??= computeConstantValue?.call();
 
   Constant? _constantValue;
+
+  @override
+  DartType get type => _type!;
+
+  DartType? _type;
+
+  set type(DartType type) {
+    _type = type;
+  }
 }
 
 class TopLevelVariableElementImpl extends VariableElementImpl implements TopLevelVariableElement {
@@ -321,7 +312,6 @@ class TopLevelVariableElementImpl extends VariableElementImpl implements TopLeve
     required super.isFinal,
     required super.isLate,
     required this.isExternal,
-    required this.type,
   }) : super(isStatic: false);
 
   @override
@@ -329,9 +319,6 @@ class TopLevelVariableElementImpl extends VariableElementImpl implements TopLeve
 
   @override
   LibraryElement get library => enclosingElement.library;
-
-  @override
-  final DartType type;
 }
 
 class FieldElementImpl extends VariableElementImpl implements ClassMemberElement, FieldElement {
@@ -374,7 +361,6 @@ class ParameterElementImpl extends VariableElementImpl implements ParameterEleme
     required super.isConst,
     required super.isFinal,
     required super.isLate,
-    required this.type,
     required this.isCovariant,
     required this.isInitializingFormal,
     required this.isNamed,
@@ -430,9 +416,6 @@ class ParameterElementImpl extends VariableElementImpl implements ParameterEleme
   final bool isSuperFormal;
 
   @override
-  final DartType type;
-
-  @override
   List<ParameterElement> get parameters {
     final type = this.type;
     if (type is FunctionType) {
@@ -484,6 +467,71 @@ class MixinElementImpl extends InterfaceElementImpl implements MixinElement {
 
   void addSuperConstrain(InterfaceType superConstrains) {
     _superConstrains.add(superConstrains);
+  }
+}
+
+class TypeAliasElementImpl extends ElementImpl with TypeParameterizedElementMixin implements TypeAliasElement {
+  TypeAliasElementImpl({required this.name, required this.library});
+
+  @override
+  final String name;
+
+  @override
+  final LibraryElement library;
+
+  @override
+  Element get enclosingElement => library;
+
+  @override
+  Element? get aliasedElement => throw UnimplementedError();
+
+  @override
+  DartType get aliasedType => _aliasedType!;
+
+  DartType? _aliasedType;
+
+  set aliasedType(DartType? aliasedType) {
+    _aliasedType = aliasedType;
+  }
+
+  DartType instantiate({required List<DartType> typeArguments, required bool isNullable}) {
+    var substitution = Substitution.fromPairs(typeParameters, typeArguments);
+    var type = substitution.substituteType(aliasedType);
+    if (type is FunctionType) {
+      return FunctionTypeImpl(
+        // typeFormals: type.typeFormals,
+        name: type.name,
+        parameters: type.parameters,
+        returnType: type.returnType,
+        isNullable: isNullable,
+        alias: InstantiatedTypeAlias(this, typeArguments),
+      );
+    } else if (type is InterfaceType) {
+      return InterfaceTypeImpl(
+        type.element,
+        typeArguments: type.typeArguments,
+        isNullable: isNullable,
+        alias: InstantiatedTypeAlias(this, typeArguments),
+      );
+    }
+    throw 'not supported';
+    //
+    // else if (type is RecordTypeImpl) {
+    //   return RecordTypeImpl(
+    //     positionalFields: type.positionalFields,
+    //     namedFields: type.namedFields,
+    //     nullabilitySuffix: resultNullability,
+    //     alias: InstantiatedTypeAliasElementImpl(element: this, typeArguments: typeArguments),
+    //   );
+    // } else if (type is TypeParameterType) {
+    //   return TypeParameterTypeImpl(
+    //     element: type.element,
+    //     nullabilitySuffix: resultNullability,
+    //     alias: InstantiatedTypeAliasElementImpl(element: this, typeArguments: typeArguments),
+    //   );
+    // } else {
+    //   return (type as DartTypeImpl);
+    // }
   }
 }
 

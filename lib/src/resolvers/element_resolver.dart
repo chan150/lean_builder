@@ -1,5 +1,4 @@
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/dart/element/type.dart';
 import 'package:code_genie/src/resolvers/element/element.dart';
 import 'package:code_genie/src/resolvers/file_asset.dart';
 import 'package:code_genie/src/resolvers/package_file_resolver.dart';
@@ -40,7 +39,13 @@ class ElementResolver {
       return _parsedUnitCache[unitId]!;
     }
 
-    final ref = graph.getIdentifierSrc(identifier.rootName, enclosingAsset.id, requireProvider: false);
+    final ref = graph.getIdentifierSrc(
+      identifier.rootName,
+      enclosingAsset.id,
+      requireProvider: true,
+      importPrefix: identifier.importPrefix,
+    );
+    print('IdentifierRef: ${ref?.identifier}, provider: ${ref?.providerUri}');
     assert(ref != null, 'Identifier $identifier not found in ${enclosingAsset.uri}');
     final assetFile = fileResolver.buildAssetUri(ref!.srcUri, relativeTo: enclosingAsset);
 
@@ -55,6 +60,12 @@ class ElementResolver {
       return _parsedUnitCache[unitId] = (library, unit);
     } else if (ref.type == TopLevelIdentifierType.$function) {
       final unit = parsedUnit.declarations.whereType<FunctionDeclaration>().firstWhere(
+        (e) => e.name.lexeme == ref.identifier,
+        orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
+      );
+      return _parsedUnitCache[unitId] = (library, unit);
+    } else if (ref.type == TopLevelIdentifierType.$typeAlias) {
+      final unit = parsedUnit.declarations.whereType<TypeAlias>().firstWhere(
         (e) => e.name.lexeme == ref.identifier,
         orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
       );
@@ -99,8 +110,9 @@ class ElementResolver {
 class IdentifierRef {
   final String name;
   final String? prefix;
+  final String? importPrefix;
 
-  IdentifierRef(this.name, [this.prefix]);
+  IdentifierRef(this.name, {this.prefix, this.importPrefix});
 
   bool get isPrefixed => prefix != null;
 
@@ -108,9 +120,9 @@ class IdentifierRef {
 
   factory IdentifierRef.from(Identifier identifier) {
     if (identifier is PrefixedIdentifier) {
-      return IdentifierRef(identifier.identifier.name, identifier.prefix.name);
+      return IdentifierRef(identifier.identifier.name, prefix: identifier.prefix.name);
     } else {
-      return IdentifierRef(identifier.name, null);
+      return IdentifierRef(identifier.name);
     }
   }
 
@@ -120,25 +132,4 @@ class IdentifierRef {
   }
 }
 
-class TypeRef<T extends TypeAnnotation> {
-  final T? annotation;
-  final String? nameOverride;
-
-  TypeRef(this.annotation, [this.nameOverride]);
-
-  String get name {
-    if (nameOverride != null) {
-      return nameOverride!;
-    }
-    if (annotation is NamedType) {
-      return (annotation as NamedType).name2.lexeme;
-    } else if (annotation is GenericFunctionType) {
-      return '';
-    } else if (annotation is TypeParameterType) {
-      return (annotation as TypeParameterType).element.name;
-    } else if (annotation is TypeLiteral) {
-      return (annotation as TypeLiteral).type.toString();
-    }
-    throw Exception('Unknown type annotation: ${annotation.runtimeType}');
-  }
-}
+// class FunctionTypeRef extends

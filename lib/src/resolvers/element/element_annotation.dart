@@ -1,4 +1,4 @@
-import 'package:code_genie/src/resolvers/element/element.dart';
+part of 'element.dart';
 
 abstract class ElementAnnotation {
   String get name;

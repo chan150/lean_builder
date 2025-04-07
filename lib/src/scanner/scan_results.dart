@@ -101,8 +101,8 @@ class AssetsScanResults extends ScanResults {
     }
     exporters.add([
       exportedFileHash,
-      if (statement.show.isNotEmpty || statement.hide.isNotEmpty) statement.show,
-      if (statement.hide.isNotEmpty) statement.hide,
+      statement.show.isEmpty ? null : statement.show,
+      statement.hide.isEmpty ? null : statement.hide,
     ]);
     exports[exportingFile.id] = exporters;
   }
@@ -125,8 +125,9 @@ class AssetsScanResults extends ScanResults {
     }
     importsOfFile.add([
       importedFileHash,
-      if (statement.show.isNotEmpty || statement.hide.isNotEmpty) statement.show,
-      if (statement.hide.isNotEmpty) statement.hide,
+      statement.show.isEmpty ? null : statement.show,
+      statement.hide.isEmpty ? null : statement.hide,
+      if (statement.prefix != null) statement.prefix,
     ]);
     imports[importingFile.id] = importsOfFile;
   }

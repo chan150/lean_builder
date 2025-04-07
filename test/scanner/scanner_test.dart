@@ -28,6 +28,7 @@ main() {
     ''');
     scanner.scanFile(file);
     final expected = [
+      ['_privateConst', file.id, TopLevelIdentifierType.$variable.value],
       ['kPi', file.id, TopLevelIdentifierType.$variable.value],
       ['inferredConst', file.id, TopLevelIdentifierType.$variable.value],
       ['constants', file.id, TopLevelIdentifierType.$variable.value],
@@ -97,6 +98,7 @@ main() {
     typedef NamedParams = void Function({required String name, int? age});
     typedef JsonProcessor = void Function(JsonMap data);
     typedef Transformer<T, U> = U Function(T Function(T) processor, T input);
+    class AliasedClass<T> = GenericClass<T> with GenericMixin<T>;
     ''');
     scanner.scanFile(file);
     final expected = [
@@ -117,6 +119,7 @@ main() {
       ['NamedParams', file.id, TopLevelIdentifierType.$typeAlias.value],
       ['JsonProcessor', file.id, TopLevelIdentifierType.$typeAlias.value],
       ['Transformer', file.id, TopLevelIdentifierType.$typeAlias.value],
+      ['AliasedClass', file.id, TopLevelIdentifierType.$typeAlias.value],
     ];
     expect(assetsGraph.identifiers, expected);
   });
@@ -261,7 +264,7 @@ main() {
     expect(assetsGraph.imports.length, 1);
     final importArr = assetsGraph.imports.values.first;
     expect(importArr.length, 1);
-    expect(importArr.first, [file.id]);
+    expect(importArr.first, [file.id, null, null]);
   });
 
   test('Should parse simple import with alias', () {
@@ -270,7 +273,7 @@ main() {
     expect(assetsGraph.imports.length, 1);
     final importArr = assetsGraph.imports.values.first;
     expect(importArr.length, 1);
-    expect(importArr.first, [file.id]);
+    expect(importArr.first, [file.id, null, null, 'i']);
   });
 
   test('Should parse simple import with show', () {
@@ -281,6 +284,7 @@ main() {
     expect(importArr.first, [
       file.id,
       ['A', 'B'],
+      null,
     ]);
   });
 
@@ -291,7 +295,7 @@ main() {
     final importArr = assetsGraph.imports.values.first;
     expect(importArr.first, [
       file.id,
-      [],
+      null,
       ['A', 'B'],
     ]);
   });
@@ -314,7 +318,7 @@ main() {
     expect(assetsGraph.exports.length, 1);
     final exportArr = assetsGraph.exports.values.first;
     expect(exportArr.length, 1);
-    expect(exportArr.first, [file.id]);
+    expect(exportArr.first, [file.id, null, null]);
   });
 
   test('Should parse simple export with show', () {
@@ -325,6 +329,7 @@ main() {
     expect(exportArr.first, [
       file.id,
       ['A', 'B'],
+      null,
     ]);
   });
 
@@ -335,7 +340,7 @@ main() {
     final exportArr = assetsGraph.exports.values.first;
     expect(exportArr.first, [
       file.id,
-      [],
+      null,
       ['A', 'B'],
     ]);
   });
@@ -357,8 +362,8 @@ main() {
     scanner.scanFile(file);
     expect(assetsGraph.imports.length, 1);
     expect(assetsGraph.exports.length, 1);
-    expect(assetsGraph.imports.values.first.first, [file.id]);
-    expect(assetsGraph.exports.values.first.first, [file.id]);
+    expect(assetsGraph.imports.values.first.first, [file.id, null, null]);
+    expect(assetsGraph.exports.values.first.first, [file.id, null, null]);
   });
 
   test('Should ignore part of', () {

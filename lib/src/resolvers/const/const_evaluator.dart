@@ -9,6 +9,7 @@ import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:code_genie/src/resolvers/element/element.dart';
 import 'package:code_genie/src/resolvers/element_resolver.dart';
+import 'package:code_genie/src/resolvers/type/type_ref.dart';
 import 'package:code_genie/src/resolvers/visitor/element_resolver_visitor.dart';
 
 import 'constant.dart';
@@ -332,7 +333,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> {
       return _getConstantValue(IdentifierRef(node.name), _library);
     }
     final enclosingNode = node.thisOrAncestorOfType<NamedCompilationUnitMember>();
-    return _getConstantValue(IdentifierRef(node.name, enclosingNode?.name.lexeme), _library);
+    return _getConstantValue(IdentifierRef(node.name, prefix: enclosingNode?.name.lexeme), _library);
   }
 
   @override
@@ -340,7 +341,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> {
     final value = node.function.accept(this);
     if (value is ConstFunctionReferenceImpl) {
       for (final typeArg in [...?node.typeArguments?.arguments]) {
-        final type = _elementResolverVisitor.resolveType(TypeRef(typeArg), _library);
+        final type = _elementResolverVisitor.resolveType(TypeRef.from(typeArg), _library);
         value.addTypeArgument(type);
       }
     }

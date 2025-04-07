@@ -85,7 +85,12 @@ class AssetsGraph extends AssetsScanResults {
     );
   }
 
-  IdentifierSrc? getIdentifierSrc(String identifier, String rootSrcId, {bool requireProvider = true}) {
+  IdentifierSrc? getIdentifierSrc(
+    String identifier,
+    String rootSrcId, {
+    bool requireProvider = true,
+    String? importPrefix,
+  }) {
     final possibleSrcs = Map<String, int>.fromEntries(
       identifiers.where((e) => e[0] == identifier).map((e) => MapEntry(e[1], e[2])),
     );
@@ -111,6 +116,8 @@ class AssetsGraph extends AssetsScanResults {
       final importedFileHash = importEntry[0] as String;
       final shows = importEntry.elementAtOrNull(1) as List<dynamic>? ?? const [];
       final hides = importEntry.elementAtOrNull(2) as List<dynamic>? ?? const [];
+      final prefix = importEntry.elementAtOrNull(3) as String?;
+      if (importPrefix != null && importPrefix != prefix) continue;
       // Skip if the identifier is hidden or not shown
       if (shows.isNotEmpty && !shows.contains(identifier)) continue;
       if (hides.contains(identifier)) continue;

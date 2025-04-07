@@ -1,4 +1,4 @@
-part of 'test.dart';
+part of 'test2.dart';
 
 class PartX {
   PartX();

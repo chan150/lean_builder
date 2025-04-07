@@ -1,15 +1,9 @@
 import 'package:code_genie/test/test2.dart';
-export 'package:code_genie/test/test2.dart';
-
-typedef FunctionTypeDef = int Function(String str, {int? number});
-typedef FunctionGenericTypeDef<T> = T Function(String str);
-typedef InterfaceTypeDef = List<String>;
-typedef GenericTypeDef<T> = List<T>;
+import 'package:code_genie/test/test3.dart' as test3;
 
 // const annotation = Annotation();
 
 class Annotation {
-  // final num number;
   // final String? str;
   // final String str2 = 'Hello';
   //
@@ -27,15 +21,19 @@ class Annotation {
 // class TestClass {
 //   final String str = 'Hello';
 // }
+// typedef GenericTypeDef<T, S> = Map<Set<T>, S>;
+// typedef FunctionTypeDef = int Function(String str, {int? number});
+// typedef FunctionGenericTypeDef<T> = T Function(T str);
+// typedef InterfaceTypeDef = List<String>;
+// typedef bool ElementPredicate<E>(E element);
 
 @Annotation()
 class AnnotatedClass {
   AnnotatedClass();
 
+  final Function func = test3.funcDecl;
   // final FieldType type = FieldType('Hello', 1);
-  // // final String name = constVar;
-  // // final int age = 30;
-  // // final bool isAlive = true;
+
   // // final List<String> list = ['one', 'two', 'three'];
   // // final double height = 5.6;
   // // final ColorEnum color = ColorEnum.red;
@@ -46,9 +44,9 @@ class AnnotatedClass {
   //
   // void method([String x = 'default']) {}
 
-  factory AnnotatedClass.redirected() = RedirectedClass.red;
-
-  factory AnnotatedClass.redirected2() = AnnotatedClass;
+  // factory AnnotatedClass.redirected() = RedirectedClass.red;
+  //
+  // factory AnnotatedClass.redirected2() = AnnotatedClass;
 }
 
 // class FieldType extends SuperClass {

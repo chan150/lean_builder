@@ -13,8 +13,7 @@ abstract class ExecutableElementImpl extends ElementImpl
     this.isStatic = false,
     this.isSynchronous = true,
     this.hasImplicitReturnType = false,
-    required this.library,
-    this.enclosingElement,
+    required this.enclosingElement,
   });
 
   @override
@@ -42,13 +41,13 @@ abstract class ExecutableElementImpl extends ElementImpl
   final bool isSynchronous;
 
   @override
-  final Element? enclosingElement;
+  final Element enclosingElement;
 
   @override
   final bool hasImplicitReturnType;
 
   @override
-  final LibraryElement library;
+  LibraryElement get library => enclosingElement.library;
 
   @override
   List<ParameterElement> get parameters => _parameters;
@@ -90,7 +89,6 @@ abstract class ExecutableElementImpl extends ElementImpl
 class FunctionElementImpl extends ExecutableElementImpl implements FunctionElement {
   FunctionElementImpl({
     required super.name,
-    required super.library,
     super.isAbstract,
     super.isAsynchronous,
     super.isExternal,
@@ -98,7 +96,7 @@ class FunctionElementImpl extends ExecutableElementImpl implements FunctionEleme
     super.isOperator,
     super.isStatic,
     super.isSynchronous,
-    super.enclosingElement,
+    required super.enclosingElement,
   });
 
   @override
@@ -115,20 +113,20 @@ class MethodElementImpl extends ExecutableElementImpl implements MethodElement {
     super.isOperator,
     super.isStatic,
     super.isSynchronous,
-    required Element enclosingElement,
-  }) : super(library: enclosingElement.library, enclosingElement: enclosingElement);
+    required super.enclosingElement,
+  });
 }
 
 class ConstructorElementImpl extends ExecutableElementImpl implements ConstructorElement {
   ConstructorElementImpl({
     required super.name,
-    required Element enclosingElement,
+    required super.enclosingElement,
     required this.isConst,
     required this.isDefaultConstructor,
     required this.isFactory,
     required this.isGenerative,
     this.superConstructor,
-  }) : super(library: enclosingElement.library, enclosingElement: enclosingElement, isAsynchronous: false);
+  }) : super(isAsynchronous: false);
 
   @override
   final bool isConst;

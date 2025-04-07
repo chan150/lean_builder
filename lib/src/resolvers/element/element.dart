@@ -1,12 +1,18 @@
-import 'package:analyzer/dart/element/element.dart';
 import 'package:code_genie/src/resolvers/const/constant.dart';
 import 'package:code_genie/src/resolvers/file_asset.dart';
 import 'package:code_genie/src/resolvers/type/type.dart';
 import 'package:collection/collection.dart';
 
+import '../type/substitution.dart';
+
+part 'element_annotation.dart';
+
 part 'executable_element.dart';
+
 part 'element_impl.dart';
+
 part 'executable_element_impl.dart';
+
 part 'directive_element.dart';
 
 abstract class Element {
@@ -27,7 +33,7 @@ abstract class Element {
 }
 
 abstract class TypeParameterElement implements Element {
-  DartType? get bound;
+  DartType get bound;
 }
 
 abstract class TypeParameterizedElement extends Element {
@@ -36,13 +42,7 @@ abstract class TypeParameterizedElement extends Element {
 
 abstract class TypeAliasElement implements TypeParameterizedElement {
   Element? get aliasedElement;
-
-  /// The aliased type.
-  ///
-  /// If non-function type aliases feature is enabled for the enclosing library,
-  /// this type might be just anything. If the feature is disabled, return
-  /// a [FunctionType].
-  // DartType get aliasedType;
+  DartType get aliasedType;
 }
 
 abstract class InstanceElement extends Element implements TypeParameterizedElement {
@@ -84,6 +84,8 @@ abstract class LibraryElement extends Element {
 
   Iterable<FunctionElement> get functions;
 
+  Iterable<TypeAliasElement> get typeAliases;
+
   ClassElementImpl? getClass(String name);
 
   InterfaceElement? getInterfaceElement(String name);
@@ -95,6 +97,8 @@ abstract class LibraryElement extends Element {
   EnumElementImpl? getEnum(String name);
 
   FunctionElement? getFunction(String name);
+
+  TypeAliasElement? getTypeAlias(String name);
 }
 
 abstract class VariableElement extends Element {

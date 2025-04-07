@@ -7,8 +7,15 @@ class DirectiveStatement {
   final AssetSrc asset;
   final List<String> show;
   final List<String> hide;
+  final String? prefix;
 
-  DirectiveStatement({required this.type, required this.asset, this.show = const [], this.hide = const []});
+  DirectiveStatement({
+    required this.type,
+    required this.asset,
+    this.show = const [],
+    this.hide = const [],
+    this.prefix,
+  });
 
   bool shows(String identifier) => show.contains(identifier);
 
