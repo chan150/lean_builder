@@ -18,10 +18,11 @@ class TopLevelScanner {
   void scanFile(AssetSrc asset) {
     try {
       if (results.isVisited(asset.id)) return;
+      print('Scanning ${asset.uri}');
       final bytes = asset.readAsBytesSync();
       results.addAsset(asset);
       var token = fasta.scan(bytes).tokens;
-      final directives = <DirectiveStatement>{};
+
       bool hasTopLevelAnnotation = false;
 
       while (!token.isEof && token.next != null) {
@@ -46,13 +47,11 @@ class TopLevelScanner {
             case Keyword.IMPORT:
             case Keyword.EXPORT:
             case Keyword.PART:
-              if (type != Keyword.PART || nextToken.type != Keyword.OF) {
-                final (directive, nextT) = _tryParseDirective(type, nextToken, asset);
-                if (directive != null) {
-                  directives.add(directive);
-                }
-                nextToken = nextT ?? nextToken;
+              final (directive, nextT) = _tryParseDirective(type, nextToken, asset);
+              if (directive != null) {
+                results.addDirective(asset, directive);
               }
+              nextToken = nextT ?? nextToken;
               break;
             case Keyword.TYPEDEF:
               nextToken = parseTypeDef(nextToken, asset) ?? nextToken;
@@ -89,18 +88,7 @@ class TopLevelScanner {
 
         token = nextToken;
       }
-      results.updateFileInfo(asset, content: bytes, hasAnnotation: hasTopLevelAnnotation);
-
-      for (final directive in directives) {
-        if (directive.type == Keyword.EXPORT) {
-          results.addExport(asset, directive);
-        } else if (directive.type == Keyword.PART) {
-          results.addExport(asset, directive);
-          results.addImport(asset, directive);
-        } else {
-          results.addImport(asset, directive);
-        }
-      }
+      results.updateAssetInfo(asset, content: bytes, hasAnnotation: hasTopLevelAnnotation);
     } catch (e) {
       print('Error scanning file: ${asset.path}');
       // if (e is Error) {
@@ -165,31 +153,35 @@ class TopLevelScanner {
     }
   }
 
-  (DirectiveStatement?, Token? endToken) _tryParseDirective(TokenType type, Token token, AssetSrc enclosingAsset) {
-    final lexeme = token.lexeme;
-    if (lexeme.length < 3) {
+  (DirectiveStatement?, Token? endToken) _tryParseDirective(TokenType keyword, Token token, AssetSrc enclosingAsset) {
+    String uriString = token.lexeme;
+    Token? current = token.next;
+    bool hasOf = false;
+
+    if (keyword == Keyword.PART && token.type == Keyword.OF) {
+      hasOf = true;
+      uriString = current?.lexeme ?? '';
+      current = current?.next;
+    }
+    if (uriString.length < 3) {
       return (null, _skipUntil(token, TokenType.SEMICOLON));
     }
-    final url = lexeme.substring(1, lexeme.length - 1);
+
+    final url = uriString.substring(1, uriString.length - 1);
     final uri = Uri.parse(url);
     // skip private package imports
+
     if (uri.scheme == 'package' && uri.path.isNotEmpty && uri.path[0] == '_') {
       return (null, _skipUntil(token, TokenType.SEMICOLON));
     }
 
     final asset = fileResolver.buildAssetUri(uri, relativeTo: enclosingAsset);
-    Token? current = token.next;
+
     final show = <String>[];
     final hide = <String>[];
     String? prefix;
     var showMode = true;
-    var skipNext = false;
-
     for (current; current != null && !current.isEof; current = current.next) {
-      // if (skipNext) {
-      //   skipNext = false;
-      //   continue;
-      // }
       if (current.type == TokenType.AS) {
         current = current.next;
         prefix = current?.lexeme;
@@ -208,6 +200,13 @@ class TopLevelScanner {
       }
       if (current.type == TokenType.SEMICOLON) break;
     }
+
+    final type = switch (keyword) {
+      Keyword.IMPORT => DirectiveStatement.import,
+      Keyword.EXPORT => DirectiveStatement.export,
+      Keyword.PART => hasOf ? DirectiveStatement.partOf : DirectiveStatement.part,
+      _ => throw UnimplementedError('Unknown directive type: $keyword'),
+    };
 
     return (DirectiveStatement(type: type, asset: asset, show: show, hide: hide, prefix: prefix), current);
   }

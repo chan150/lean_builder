@@ -1,4 +1,4 @@
-import 'package:code_genie/test/test.dart';
+import 'package:code_genie/test/test.dart' as test;
 part 'test_part.dart';
 
 class TypeT extends RoutePage {}

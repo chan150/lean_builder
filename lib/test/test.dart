@@ -1,5 +1,6 @@
-import 'package:code_genie/test/test2.dart';
+import 'package:code_genie/test/test2.dart' as test2;
 import 'package:code_genie/test/test3.dart' as test3;
+import 'package:code_genie/test/test3.dart' as test3_2;
 
 // const annotation = Annotation();
 
@@ -31,7 +32,7 @@ class Annotation {
 class AnnotatedClass {
   AnnotatedClass();
 
-  final Function func = test3.funcDecl;
+  final Function func = funcDecl;
   // final FieldType type = FieldType('Hello', 1);
 
   // // final List<String> list = ['one', 'two', 'three'];

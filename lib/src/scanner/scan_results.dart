@@ -14,20 +14,28 @@ abstract class ScanResults {
   // [identifier, srcHash]
   List<List<dynamic>> get identifiers;
 
-  // [exporting file, [exported file, show, hide]]
-  Map<String, List<List<dynamic>>> get exports;
+  // All kinds of directives inside the file
+  // export, import, part, part of
+  // [exporting file, [type, uri, show, hide, prefix]]
+  Map<String, List<List<dynamic>>> get directives;
 
-  // [importing file, [imported file, show, hide]]
-  Map<String, List<List<dynamic>>> get imports;
+  // [exporting file, [exported file, show, hide]]
+  List<List<dynamic>> exportsOf(String fileId, {bool includeParts = true});
+
+  // [exporting file, [exported file, show, hide]]
+  List<List<dynamic>> partsOf(String fileId);
+
+  List<dynamic>? partOfOf(String fileId);
+
+  // [importing file, [imported file, show, hide, prefix]]
+  List<List<dynamic>> importsOf(String fileId, {bool includeParts = true});
 
   // Set of visited assets
   Set<String> get visitedAssets;
 
   bool isVisited(String fileId);
 
-  void addImport(AssetSrc importingFile, DirectiveStatement statement);
-
-  void addExport(AssetSrc exportingFile, DirectiveStatement statement);
+  void addDirective(AssetSrc exportingFile, DirectiveStatement statement);
 
   void merge(ScanResults results);
 
@@ -37,7 +45,11 @@ abstract class ScanResults {
 
   void removeAsset(String id);
 
-  void updateFileInfo(AssetSrc asset, {required Uint8List content, bool hasAnnotation = false});
+  void updateAssetInfo(AssetSrc asset, {required Uint8List content, bool hasAnnotation = false});
+
+  bool isPart(String id);
+
+  Set<String> importPrefixesOf(String id);
 }
 
 class AssetsScanResults extends ScanResults {
@@ -50,10 +62,50 @@ class AssetsScanResults extends ScanResults {
   final List<List<dynamic>> identifiers = [];
 
   @override
-  final Map<String, List<List<dynamic>>> exports = {};
+  List<List<dynamic>> exportsOf(String fileId, {bool includeParts = true}) {
+    final fileDirectives = directives[fileId];
+    if (fileDirectives == null) return [];
+    return List.of(
+      fileDirectives.where((e) {
+        if (e[0] == DirectiveStatement.export) {
+          return true;
+        } else if (includeParts && e[0] == DirectiveStatement.part) {
+          return true;
+        }
+        return false;
+      }),
+    );
+  }
 
   @override
-  final Map<String, List<List<dynamic>>> imports = {};
+  List<List<dynamic>> partsOf(String fileId) {
+    final fileDirectives = directives[fileId];
+    if (fileDirectives == null) return const [];
+    return List.of(fileDirectives.where((e) => e[0] == DirectiveStatement.part));
+  }
+
+  @override
+  List<dynamic>? partOfOf(String fileId) {
+    final fileDirectives = directives[fileId];
+    if (fileDirectives == null) return null;
+    return fileDirectives.where((e) => e[0] == DirectiveStatement.partOf).firstOrNull;
+  }
+
+  @override
+  List<List<dynamic>> importsOf(String fileId, {bool includeParts = true}) {
+    final fileDirectives = directives[fileId];
+    if (fileDirectives == null) return const [];
+    return List.of(
+      fileDirectives.where((e) {
+        if (e[0] == DirectiveStatement.import) {
+          return true;
+        } else if (includeParts && e[0] == DirectiveStatement.part) {
+          return true;
+        }
+        return false;
+      }),
+    );
+  }
 
   @override
   final Set<String> visitedAssets = {};
@@ -67,10 +119,41 @@ class AssetsScanResults extends ScanResults {
 
   @override
   void merge(ScanResults results) {
-    assets.addAll(results.assets);
+    for (final asset in results.assets.entries) {
+      if (assets[asset.key]?[1] == null) {
+        assets[asset.key] = asset.value;
+      }
+    }
+
     identifiers.addAll(results.identifiers);
-    exports.addAll(results.exports);
-    imports.addAll(results.imports);
+    for (final directive in results.directives.entries) {
+      if (!directives.containsKey(directive.key)) {
+        directives[directive.key] = directive.value;
+      } else {
+        final newDirectives = directive.value;
+        final allDirections = directives[directive.key]!;
+        for (final newDir in newDirectives) {
+          bool isDuplicate = false;
+          for (final exDir in allDirections) {
+            if (newDir[0] == exDir[0] &&
+                newDir[1] == exDir[1] &&
+                (newDir[0] > DirectiveStatement.export ||
+                    (_listEquals(newDir[2], exDir[2]) &&
+                        _listEquals(newDir[3], exDir[3]) &&
+                        newDir.elementAtOrNull(4) == exDir.elementAtOrNull(4)))) {
+              isDuplicate = true;
+              break;
+            }
+          }
+          // If the directive already exists, skip adding it
+          if (!isDuplicate) {
+            allDirections.add(newDir);
+          }
+        }
+        directives[directive.key] = allDirections;
+      }
+    }
+
     visitedAssets.addAll(results.visitedAssets);
   }
 
@@ -84,52 +167,41 @@ class AssetsScanResults extends ScanResults {
   }
 
   @override
-  void addExport(AssetSrc exportingFile, DirectiveStatement statement) {
-    assert(assets.containsKey(exportingFile.id));
-    final exportedFileHash = addAsset(statement.asset, isVisited: false);
-    final exporters = exports[exportingFile.id] ?? [];
-    if (exporters.isNotEmpty) {
-      for (final exporter in exporters) {
-        final shows = exporter.elementAtOrNull(1);
-        final hides = exporter.elementAtOrNull(2);
-        if (exporter[0] == exportedFileHash &&
-            _listEquals(shows, statement.show) &&
-            _listEquals(hides, statement.hide)) {
-          return;
-        }
-      }
-    }
-    exporters.add([
-      exportedFileHash,
-      statement.show.isEmpty ? null : statement.show,
-      statement.hide.isEmpty ? null : statement.hide,
-    ]);
-    exports[exportingFile.id] = exporters;
-  }
+  void addDirective(AssetSrc src, DirectiveStatement statement) {
+    assert(assets.containsKey(src.id));
+    final directiveHash = addAsset(statement.asset, isVisited: false);
+    final srcDirectives = directives[src.id] ?? [];
+    if (srcDirectives.isNotEmpty) {
+      for (final directive in srcDirectives) {
+        final directiveType = directive.elementAtOrNull(0);
 
-  @override
-  void addImport(AssetSrc importingFile, DirectiveStatement statement) {
-    assert(assets.containsKey(importingFile.id));
-    final importedFileHash = addAsset(statement.asset, isVisited: false);
-    final importsOfFile = imports[importingFile.id] ?? [];
-    if (importsOfFile.isNotEmpty) {
-      for (final importedFile in importsOfFile) {
-        final shows = importedFile.elementAtOrNull(1);
-        final hides = importedFile.elementAtOrNull(2);
-        if (importedFile[0] == importedFileHash &&
+        /// return early if the directive is already present
+        if (directiveType == DirectiveStatement.part &&
+            statement.type == DirectiveStatement.partOf &&
+            directive[1] == statement.asset.id) {
+          return;
+        }
+
+        final shows = directive.elementAtOrNull(2);
+        final hides = directive.elementAtOrNull(3);
+        final prefix = directive.elementAtOrNull(4);
+        if (directive[1] == directiveHash &&
+            directiveType == statement.type &&
+            prefix == statement.prefix &&
             _listEquals(shows, statement.show) &&
             _listEquals(hides, statement.hide)) {
           return;
         }
       }
     }
-    importsOfFile.add([
-      importedFileHash,
+    srcDirectives.add([
+      statement.type,
+      directiveHash,
       statement.show.isEmpty ? null : statement.show,
       statement.hide.isEmpty ? null : statement.hide,
       if (statement.prefix != null) statement.prefix,
     ]);
-    imports[importingFile.id] = importsOfFile;
+    directives[src.id] = srcDirectives;
   }
 
   @override
@@ -153,7 +225,7 @@ class AssetsScanResults extends ScanResults {
   }
 
   @override
-  void updateFileInfo(AssetSrc asset, {required Uint8List content, bool hasAnnotation = false}) {
+  void updateAssetInfo(AssetSrc asset, {required Uint8List content, bool hasAnnotation = false}) {
     assert(assets.containsKey(asset.id), 'Asset not found: $asset');
     final assetArr = assets[asset.id]!;
     assetArr[1] = xxh3String(content);
@@ -164,28 +236,25 @@ class AssetsScanResults extends ScanResults {
   void removeAsset(String id) {
     assets.remove(id);
     visitedAssets.remove(id);
-    // remove all exports that reference this asset
-    exports.removeWhere((key, value) {
-      value.removeWhere((element) => element[0] == id);
+    // remove all directives that reference this asset
+    directives.removeWhere((key, value) {
+      value.removeWhere((element) => element[1] == id);
       return value.isEmpty;
     });
-    imports.remove(id);
+    directives.remove(id);
     // remove all identifiers that reference this asset
     identifiers.removeWhere((element) => element[1] == id);
   }
 
   Map<String, dynamic> toJson() {
-    return {'assets': assets, 'identifiers': identifiers, 'exports': exports, 'imports': imports};
+    return {'assets': assets, 'identifiers': identifiers, 'directives': directives};
   }
 
   static T populate<T extends ScanResults>(T instance, Map<String, dynamic> json) {
     instance.assets.addAll((json['assets'] as Map<String, dynamic>).cast<String, List<dynamic>>());
     instance.visitedAssets.addAll(instance.assets.keys);
-    for (final export in json['exports'].entries) {
-      instance.exports[export.key] = (export.value as List<dynamic>).cast<List<dynamic>>();
-    }
-    for (final import in json['imports'].entries) {
-      instance.imports[import.key] = (import.value as List<dynamic>).cast<List<dynamic>>();
+    for (final directive in json['directives'].entries) {
+      instance.directives[directive.key] = (directive.value as List<dynamic>).cast<List<dynamic>>();
     }
     instance.identifiers.addAll((json['identifiers'] as List<dynamic>).cast<List<dynamic>>());
     return instance;
@@ -193,6 +262,32 @@ class AssetsScanResults extends ScanResults {
 
   factory AssetsScanResults.fromJson(Map<String, dynamic> json) {
     return populate(AssetsScanResults(), json);
+  }
+
+  @override
+  final Map<String, List<List>> directives = {};
+
+  @override
+  String toString() {
+    return 'AssetsScanResults{assets: $assets, identifiers: $identifiers, directives: $directives}';
+  }
+
+  @override
+  Set<String> importPrefixesOf(String id) {
+    final prefixes = <String>{};
+    final targetSrc = partOfOf(id)?.elementAtOrNull(1) ?? id;
+    for (final import in importsOf(targetSrc, includeParts: false)) {
+      final prefix = import.elementAtOrNull(4);
+      if (prefix != null) {
+        prefixes.add(prefix);
+      }
+    }
+    return prefixes;
+  }
+
+  @override
+  bool isPart(String id) {
+    return partOfOf(id) != null;
   }
 }
 

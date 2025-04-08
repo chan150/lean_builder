@@ -4,7 +4,8 @@ import 'dart:typed_data';
 import 'package:code_genie/src/resolvers/file_asset.dart';
 
 class AssetFileMock extends AssetSrc {
-  AssetFileMock(this.content) : super(File('mock/path'), Uri.parse('mock/path'), 'mock-test-hash', false);
+  AssetFileMock(this.content, {String id = 'mock-test-hash'})
+    : super(File('mock/path'), Uri.parse('mock/path'), id, false);
 
   final String content;
 

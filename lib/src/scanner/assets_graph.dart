@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:code_genie/src/scanner/directive_statement.dart';
 import 'package:code_genie/src/scanner/scan_results.dart';
 import 'package:collection/collection.dart';
 import 'package:xxh3/xxh3.dart';
@@ -16,6 +17,7 @@ class AssetsGraph extends AssetsScanResults {
   AssetsGraph._fromCache(this.packagesHash) : loadedFromCache = true;
 
   late final _coreImportId = xxh3String(Uint8List.fromList('dart:core/core.dart'.codeUnits));
+  late final _coreImport = [DirectiveStatement.import, _coreImportId];
 
   factory AssetsGraph.init(String packagesHash) {
     if (cacheFile.existsSync()) {
@@ -46,19 +48,19 @@ class AssetsGraph extends AssetsScanResults {
     return Uri.parse(asset![0]);
   }
 
-  List<ScannedAsset> getDependentsOf(String pathHash) {
-    final effectedAssets = <ScannedAsset>[];
-    for (final entry in imports.entries) {
-      for (final importedFile in entry.value) {
-        if (importedFile[0] == pathHash) {
-          final asset = assets[entry.key]![0];
-          final uri = Uri.parse(asset);
-          effectedAssets.add(ScannedAsset(entry.key, uri, asset[1], asset[2] == 1));
-        }
-      }
-    }
-    return effectedAssets;
-  }
+  // List<ScannedAsset> getDependentsOf(String pathHash) {
+  //   final effectedAssets = <ScannedAsset>[];
+  //   for (final entry in imports.entries) {
+  //     for (final importedFile in entry.value) {
+  //       if (importedFile[0] == pathHash) {
+  //         final asset = assets[entry.key]![0];
+  //         final uri = Uri.parse(asset);
+  //         effectedAssets.add(ScannedAsset(entry.key, uri, asset[1], asset[2] == 1));
+  //       }
+  //     }
+  //   }
+  //   return effectedAssets;
+  // }
 
   List<ScannedAsset> getAssetsForPackage(String package) {
     final assets = <ScannedAsset>[];
@@ -108,15 +110,12 @@ class AssetsGraph extends AssetsScanResults {
     }
 
     // Check all imports of the source file
-    final fileImports = [
-      if (assets.containsKey(_coreImportId)) [_coreImportId],
-      ...?imports[rootSrcId],
-    ];
+    final fileImports = [if (assets.containsKey(_coreImportId)) _coreImport, ...importsOf(rootSrcId)];
     for (final importEntry in fileImports) {
-      final importedFileHash = importEntry[0] as String;
-      final shows = importEntry.elementAtOrNull(1) as List<dynamic>? ?? const [];
-      final hides = importEntry.elementAtOrNull(2) as List<dynamic>? ?? const [];
-      final prefix = importEntry.elementAtOrNull(3) as String?;
+      final importedFileHash = importEntry[1] as String;
+      final shows = importEntry.elementAtOrNull(2) as List<dynamic>? ?? const [];
+      final hides = importEntry.elementAtOrNull(3) as List<dynamic>? ?? const [];
+      final prefix = importEntry.elementAtOrNull(4) as String?;
       if (importPrefix != null && importPrefix != prefix) continue;
       // Skip if the identifier is hidden or not shown
       if (shows.isNotEmpty && !shows.contains(identifier)) continue;
@@ -153,11 +152,11 @@ class AssetsGraph extends AssetsScanResults {
     assert(assets.containsKey(fileHash));
     providers.add(fileHash);
     // Check all files that export this file
-    final fileExports = exports[fileHash] ?? [];
+    final fileExports = exportsOf(fileHash);
     for (final expEntry in fileExports) {
-      final exportedFileHash = expEntry[0];
-      final shows = expEntry.elementAtOrNull(1) as List<dynamic>? ?? const [];
-      final hides = expEntry.elementAtOrNull(2) as List<dynamic>? ?? const [];
+      final exportedFileHash = expEntry[1];
+      final shows = expEntry.elementAtOrNull(2) as List<dynamic>? ?? const [];
+      final hides = expEntry.elementAtOrNull(3) as List<dynamic>? ?? const [];
       if (hides.contains(identifier)) continue;
       if (shows.contains(identifier)) {
         return;
@@ -180,7 +179,7 @@ class AssetsGraph extends AssetsScanResults {
 
   Map<String, String> getExposedIdentifiersInside(String fileHash) {
     final identifiers = <String, String>{};
-    for (final importArr in imports[fileHash] ?? []) {
+    for (final importArr in importsOf(fileHash)) {
       final importedIdentifiers = identifiersForAsset(importArr[0]);
       for (final identifier in importedIdentifiers) {
         identifiers[identifier] = importArr[0];
@@ -194,8 +193,7 @@ class AssetsGraph extends AssetsScanResults {
     return {
       'assets': assets,
       'identifiers': identifiers,
-      'exports': exports,
-      'imports': imports,
+      'directives': directives,
       'version': version,
       'packagesHash': packagesHash,
     };

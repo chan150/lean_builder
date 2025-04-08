@@ -61,7 +61,7 @@ class IsolateTLScanner {
     if (!assetsGraph.loadedFromCache) {
       await scanWithIsolates(assetsList, fileResolver.toJson());
     } else {
-      // Use single-threaded approach incremental updates
+      // Use single-threaded approach for incremental updates
       final scanner = TopLevelScanner(assetsGraph, fileResolver);
       for (final asset in assetsList) {
         scanner.scanFile(asset);

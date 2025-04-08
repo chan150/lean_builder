@@ -3,7 +3,12 @@ import 'package:analyzer/dart/ast/token.dart';
 import '../resolvers/file_asset.dart';
 
 class DirectiveStatement {
-  final TokenType type;
+  static const int import = 0;
+  static const int export = 1;
+  static const int part = 2;
+  static const int partOf = 3;
+
+  final int type;
   final AssetSrc asset;
   final List<String> show;
   final List<String> hide;

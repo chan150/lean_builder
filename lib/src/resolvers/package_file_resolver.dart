@@ -182,6 +182,7 @@ class PackageFileResolverImpl implements PackageFileResolver {
 
   @override
   AssetSrc buildAssetUri(Uri uri, {AssetSrc? relativeTo}) {
+    assert(!uri.hasEmptyPath, 'URI path cannot be empty');
     final absoluteUri = resolveFileUri(uri, relativeTo: relativeTo?.uri);
     final packageName = packageFor(absoluteUri);
     final shortUri = toShortUri(absoluteUri);

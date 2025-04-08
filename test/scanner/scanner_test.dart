@@ -1,4 +1,5 @@
 import 'package:code_genie/src/scanner/assets_graph.dart';
+import 'package:code_genie/src/scanner/directive_statement.dart';
 import 'package:code_genie/src/scanner/scan_results.dart';
 import 'package:code_genie/src/scanner/top_level_scanner.dart';
 import 'package:test/expect.dart';
@@ -261,27 +262,27 @@ main() {
   test('Should parse simple import', () {
     final file = AssetFileMock("import 'path.dart';");
     scanner.scanFile(file);
-    expect(assetsGraph.imports.length, 1);
-    final importArr = assetsGraph.imports.values.first;
-    expect(importArr.length, 1);
-    expect(importArr.first, [file.id, null, null]);
+    final imports = assetsGraph.importsOf(file.id);
+    expect(imports.length, 1);
+    final importArr = imports.first;
+    expect(importArr, [DirectiveStatement.import, file.id, null, null]);
   });
 
   test('Should parse simple import with alias', () {
     final file = AssetFileMock("import 'path.dart' as i;");
     scanner.scanFile(file);
-    expect(assetsGraph.imports.length, 1);
-    final importArr = assetsGraph.imports.values.first;
-    expect(importArr.length, 1);
-    expect(importArr.first, [file.id, null, null, 'i']);
+    final imports = assetsGraph.importsOf(file.id);
+    expect(imports.length, 1);
+    expect(imports.first, [DirectiveStatement.import, file.id, null, null, 'i']);
   });
 
   test('Should parse simple import with show', () {
     final file = AssetFileMock("import 'path.dart' show A, B;");
     scanner.scanFile(file);
-    expect(assetsGraph.imports.length, 1);
-    final importArr = assetsGraph.imports.values.first;
-    expect(importArr.first, [
+    final imports = assetsGraph.importsOf(file.id);
+    expect(imports.length, 1);
+    expect(imports.first, [
+      DirectiveStatement.import,
       file.id,
       ['A', 'B'],
       null,
@@ -291,9 +292,9 @@ main() {
   test('Should parse simple import with hide', () {
     final file = AssetFileMock("import 'path.dart' hide A, B;");
     scanner.scanFile(file);
-    expect(assetsGraph.imports.length, 1);
-    final importArr = assetsGraph.imports.values.first;
-    expect(importArr.first, [
+    final imports = assetsGraph.importsOf(file.id);
+    expect(imports.first, [
+      DirectiveStatement.import,
       file.id,
       null,
       ['A', 'B'],
@@ -303,9 +304,10 @@ main() {
   test('Should parse simple import with show and hide', () {
     final file = AssetFileMock("import 'path.dart' show A, B hide C, D;");
     scanner.scanFile(file);
-    expect(assetsGraph.imports.length, 1);
-    final importArr = assetsGraph.imports.values.first;
-    expect(importArr.first, [
+    final imports = assetsGraph.importsOf(file.id);
+    expect(imports.length, 1);
+    expect(imports.first, [
+      DirectiveStatement.import,
       file.id,
       ['A', 'B'],
       ['C', 'D'],
@@ -315,18 +317,16 @@ main() {
   test('Should parse simple export', () {
     final file = AssetFileMock("export 'path.dart';");
     scanner.scanFile(file);
-    expect(assetsGraph.exports.length, 1);
-    final exportArr = assetsGraph.exports.values.first;
-    expect(exportArr.length, 1);
-    expect(exportArr.first, [file.id, null, null]);
+    final exports = assetsGraph.exportsOf(file.id);
+    expect(exports.first, [DirectiveStatement.export, file.id, null, null]);
   });
 
   test('Should parse simple export with show', () {
     final file = AssetFileMock("export 'path.dart' show A, B;");
     scanner.scanFile(file);
-    expect(assetsGraph.exports.length, 1);
-    final exportArr = assetsGraph.exports.values.first;
-    expect(exportArr.first, [
+    final exports = assetsGraph.exportsOf(file.id);
+    expect(exports.first, [
+      DirectiveStatement.export,
       file.id,
       ['A', 'B'],
       null,
@@ -336,9 +336,9 @@ main() {
   test('Should parse simple export with hide', () {
     final file = AssetFileMock("export 'path.dart' hide A, B;");
     scanner.scanFile(file);
-    expect(assetsGraph.exports.length, 1);
-    final exportArr = assetsGraph.exports.values.first;
-    expect(exportArr.first, [
+    final exports = assetsGraph.exportsOf(file.id);
+    expect(exports.first, [
+      DirectiveStatement.export,
       file.id,
       null,
       ['A', 'B'],
@@ -348,9 +348,9 @@ main() {
   test('Should parse simple export with show and hide', () {
     final file = AssetFileMock("export 'path.dart' show A, B hide C, D;");
     scanner.scanFile(file);
-    expect(assetsGraph.exports.length, 1);
-    final exportArr = assetsGraph.exports.values.first;
-    expect(exportArr.first, [
+    final exports = assetsGraph.exportsOf(file.id);
+    expect(exports.first, [
+      DirectiveStatement.export,
       file.id,
       ['A', 'B'],
       ['C', 'D'],
@@ -360,17 +360,18 @@ main() {
   test('Should parse simple part', () {
     final file = AssetFileMock("part 'path.dart';");
     scanner.scanFile(file);
-    expect(assetsGraph.imports.length, 1);
-    expect(assetsGraph.exports.length, 1);
-    expect(assetsGraph.imports.values.first.first, [file.id, null, null]);
-    expect(assetsGraph.exports.values.first.first, [file.id, null, null]);
+    final imports = assetsGraph.importsOf(file.id);
+    final exports = assetsGraph.exportsOf(file.id);
+    final parts = assetsGraph.partsOf(file.id);
+    expect(imports.first, [DirectiveStatement.part, file.id, null, null]);
+    expect(exports.first, [DirectiveStatement.part, file.id, null, null]);
+    expect(parts.first, [DirectiveStatement.part, file.id, null, null]);
   });
 
-  test('Should ignore part of', () {
+  test('Should parse part of', () {
     final file = AssetFileMock("part of 'path.dart';");
     scanner.scanFile(file);
-    expect(assetsGraph.imports.isEmpty, true);
-    expect(assetsGraph.exports.isEmpty, true);
+    expect(assetsGraph.partOfOf(file.id), isNotNull);
   });
 
   test('TopLevelScanner should detect class annotation', () {
