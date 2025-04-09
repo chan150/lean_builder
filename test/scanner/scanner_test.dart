@@ -127,17 +127,17 @@ main() {
 
   test('TopLevelScanner should scan a file with extensions', () {
     final file = AssetFileMock('''
-    extension StringExt on String {
-      String capitalize() => this;
-    }
-    extension IntExt on int {
-      int double() => this * 2;
-    }
+    extension StringExt on String {}
+    extension ListExt<S> on List<S> {}
+    extension type const TypeExt(double? offset) {}
+    extension type TypeExt2(double? offset) {}
     ''');
     scanner.scanFile(file);
     final expected = [
       ['StringExt', file.id, TopLevelIdentifierType.$extension.value],
-      ['IntExt', file.id, TopLevelIdentifierType.$extension.value],
+      ['ListExt', file.id, TopLevelIdentifierType.$extension.value],
+      ['TypeExt', file.id, TopLevelIdentifierType.$extension.value],
+      ['TypeExt2', file.id, TopLevelIdentifierType.$extension.value],
     ];
     expect(assetsGraph.identifiers, expected);
   });

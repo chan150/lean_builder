@@ -1,1 +1,1 @@
-export 'test.dart' show A;
+export 'test2.dart' show Target;

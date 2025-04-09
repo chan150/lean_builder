@@ -21,7 +21,11 @@ class ElementResolver {
     final unit = parser.parse(src.path);
     final rootLibrary = libraryFor(src);
     final visitor = ElementResolverVisitor(this, rootLibrary);
-    unit.visitChildren(visitor);
+    for (final child in unit.childEntities.whereType<AnnotatedNode>()) {
+      if (child.metadata.isNotEmpty) {
+        child.accept(visitor);
+      }
+    }
     return rootLibrary;
   }
 
@@ -40,12 +44,12 @@ class ElementResolver {
     }
 
     final ref = graph.getIdentifierSrc(
-      identifier.rootName,
+      identifier.topLevelTarget,
       enclosingAsset.id,
       requireProvider: true,
       importPrefix: identifier.importPrefix,
     );
-    print('IdentifierRef: ${ref?.identifier}, provider: ${ref?.providerUri}');
+
     assert(ref != null, 'Identifier $identifier not found in ${enclosingAsset.uri}');
     final assetFile = fileResolver.buildAssetUri(ref!.srcUri, relativeTo: enclosingAsset);
 
@@ -116,20 +120,26 @@ class IdentifierRef {
 
   bool get isPrefixed => prefix != null;
 
-  String get rootName => prefix != null ? prefix! : name;
+  String get topLevelTarget => prefix != null ? prefix! : name;
 
-  factory IdentifierRef.from(Identifier identifier) {
+  factory IdentifierRef.from(Identifier identifier, {String? importPrefix}) {
     if (identifier is PrefixedIdentifier) {
-      return IdentifierRef(identifier.identifier.name, prefix: identifier.prefix.name);
+      return IdentifierRef(identifier.identifier.name, prefix: identifier.prefix.name, importPrefix: importPrefix);
     } else {
-      return IdentifierRef(identifier.name);
+      return IdentifierRef(identifier.name, importPrefix: importPrefix);
     }
   }
 
   @override
   String toString() {
-    return prefix != null ? '$prefix.$name' : name;
+    final buffer = StringBuffer();
+    if (prefix != null) {
+      buffer.write('$prefix.');
+    }
+    buffer.write(name);
+    if (importPrefix != null) {
+      buffer.write('@$importPrefix');
+    }
+    return buffer.toString();
   }
 }
-
-// class FunctionTypeRef extends

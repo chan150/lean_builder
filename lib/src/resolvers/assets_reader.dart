@@ -37,7 +37,10 @@ class FileAssetReader {
   void _collectAssets(Directory directory, List<AssetSrc> assets) {
     for (final entity in directory.listSync()) {
       if (entity is Directory) {
-        if (p.basename(entity.path).startsWith('_')) continue;
+        // if (p.basename(entity.path).startsWith('_')) {
+        //   print('Skipping private directory: ${entity.path}');
+        // }
+
         _collectAssets(entity, assets);
       } else if (entity is File && isValid(entity)) {
         assets.add(fileResolver.buildAssetUri(entity.uri));

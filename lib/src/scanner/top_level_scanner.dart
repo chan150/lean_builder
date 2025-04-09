@@ -18,11 +18,11 @@ class TopLevelScanner {
   void scanFile(AssetSrc asset) {
     try {
       if (results.isVisited(asset.id)) return;
-      print('Scanning ${asset.uri}');
       final bytes = asset.readAsBytesSync();
       results.addAsset(asset);
-      var token = fasta.scan(bytes).tokens;
 
+      var token = fasta.scan(bytes).tokens;
+      String? libraryName;
       bool hasTopLevelAnnotation = false;
 
       while (!token.isEof && token.next != null) {
@@ -44,14 +44,19 @@ class TopLevelScanner {
           final type = token.type;
           final nextLexeme = nextToken.lexeme;
           switch (type) {
+            case Keyword.LIBRARY:
+              final (nextT, name) = _tryParseLibraryDirective(nextToken);
+              libraryName = name;
+              token = nextT ?? nextToken;
+              break;
             case Keyword.IMPORT:
             case Keyword.EXPORT:
             case Keyword.PART:
-              final (directive, nextT) = _tryParseDirective(type, nextToken, asset);
-              if (directive != null) {
-                results.addDirective(asset, directive);
-              }
+              final (nextT, direcitve) = _tryParseDirective(type, nextToken, asset);
               nextToken = nextT ?? nextToken;
+              if (direcitve != null) {
+                results.addDirective(asset, direcitve);
+              }
               break;
             case Keyword.TYPEDEF:
               nextToken = parseTypeDef(nextToken, asset) ?? nextToken;
@@ -69,10 +74,21 @@ class TopLevelScanner {
               break;
             case Keyword.MIXIN:
             case Keyword.ENUM:
+              results.addDeclaration(nextLexeme, asset, TopLevelIdentifierType.fromKeyword(type));
+              break;
             case Keyword.EXTENSION:
-              if (_isValidName(nextLexeme)) {
-                results.addDeclaration(nextLexeme, asset, TopLevelIdentifierType.fromKeyword(type));
+              String extName = nextLexeme;
+              if (nextLexeme == 'type') {
+                Token? current = nextToken.next;
+                if (current != null && current.isKeyword) {
+                  current = current.next;
+                }
+                if (current != null && current.isIdentifier) {
+                  extName = current.lexeme;
+                }
               }
+              results.addDeclaration(extName, asset, TopLevelIdentifierType.$extension);
+
               nextToken = _skipUntil(nextToken, TokenType.OPEN_CURLY_BRACKET);
               break;
           }
@@ -88,16 +104,37 @@ class TopLevelScanner {
 
         token = nextToken;
       }
-      results.updateAssetInfo(asset, content: bytes, hasAnnotation: hasTopLevelAnnotation);
+
+      if (asset.uri.toString().contains(
+        '/Users/milad/Dev/sdk/flutter/bin/cache/dart-sdk/lib/html/dartium/nativewrappers.dart',
+      )) {
+        print('Scanning file: ${asset.uri}');
+      }
+
+      results.updateAssetInfo(asset, content: bytes, hasAnnotation: hasTopLevelAnnotation, libraryName: libraryName);
     } catch (e) {
       print('Error scanning file: ${asset.path}');
-      // if (e is Error) {
-      //   print(e.stackTrace);
-      // } else {
-      //   print(StackTrace.current);
-      // }
+      if (e is Error) {
+        print(e.stackTrace);
+      } else {
+        print(StackTrace.current);
+      }
       // Silent error handling
     }
+  }
+
+  (Token?, String?) _tryParseLibraryDirective(fasta.Token nextToken) {
+    if (nextToken.type == TokenType.SEMICOLON) {
+      nextToken = nextToken.next!;
+      return (nextToken, null);
+    }
+    String name = '';
+    Token? nameToken = nextToken;
+    while (nameToken != null && nameToken.type != TokenType.SEMICOLON && !nameToken.isEof) {
+      name += nameToken.lexeme;
+      nameToken = nameToken.next;
+    }
+    return (nameToken?.next, name);
   }
 
   Token? _tryParseFunction(Token token, AssetSrc asset) {
@@ -153,26 +190,41 @@ class TopLevelScanner {
     }
   }
 
-  (DirectiveStatement?, Token? endToken) _tryParseDirective(TokenType keyword, Token token, AssetSrc enclosingAsset) {
-    String uriString = token.lexeme;
-    Token? current = token.next;
-    bool hasOf = false;
+  (Token?, DirectiveStatement?) _tryParseDirective(TokenType keyword, Token next, AssetSrc enclosingAsset) {
+    bool isPartOf = keyword == Keyword.PART && next.type == Keyword.OF;
+    String uriString = '';
 
-    if (keyword == Keyword.PART && token.type == Keyword.OF) {
-      hasOf = true;
-      uriString = current?.lexeme ?? '';
-      current = current?.next;
+    Token? current = next.next;
+
+    if (isPartOf) {
+      // could be pointing to a library directive which can have chained String Tokens
+      if (current?.type == TokenType.STRING) {
+        uriString = current!.lexeme;
+      } else {
+        while (current != null && !current.isEof && current.type != TokenType.SEMICOLON) {
+          uriString += current.lexeme;
+          current = current.next;
+        }
+        if (uriString.isNotEmpty) {
+          results.addLibraryPartOf(uriString, enclosingAsset);
+        }
+        return (current, null);
+      }
+    } else {
+      uriString = next.lexeme;
     }
+
     if (uriString.length < 3) {
-      return (null, _skipUntil(token, TokenType.SEMICOLON));
+      return (_skipUntil(next, TokenType.SEMICOLON), null);
     }
 
-    final url = uriString.substring(1, uriString.length - 1);
-    final uri = Uri.parse(url);
-    // skip private package imports
+    // remove quotes
+    uriString = uriString.substring(1, uriString.length - 1);
+    final uri = Uri.parse(uriString);
 
+    // skip private package imports
     if (uri.scheme == 'package' && uri.path.isNotEmpty && uri.path[0] == '_') {
-      return (null, _skipUntil(token, TokenType.SEMICOLON));
+      return (_skipUntil(next, TokenType.SEMICOLON), null);
     }
 
     final asset = fileResolver.buildAssetUri(uri, relativeTo: enclosingAsset);
@@ -204,11 +256,12 @@ class TopLevelScanner {
     final type = switch (keyword) {
       Keyword.IMPORT => DirectiveStatement.import,
       Keyword.EXPORT => DirectiveStatement.export,
-      Keyword.PART => hasOf ? DirectiveStatement.partOf : DirectiveStatement.part,
+      Keyword.PART => isPartOf ? DirectiveStatement.partOf : DirectiveStatement.part,
       _ => throw UnimplementedError('Unknown directive type: $keyword'),
     };
 
-    return (DirectiveStatement(type: type, asset: asset, show: show, hide: hide, prefix: prefix), current);
+    final directive = DirectiveStatement(type: type, asset: asset, show: show, hide: hide, prefix: prefix);
+    return (current, directive);
   }
 
   Token? parseTypeDef(Token? token, AssetSrc asset) {

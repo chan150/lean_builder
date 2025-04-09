@@ -8,7 +8,7 @@ import 'package:xxh3/xxh3.dart';
 import 'directive_statement.dart';
 
 abstract class ScanResults {
-  // [src, content hash, has annotation]
+  // [src, content-hash, has-annotation, library-name?]
   Map<String, List<dynamic>> get assets;
 
   // [identifier, srcHash]
@@ -27,6 +27,8 @@ abstract class ScanResults {
 
   List<dynamic>? partOfOf(String fileId);
 
+  String getParentSrc(String fileId);
+
   // [importing file, [imported file, show, hide, prefix]]
   List<List<dynamic>> importsOf(String fileId, {bool includeParts = true});
 
@@ -35,7 +37,7 @@ abstract class ScanResults {
 
   bool isVisited(String fileId);
 
-  void addDirective(AssetSrc exportingFile, DirectiveStatement statement);
+  void addDirective(AssetSrc asset, DirectiveStatement statement);
 
   void merge(ScanResults results);
 
@@ -45,11 +47,13 @@ abstract class ScanResults {
 
   void removeAsset(String id);
 
-  void updateAssetInfo(AssetSrc asset, {required Uint8List content, bool hasAnnotation = false});
+  void updateAssetInfo(AssetSrc asset, {required Uint8List content, bool hasAnnotation = false, String? libraryName});
 
   bool isPart(String id);
 
   Set<String> importPrefixesOf(String id);
+
+  void addLibraryPartOf(String uriString, AssetSrc asset);
 }
 
 class AssetsScanResults extends ScanResults {
@@ -88,12 +92,14 @@ class AssetsScanResults extends ScanResults {
   List<dynamic>? partOfOf(String fileId) {
     final fileDirectives = directives[fileId];
     if (fileDirectives == null) return null;
-    return fileDirectives.where((e) => e[0] == DirectiveStatement.partOf).firstOrNull;
+    return fileDirectives
+        .where((e) => e[0] == DirectiveStatement.partOf || e[0] == DirectiveStatement.partOfLibrary)
+        .firstOrNull;
   }
 
   @override
   List<List<dynamic>> importsOf(String fileId, {bool includeParts = true}) {
-    final fileDirectives = directives[fileId];
+    final fileDirectives = directives[getParentSrc(fileId)];
     if (fileDirectives == null) return const [];
     return List.of(
       fileDirectives.where((e) {
@@ -125,19 +131,21 @@ class AssetsScanResults extends ScanResults {
       }
     }
 
-    identifiers.addAll(results.identifiers);
     for (final directive in results.directives.entries) {
       if (!directives.containsKey(directive.key)) {
         directives[directive.key] = directive.value;
       } else {
         final newDirectives = directive.value;
-        final allDirections = directives[directive.key]!;
+        final allDirections = List.of(directives[directive.key]!);
         for (final newDir in newDirectives) {
           bool isDuplicate = false;
           for (final exDir in allDirections) {
+            final hasNameCombinator =
+                (newDir[0] == DirectiveStatement.export || newDir[0] == DirectiveStatement.import);
+
             if (newDir[0] == exDir[0] &&
                 newDir[1] == exDir[1] &&
-                (newDir[0] > DirectiveStatement.export ||
+                (!hasNameCombinator ||
                     (_listEquals(newDir[2], exDir[2]) &&
                         _listEquals(newDir[3], exDir[3]) &&
                         newDir.elementAtOrNull(4) == exDir.elementAtOrNull(4)))) {
@@ -155,6 +163,7 @@ class AssetsScanResults extends ScanResults {
     }
 
     visitedAssets.addAll(results.visitedAssets);
+    identifiers.addAll(results.identifiers);
   }
 
   @override
@@ -225,11 +234,18 @@ class AssetsScanResults extends ScanResults {
   }
 
   @override
-  void updateAssetInfo(AssetSrc asset, {required Uint8List content, bool hasAnnotation = false}) {
+  void updateAssetInfo(AssetSrc asset, {required Uint8List content, bool hasAnnotation = false, String? libraryName}) {
     assert(assets.containsKey(asset.id), 'Asset not found: $asset');
     final assetArr = assets[asset.id]!;
     assetArr[1] = xxh3String(content);
     assetArr[2] = hasAnnotation ? 1 : 0;
+    if (libraryName != null) {
+      if (assetArr.length < 4) {
+        assetArr.add(libraryName);
+      } else {
+        assetArr[3] = libraryName;
+      }
+    }
   }
 
   @override
@@ -275,7 +291,7 @@ class AssetsScanResults extends ScanResults {
   @override
   Set<String> importPrefixesOf(String id) {
     final prefixes = <String>{};
-    final targetSrc = partOfOf(id)?.elementAtOrNull(1) ?? id;
+    String targetSrc = getParentSrc(id);
     for (final import in importsOf(targetSrc, includeParts: false)) {
       final prefix = import.elementAtOrNull(4);
       if (prefix != null) {
@@ -288,6 +304,44 @@ class AssetsScanResults extends ScanResults {
   @override
   bool isPart(String id) {
     return partOfOf(id) != null;
+  }
+
+  @override
+  void addLibraryPartOf(String uriString, AssetSrc asset) {
+    final fileDirectives = [...?directives[asset.id]];
+    if (fileDirectives.isEmpty) {
+      directives[asset.id] = [
+        [DirectiveStatement.partOfLibrary, uriString],
+      ];
+    } else {
+      // avoid duplicate entries
+      for (final directive in fileDirectives) {
+        if (directive[0] == DirectiveStatement.partOfLibrary && directive[1] == uriString) {
+          return;
+        }
+      }
+      directives[asset.id] = [
+        ...fileDirectives,
+        [DirectiveStatement.partOfLibrary, uriString],
+      ];
+    }
+  }
+
+  @override
+  String getParentSrc(String fileId) {
+    final partOf = partOfOf(fileId);
+    if (partOf == null) return fileId;
+    if (partOf[0] == DirectiveStatement.partOf) {
+      return partOf[1];
+    } else if (partOf[0] == DirectiveStatement.partOfLibrary) {
+      for (final asset in assets.entries) {
+        if (asset.value.length > 3 && asset.value[3] == partOf[1]) {
+          return asset.key;
+        }
+      }
+      return fileId;
+    }
+    return fileId;
   }
 }
 

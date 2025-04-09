@@ -46,8 +46,6 @@ class IsolateTLScanner {
   final AssetsGraph assetsGraph;
   final PackageFileResolver fileResolver;
 
-  final assetsGraphFile = File('.dart_tool/build/assets_graph.json');
-
   IsolateTLScanner({required this.assetsGraph, required this.fileResolver});
 
   Future<void> scanAssets() async {
@@ -69,7 +67,7 @@ class IsolateTLScanner {
       updateIncrementalAssets(scanner);
     }
 
-    await assetsGraphFile.writeAsString(jsonEncode(assetsGraph.toJson()));
+    await AssetsGraph.cacheFile.writeAsString(jsonEncode(assetsGraph.toJson()));
   }
 
   Future<void> scanWithIsolates(List<AssetSrc> assets, Map<String, dynamic> packageResolverData) async {

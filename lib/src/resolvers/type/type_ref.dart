@@ -1,23 +1,23 @@
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:code_genie/src/resolvers/element_resolver.dart';
 
 abstract class TypeRef {
-  final String? nameOverride;
   final bool isNullable;
   final String name;
 
-  TypeRef(this.name, {required this.isNullable, this.nameOverride});
+  TypeRef(this.name, {required this.isNullable});
 
   bool get isValid => this is! _InvalidTypeRef;
 
-  factory TypeRef.from(TypeAnnotation? type, {String? nameOverride}) {
+  factory TypeRef.from(TypeAnnotation? type) {
     if (type == null) {
       return _InvalidTypeRef();
     } else if (type is NamedType) {
-      return NamedTypeRef.from(type, nameOverride: nameOverride);
+      return NamedTypeRef.from(type);
     } else if (type is GenericFunctionType) {
-      return FunctionTypeRef.from(type, nameOverride: nameOverride);
+      return FunctionTypeRef.from(type);
     } else if (type is RecordTypeAnnotation) {
-      return RecordTypeRef.from(type, nameOverride: nameOverride);
+      return RecordTypeRef.from(type);
     } else {
       throw UnimplementedError('Unknown type: $type');
     }
@@ -31,6 +31,7 @@ class _InvalidTypeRef extends TypeRef {
 class NamedTypeRef extends TypeRef {
   final List<TypeRef> typeArguments;
   final String? importPrefix;
+  final IdentifierRef? identifierRef;
 
   bool get hasTypeArguments => typeArguments.isNotEmpty;
 
@@ -38,11 +39,11 @@ class NamedTypeRef extends TypeRef {
     super.name, {
     required super.isNullable,
     required this.typeArguments,
-    super.nameOverride,
+    this.identifierRef,
     this.importPrefix,
   });
 
-  factory NamedTypeRef.from(NamedType namedType, {String? nameOverride}) {
+  factory NamedTypeRef.from(NamedType namedType, {IdentifierRef? identifierRef}) {
     final typeArguments = namedType.typeArguments?.arguments.map((e) {
       return TypeRef.from(e);
     });
@@ -51,6 +52,7 @@ class NamedTypeRef extends TypeRef {
       isNullable: namedType.question != null,
       typeArguments: [...?typeArguments],
       importPrefix: namedType.importPrefix?.name.lexeme,
+      identifierRef: identifierRef,
     );
   }
 }
@@ -66,10 +68,9 @@ class FunctionTypeRef extends TypeRef {
     required this.parameters,
     this.typeParameters,
     required this.returnType,
-    super.nameOverride,
   });
 
-  factory FunctionTypeRef.from(GenericFunctionType functionType, {String? nameOverride}) {
+  factory FunctionTypeRef.from(GenericFunctionType functionType) {
     return FunctionTypeRef(
       'Function',
       isNullable: functionType.question != null,
@@ -84,21 +85,14 @@ class RecordTypeRef extends TypeRef {
   NodeList<RecordTypeAnnotationNamedField>? namedFields;
   NodeList<RecordTypeAnnotationPositionalField> positionalFields;
 
-  RecordTypeRef(
-    super.name, {
-    required super.isNullable,
-    required this.positionalFields,
-    this.namedFields,
-    super.nameOverride,
-  });
+  RecordTypeRef(super.name, {required super.isNullable, required this.positionalFields, this.namedFields});
 
-  factory RecordTypeRef.from(RecordTypeAnnotation recordType, {String? nameOverride}) {
+  factory RecordTypeRef.from(RecordTypeAnnotation recordType) {
     return RecordTypeRef(
       'Record',
       isNullable: recordType.question != null,
       positionalFields: recordType.positionalFields,
       namedFields: recordType.namedFields?.fields,
-      nameOverride: nameOverride,
     );
   }
 }

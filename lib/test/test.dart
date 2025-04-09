@@ -1,7 +1,3 @@
-import 'package:code_genie/test/test2.dart' as test2;
-import 'package:code_genie/test/test3.dart' as test3;
-import 'package:code_genie/test/test3.dart' as test3_2;
-
 // const annotation = Annotation();
 
 class Annotation {
@@ -28,19 +24,27 @@ class Annotation {
 // typedef InterfaceTypeDef = List<String>;
 // typedef bool ElementPredicate<E>(E element);
 
+extension type const BaselineOffset(double? offset) {}
+
+extension StringX on String {
+  String get str => 'Hello';
+}
+
 @Annotation()
 class AnnotatedClass {
   AnnotatedClass();
-
-  final Function func = funcDecl;
+  final BaselineOffset name;
+  // final Target target;
+  // final Future futre;
+  // final Function func = funcDecl;
   // final FieldType type = FieldType('Hello', 1);
 
-  // // final List<String> list = ['one', 'two', 'three'];
-  // // final double height = 5.6;
-  // // final ColorEnum color = ColorEnum.red;
-  // // void x;
-  // // dynamic dynamicField;
-  //
+  // final List<String> list = ['one', 'two', 'three'];
+  // final double height = 5.6;
+  // final ColorEnum color = ColorEnum.red;
+  // void x;
+  // dynamic dynamicField;
+
   // // AnnotatedClass(this.type, this.name, this.age, this.isAlive);
   //
   // void method([String x = 'default']) {}
@@ -62,7 +66,7 @@ class AnnotatedClass {
 //   IrrelevantClass();
 // }
 //
-// enum ColorEnum { red, green, blue }
+enum ColorEnum { red, green, blue }
 
 //
 // enum EnumWithArgs {

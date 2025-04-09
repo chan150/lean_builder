@@ -7,9 +7,7 @@ class AssetSrc {
 
   final Uri shortPath;
 
-  final bool root;
-
-  AssetSrc(this.file, this.shortPath, this.id, this.root);
+  AssetSrc(this.file, this.shortPath, this.id);
 
   String get path => file.path;
 

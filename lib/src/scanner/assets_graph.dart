@@ -110,13 +110,15 @@ class AssetsGraph extends AssetsScanResults {
     }
 
     // Check all imports of the source file
-    final fileImports = [if (assets.containsKey(_coreImportId)) _coreImport, ...importsOf(rootSrcId)];
+    final fileImports = [...importsOf(rootSrcId), if (assets.containsKey(_coreImportId)) _coreImport];
+
     for (final importEntry in fileImports) {
       final importedFileHash = importEntry[1] as String;
       final shows = importEntry.elementAtOrNull(2) as List<dynamic>? ?? const [];
       final hides = importEntry.elementAtOrNull(3) as List<dynamic>? ?? const [];
       final prefix = importEntry.elementAtOrNull(4) as String?;
       if (importPrefix != null && importPrefix != prefix) continue;
+
       // Skip if the identifier is hidden or not shown
       if (shows.isNotEmpty && !shows.contains(identifier)) continue;
       if (hides.contains(identifier)) continue;
@@ -127,44 +129,45 @@ class AssetsGraph extends AssetsScanResults {
           return _buildRef(identifier, entry, providerId: importedFileHash);
         }
       }
-
-      // Case 2b: Check if the imported file re-exports the identifier
-      Set<String> reExportedSrcs = {};
-      Set<String> visitedFiles = {};
-
-      _collectProviders(importedFileHash, identifier, reExportedSrcs, visitedFiles);
-      for (final entry in possibleSrcs.entries) {
-        final srcId = entry.key;
-        if (reExportedSrcs.contains(srcId) || reExportedSrcs.length == 1 || reExportedSrcs.contains(rootSrcId)) {
-          final providedBySourceRoot = reExportedSrcs.contains(rootSrcId);
-          final importedSrcHash = providedBySourceRoot ? rootSrcId : importedFileHash;
-          return _buildRef(identifier, entry, providerId: importedSrcHash);
-        }
+    }
+    for (final importEntry in fileImports) {
+      final importedFileHash = importEntry[1] as String;
+      final src = _traceExportsOf(importedFileHash, identifier, possibleSrcs.keys);
+      if (src != null) {
+        final srcEntry = possibleSrcs.entries.firstWhere((k) => k.key == src);
+        return _buildRef(identifier, srcEntry, providerId: importedFileHash);
       }
     }
-
     return null;
   }
 
-  void _collectProviders(String fileHash, String identifier, Set<String> providers, Set<String> visitedFiles) {
-    if (visitedFiles.contains(fileHash)) return;
-    visitedFiles.add(fileHash);
-    assert(assets.containsKey(fileHash));
-    providers.add(fileHash);
-    // Check all files that export this file
-    final fileExports = exportsOf(fileHash);
-    for (final expEntry in fileExports) {
-      final exportedFileHash = expEntry[1];
-      final shows = expEntry.elementAtOrNull(2) as List<dynamic>? ?? const [];
-      final hides = expEntry.elementAtOrNull(3) as List<dynamic>? ?? const [];
+  String? _traceExportsOf(String srcId, String identifier, Iterable<String> possibleSrcs) {
+    final exports = exportsOf(srcId);
+    final checkableExports = <String>{};
+    for (final export in exports) {
+      final exportedFileHash = export[1] as String;
+      final hides = export.elementAtOrNull(3) as List<dynamic>? ?? const [];
       if (hides.contains(identifier)) continue;
-      if (shows.contains(identifier)) {
-        return;
-      } else if (shows.isNotEmpty) {
-        continue;
+      final shows = export.elementAtOrNull(2) as List<dynamic>? ?? const [];
+      if (shows.isNotEmpty && !shows.contains(identifier)) continue;
+
+      if (possibleSrcs.contains(exportedFileHash)) {
+        return exportedFileHash;
       }
-      _collectProviders(exportedFileHash, identifier, providers, visitedFiles);
+      if (shows.contains(identifier)) {
+        checkableExports.clear();
+        checkableExports.add(exportedFileHash);
+        break;
+      }
+      checkableExports.add(exportedFileHash);
     }
+    for (final exportedFileHash in checkableExports) {
+      final src = _traceExportsOf(exportedFileHash, identifier, possibleSrcs);
+      if (src != null) {
+        return src;
+      }
+    }
+    return null;
   }
 
   Set<String> identifiersForAsset(String assetHash) {

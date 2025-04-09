@@ -51,7 +51,7 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   LibraryElement get library => this;
 
   @override
-  List<Element> get resolvedElements => _resolvedElements;
+  List<Element> get resolvedElements => List.unmodifiable(_resolvedElements);
 
   @override
   Iterable<ClassElementImpl> get classes => resolvedElements.whereType<ClassElementImpl>();
@@ -483,10 +483,12 @@ class TypeAliasElementImpl extends ElementImpl with TypeParameterizedElementMixi
   Element get enclosingElement => library;
 
   @override
-  Element? get aliasedElement => throw UnimplementedError();
+  Element? get aliasedElement => aliasedType.element;
 
   @override
-  DartType get aliasedType => _aliasedType!;
+  DartType get aliasedType {
+    return _aliasedType ?? NeverType();
+  }
 
   DartType? _aliasedType;
 
@@ -514,6 +516,7 @@ class TypeAliasElementImpl extends ElementImpl with TypeParameterizedElementMixi
         alias: InstantiatedTypeAlias(this, typeArguments),
       );
     }
+    return type;
     throw 'not supported';
     //
     // else if (type is RecordTypeImpl) {
@@ -543,7 +546,7 @@ class NullElementImpl extends ElementImpl implements NullElement {
   final Element? enclosingElement = null;
 
   @override
-  final LibraryElement library = throw UnimplementedError();
+  final LibraryElement library = LibraryElementImpl(name: '', src: AssetSrc(File(''), Uri(path: ''), ''));
 
   @override
   bool operator ==(Object other) => other is NullElement;

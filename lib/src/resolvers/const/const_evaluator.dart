@@ -266,6 +266,18 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> {
   Constant? visitParenthesizedExpression(ParenthesizedExpression node) => node.expression.accept(this);
 
   @override
+  Constant? visitPropertyAccess(PropertyAccess node) {
+    final target = node.realTarget;
+    if (target is PrefixedIdentifier) {
+      return _getConstantValue(
+        IdentifierRef(node.propertyName.name, prefix: target.identifier.name, importPrefix: target.prefix.name),
+        _library,
+      );
+    }
+    return Constant.invalid;
+  }
+
+  @override
   Constant? visitPrefixedIdentifier(PrefixedIdentifier node) {
     return _getConstantValue(IdentifierRef.from(node), _library);
   }
@@ -383,8 +395,8 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> {
 
     if (node is TopLevelVariableDeclaration) {
       final variable = node.variables.variables.firstWhere(
-        (e) => e.name.lexeme == ref.rootName,
-        orElse: () => throw Exception('Identifier ${ref.rootName} not found in ${lib.src.uri}'),
+        (e) => e.name.lexeme == ref.topLevelTarget,
+        orElse: () => throw Exception('Identifier ${ref.topLevelTarget} not found in ${lib.src.uri}'),
       );
       final initializer = variable.initializer;
       if (initializer != null) {

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:code_genie/src/resolvers/const/constant.dart';
 import 'package:code_genie/src/resolvers/file_asset.dart';
 import 'package:code_genie/src/resolvers/type/type.dart';
