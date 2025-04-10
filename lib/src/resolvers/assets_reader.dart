@@ -10,8 +10,8 @@ class FileAssetReader {
 
   FileAssetReader(this.fileResolver);
 
-  bool isValid(File file) {
-    return file.path.endsWith('.dart') && !file.path.endsWith('.g.dart');
+  bool isValid(String package, File file) {
+    return file.path.endsWith('.dart');
   }
 
   Map<String, List<AssetSrc>> listAssetsFor(Set<String> packages) {
@@ -26,7 +26,7 @@ class FileAssetReader {
         if (subDir == 'test' && !fileResolver.isRootPackage(package)) continue;
         final subDirPath = Directory(p.join(dir.path, subDir));
         if (subDirPath.existsSync()) {
-          _collectAssets(subDirPath, collection);
+          _collectAssets(package, subDirPath, collection);
         }
       }
       assets[package] = collection;
@@ -34,15 +34,15 @@ class FileAssetReader {
     return assets;
   }
 
-  void _collectAssets(Directory directory, List<AssetSrc> assets) {
+  void _collectAssets(String package, Directory directory, List<AssetSrc> assets) {
     for (final entity in directory.listSync()) {
       if (entity is Directory) {
         // if (p.basename(entity.path).startsWith('_')) {
         //   print('Skipping private directory: ${entity.path}');
         // }
 
-        _collectAssets(entity, assets);
-      } else if (entity is File && isValid(entity)) {
+        _collectAssets(package, entity, assets);
+      } else if (entity is File && isValid(package, entity)) {
         assets.add(fileResolver.buildAssetUri(entity.uri));
       }
     }

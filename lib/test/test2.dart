@@ -1,4 +1,6 @@
-export 'test3.dart';
+library test2.lib;
+
+part 'test_part.dart';
 
 // class TypeT extends RoutePage {}
 //

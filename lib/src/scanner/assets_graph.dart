@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
-
+import 'package:code_genie/src/resolvers/package_file_resolver.dart';
 import 'package:code_genie/src/scanner/directive_statement.dart';
 import 'package:code_genie/src/scanner/scan_results.dart';
 import 'package:collection/collection.dart';
@@ -142,6 +142,14 @@ class AssetsGraph extends AssetsScanResults {
   }
 
   String? _traceExportsOf(String srcId, String identifier, Iterable<String> possibleSrcs) {
+    if (identifier == 'PhysicalKeyboardKey') {
+      print('Trace exports of ${getUriForAsset(srcId)}');
+      // if (getUriForAsset(srcId).toString() == 'dart:ui/annotations.dart') {
+      //   final fileResolver = PackageFileResolver.forCurrentRoot('code_genie');
+      //   final assetSrc = fileResolver.buildAssetUri(Uri.parse('dart:ui/annotations.dart'), relativeTo: null);
+      //   print(assetSrc.uri);
+      // }
+    }
     final exports = exportsOf(srcId);
     final checkableExports = <String>{};
     for (final export in exports) {
@@ -154,11 +162,11 @@ class AssetsGraph extends AssetsScanResults {
       if (possibleSrcs.contains(exportedFileHash)) {
         return exportedFileHash;
       }
-      if (shows.contains(identifier)) {
-        checkableExports.clear();
-        checkableExports.add(exportedFileHash);
-        break;
-      }
+      // if (shows.contains(identifier)) {
+      //   checkableExports.clear();
+      //   checkableExports.add(exportedFileHash);
+      //   break;
+      // }
       checkableExports.add(exportedFileHash);
     }
     for (final exportedFileHash in checkableExports) {

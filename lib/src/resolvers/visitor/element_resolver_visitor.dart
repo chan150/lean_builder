@@ -43,7 +43,6 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
 
   @override
   void visitExtensionTypeDeclaration(ExtensionTypeDeclaration node) {
-    print('ExtensionTypeDeclaration: ${node.name.lexeme}');
     final library = currentLibrary();
     if (library.getClass(node.name.lexeme) != null) {
       return;
@@ -217,17 +216,21 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
       for (final field in node.members.whereType<FieldDeclaration>()) {
         field.accept(this);
       }
-      // for (final method in node.members.whereType<MethodDeclaration>()) {
-      //   method.accept(this);
-      // }
+      for (final method in node.members.whereType<MethodDeclaration>()) {
+        method.accept(this);
+      }
     });
 
     _resolveSuperType(classElement, node.extendsClause?.superclass);
+
     visitElementScoped(classElement, () {
       for (final constructor in node.members.whereType<ConstructorDeclaration>()) {
         constructor.accept(this);
       }
     });
+    if (classElement.name == 'ProxyWidget') {
+      print(classElement);
+    }
     _resolveInterfaces(classElement, withClause: node.withClause, implementsClause: node.implementsClause);
   }
 
@@ -383,6 +386,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     } else if (element is TypeAliasElementImpl) {
       return element.instantiate(typeArguments: typeArgs, isNullable: typeRef.isNullable);
     }
+    return DartType.neverType;
     throw Exception('Unsupported type element: ${element.runtimeType}');
   }
 

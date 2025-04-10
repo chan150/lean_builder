@@ -24,7 +24,8 @@ void main(List<String> args) async {
 
   final parser = SrcParser();
   final resolver = ElementResolver(assetsGraph, fileResolver, parser);
-  final packageAssets = assetsGraph.getAssetsForPackage('mofad_dashboard');
+  // final packageAssets = assetsGraph.getAssetsForPackage('mofad_dashboard');
+  final packageAssets = assetsGraph.getAssetsForPackage(rootPackageName);
 
   for (final asset in packageAssets) {
     final assetFile = fileResolver.buildAssetUri(asset.uri);
@@ -32,25 +33,25 @@ void main(List<String> args) async {
     if (asset.hasAnnotation) {
       final library = resolver.resolveLibrary(assetFile);
 
-      //   for (final clazz in library.classes) {
-      //     print('Class: ${clazz.name} --------------------- *** ');
-      //     print('Fields -----------');
-      //     for (final field in clazz.fields) {
-      //       print('${field.type} ${field.name} ');
-      //     }
-      //     // print('Params -----------');
-      //     // for (final param in [...?clazz.constructors.firstOrNull?.parameters]) {
-      //     //   print('${param.type} ${param.name} ');
-      //     // }
-      //
-      //     //   // if (clazz.methods.isNotEmpty) {
-      //     //   //   for (final method in clazz.methods) {
-      //     //   //     for (final param in method.parameters) {
-      //     //   //       print('${param.type} ${param.name} ');
-      //     //   //     }
-      //     //   //   }
-      //     //   // }
-      //   }
+      for (final clazz in library.classes) {
+        print('Class: ${clazz.name} --------------------- *** ');
+        print('Fields -----------');
+        for (final field in clazz.fields) {
+          print('${field.type} ${field.name} ');
+        }
+        // print('Params -----------');
+        // for (final param in [...?clazz.constructors.firstOrNull?.parameters]) {
+        //   print('${param.type} ${param.name} ');
+        // }
+
+        //   // if (clazz.methods.isNotEmpty) {
+        //   //   for (final method in clazz.methods) {
+        //   //     for (final param in method.parameters) {
+        //   //       print('${param.type} ${param.name} ');
+        //   //     }
+        //   //   }
+        //   // }
+      }
     }
   }
 

@@ -1,4 +1,4 @@
-// const annotation = Annotation();
+import 'package:flutter/material.dart';
 
 class Annotation {
   // final String? str;
@@ -7,39 +7,17 @@ class Annotation {
   // const Annotation(this.number, {this.str});
   const Annotation();
 }
-//
-// class Utils {
-//   static const String str = 'Hello';
-// }
-//
-// const constVar = Utils.str;
-
-// @Annotation(1, str: 'str')
-// class TestClass {
-//   final String str = 'Hello';
-// }
-// typedef GenericTypeDef<T, S> = Map<Set<T>, S>;
-// typedef FunctionTypeDef = int Function(String str, {int? number});
-// typedef FunctionGenericTypeDef<T> = T Function(T str);
-// typedef InterfaceTypeDef = List<String>;
-// typedef bool ElementPredicate<E>(E element);
-
-extension type const BaselineOffset(double? offset) {}
-
-extension StringX on String {
-  String get str => 'Hello';
-}
 
 @Annotation()
 class AnnotatedClass {
-  AnnotatedClass();
-  final BaselineOffset name;
+  AnnotatedClass(this.name);
+  final StatelessWidget name;
   // final Target target;
   // final Future futre;
-  // final Function func = funcDecl;
-  // final FieldType type = FieldType('Hello', 1);
-
-  // final List<String> list = ['one', 'two', 'three'];
+  // List<Set<String>> list = [];
+  // // final FieldType type = FieldType('Hello', 1);
+  //
+  // // final List<String> list = ['one', 'two', 'three'];
   // final double height = 5.6;
   // final ColorEnum color = ColorEnum.red;
   // void x;
@@ -62,10 +40,6 @@ class AnnotatedClass {
 //   final String finalStr = 'Hello';
 // }
 
-// class IrrelevantClass {
-//   IrrelevantClass();
-// }
-//
 enum ColorEnum { red, green, blue }
 
 //

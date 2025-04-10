@@ -97,9 +97,7 @@ class PackageFileResolverImpl implements PackageFileResolver {
       if (name[0] == '_') continue;
       if (name == _skyEnginePackage) {
         name = PackageFileResolver.dartSdk;
-        continue;
       }
-
       final packageUri = Uri.parse(entry['rootUri'] as String);
       String resolvedPath = packageUri.toString();
       if (!packageUri.hasScheme) {
@@ -107,7 +105,6 @@ class PackageFileResolverImpl implements PackageFileResolver {
         absoluteUri = Directory.current.uri.resolve(packageUri.pathSegments.skip(1).join('/'));
         resolvedPath = absoluteUri.replace(path: p.canonicalize(absoluteUri.path)).toString();
       }
-
       packageToPath[name] = resolvedPath;
       pathToPackage[resolvedPath] = name;
     }
@@ -116,7 +113,7 @@ class PackageFileResolverImpl implements PackageFileResolver {
       pathToPackage[sdkPath] = PackageFileResolver.dartSdk;
       packageToPath[PackageFileResolver.dartSdk] = sdkPath;
     }
-
+    print(packageToPath[PackageFileResolver.dartSdk]);
     return _PackageConfig(packageToPath, pathToPackage, packagesHash);
   }
 
@@ -228,7 +225,10 @@ class PackageFileResolverImpl implements PackageFileResolver {
 
     // Handle special case for dart:core and other standard libraries
     String libraryName = uri.path;
-    if (libraryName.startsWith("_")) {
+
+    /// remove the leading underscore
+    /// for the internal libraries
+    if (libraryName == '_internal') {
       libraryName = libraryName.substring(1);
     }
     // The SDK libraries are typically located at sdk_path/lib/library_name/library_name.dart
