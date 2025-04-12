@@ -52,10 +52,10 @@ abstract class ExecutableElementImpl extends ElementImpl
   @override
   List<ParameterElement> get parameters => _parameters;
 
-  DartType? _returnType;
+  TypeRef? _returnType;
 
   @override
-  DartType get returnType => _returnType!;
+  TypeRef get returnType => _returnType!;
 
   @override
   ParameterElement? getParameter(String name) {
@@ -67,21 +67,21 @@ abstract class ExecutableElementImpl extends ElementImpl
     return null;
   }
 
-  set returnType(DartType type) {
+  set returnType(TypeRef type) {
     _returnType = type;
   }
 
   @override
-  FunctionType get type => _type!;
+  FunctionTypeRef get type => _type!;
 
   final List<ParameterElement> _parameters = [];
-  FunctionType? _type;
+  FunctionTypeRef? _type;
 
   void addParameter(ParameterElement parameter) {
     _parameters.add(parameter);
   }
 
-  set type(FunctionType type) {
+  set type(FunctionTypeRef type) {
     _type = type;
   }
 }
@@ -141,14 +141,21 @@ class ConstructorElementImpl extends ExecutableElementImpl implements Constructo
   final bool isGenerative;
 
   @override
-  ConstructorElement? get redirectedConstructor => _redirectedConstructor;
+  ConstructorElementRef? get redirectedConstructor => _redirectedConstructor;
 
   @override
-  final ConstructorElement? superConstructor;
+  final ConstructorElementRef? superConstructor;
 
-  ConstructorElement? _redirectedConstructor;
+  ConstructorElementRef? _redirectedConstructor;
 
-  set redirectedConstructor(ConstructorElement? constructor) {
+  set redirectedConstructor(ConstructorElementRef? constructor) {
     _redirectedConstructor = constructor;
   }
+}
+
+class ConstructorElementRef {
+  final NamedTypeRef classType;
+  final String name;
+
+  ConstructorElementRef(this.classType, this.name);
 }

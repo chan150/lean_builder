@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 class Annotation {
   // final String? str;
   // final String str2 = 'Hello';
@@ -8,10 +6,39 @@ class Annotation {
   const Annotation();
 }
 
+class SuperClass2<T> {
+  final List<T> list;
+  const SuperClass2(this.list, {String? x});
+}
+
+class SuperClass extends SuperClass2 {
+  const SuperClass(super.list2);
+}
+//
+// @Annotation()
+// class Widgets extends StatelessWidget {
+//   const Widgets({super.key});
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return throw UnimplementedError();
+//   }
+// }
+//
+// @Annotation()
+// class Widgets2 extends StatelessWidget {
+//   const Widgets2({super.key});
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return throw UnimplementedError();
+//   }
+// }
+
 @Annotation()
-class AnnotatedClass {
-  AnnotatedClass(this.name);
-  final StatelessWidget name;
+class AnnotatedClass extends SuperClass2 {
+  AnnotatedClass(super.diffListName);
+
   // final Target target;
   // final Future futre;
   // List<Set<String>> list = [];
@@ -25,7 +52,7 @@ class AnnotatedClass {
 
   // // AnnotatedClass(this.type, this.name, this.age, this.isAlive);
   //
-  // void method([String x = 'default']) {}
+  void method([String x = 'default']) {}
 
   // factory AnnotatedClass.redirected() = RedirectedClass.red;
   //

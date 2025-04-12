@@ -7,9 +7,9 @@ import 'package:code_genie/src/resolvers/const/const_evaluator.dart';
 import 'package:code_genie/src/resolvers/const/constant.dart';
 import 'package:code_genie/src/resolvers/element/element.dart';
 import 'package:code_genie/src/resolvers/element_resolver.dart';
-import 'package:code_genie/src/resolvers/type/type.dart';
 import 'package:code_genie/src/resolvers/type/type_ref.dart';
 import 'package:code_genie/src/resolvers/visitor/element_stack.dart';
+import 'package:code_genie/src/scanner/scan_results.dart';
 
 class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack {
   final ElementResolver _resolver;
@@ -39,33 +39,6 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
       prefix: node.prefix?.name,
     );
     libraryElement.addElement(importElement);
-  }
-
-  @override
-  void visitExtensionTypeDeclaration(ExtensionTypeDeclaration node) {
-    final library = currentLibrary();
-    if (library.getClass(node.name.lexeme) != null) {
-      return;
-    }
-    final clazzElement = ClassElementImpl(name: node.name.lexeme, library: library);
-    library.addElement(clazzElement);
-    visitElementScoped(clazzElement, () {
-      node.typeParameters?.visitChildren(this);
-      node.metadata.accept(this);
-      for (final field in node.members.whereType<FieldDeclaration>()) {
-        field.accept(this);
-      }
-      for (final method in node.members.whereType<MethodDeclaration>()) {
-        method.accept(this);
-      }
-    });
-    _resolveInterfaces(clazzElement, implementsClause: node.implementsClause);
-    clazzElement.thisType = InterfaceTypeImpl(clazzElement, isNullable: false);
-    visitElementScoped(clazzElement, () {
-      for (final constructor in node.members.whereType<ConstructorDeclaration>()) {
-        constructor.accept(this);
-      }
-    });
   }
 
   @override
@@ -104,6 +77,36 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
   }
 
   @override
+  void visitExtensionTypeDeclaration(ExtensionTypeDeclaration node) {
+    final library = currentLibrary();
+    if (library.getClass(node.name.lexeme) != null) {
+      return;
+    }
+    final clazzElement = ClassElementImpl(name: node.name.lexeme, library: library);
+    library.addElement(clazzElement);
+    visitElementScoped(clazzElement, () {
+      node.typeParameters?.visitChildren(this);
+      node.metadata.accept(this);
+      for (final field in node.members.whereType<FieldDeclaration>()) {
+        field.accept(this);
+      }
+      for (final method in node.members.whereType<MethodDeclaration>()) {
+        method.accept(this);
+      }
+    });
+    _resolveInterfaces(clazzElement, implementsClause: node.implementsClause);
+    clazzElement.thisType = NamedTypeRef(
+      clazzElement.name,
+      library.identifierSrcOf(clazzElement.name, TopLevelIdentifierType.$class),
+    );
+    visitElementScoped(clazzElement, () {
+      for (final constructor in node.members.whereType<ConstructorDeclaration>()) {
+        constructor.accept(this);
+      }
+    });
+  }
+
+  @override
   void visitClassTypeAlias(ClassTypeAlias node) {
     final library = currentLibrary();
     if (library.getTypeAlias(node.name.lexeme) != null) {
@@ -121,9 +124,9 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
 
   void _resolveSuperType(InterfaceElementImpl element, NamedType? type) {
     if (type == null) return;
-    final resolvedSuperType = resolveType(NamedTypeRef.from(type), element);
-    assert(resolvedSuperType is InterfaceType, 'Super type must be an interface type');
-    element.superType = resolvedSuperType as InterfaceType;
+    final resolvedSuperType = resolveType(type, element);
+    assert(resolvedSuperType is NamedTypeRef, 'Super type must be an interface type ${resolvedSuperType.runtimeType}');
+    element.superType = resolvedSuperType as NamedTypeRef;
   }
 
   void _resolveInterfaces(
@@ -134,25 +137,25 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
   }) {
     if (withClause != null) {
       for (final mixin in withClause.mixinTypes) {
-        final mixinType = resolveType(NamedTypeRef.from(mixin), element);
-        assert(mixinType is InterfaceType, 'Mixin type must be an interface type');
-        element.addMixin(mixinType as InterfaceType);
+        final mixinType = resolveType((mixin), element);
+        assert(mixinType is NamedTypeRef, 'Mixin type must be an interface type');
+        element.addMixin(mixinType as NamedTypeRef);
       }
     }
     if (implementsClause != null) {
       for (final interface in implementsClause.interfaces) {
-        final interfaceType = resolveType(NamedTypeRef.from(interface), element);
-        assert(interfaceType is InterfaceType, 'Interface type must be an interface type');
-        element.addInterface(interfaceType as InterfaceType);
+        final interfaceType = resolveType((interface), element);
+        assert(interfaceType is NamedTypeRef, 'Interface type must be an interface type');
+        element.addInterface(interfaceType as NamedTypeRef);
       }
     }
 
     if (onClause != null) {
       assert(element is MixinElementImpl);
       for (final interface in onClause.superclassConstraints) {
-        final interfaceType = resolveType(NamedTypeRef.from(interface), element);
-        assert(interfaceType is InterfaceType, 'Interface type must be an interface type');
-        (element as MixinElementImpl).addSuperConstrain(interfaceType as InterfaceType);
+        final interfaceType = resolveType((interface), element);
+        assert(interfaceType is NamedTypeRef, 'Interface type must be an interface type');
+        (element as MixinElementImpl).addSuperConstrain(interfaceType as NamedTypeRef);
       }
     }
   }
@@ -171,7 +174,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
       node.typeParameters?.visitChildren(this);
     });
     final targetType = node.functionType != null ? node.functionType! : node.type;
-    final type = resolveType(TypeRef.from(targetType), typeAliasElm);
+    final type = resolveType((targetType), typeAliasElm);
     typeAliasElm.aliasedType = type;
     ZoneDelegate;
     print('${node.name.lexeme} type: $type');
@@ -179,25 +182,25 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
 
   @override
   void visitFunctionTypeAlias(FunctionTypeAlias node) {
-    final library = currentLibrary();
-    if (library.getTypeAlias(node.name.lexeme) != null) {
-      return;
-    }
-    final typeRef = FunctionTypeRef(
-      node.name.lexeme,
-      isNullable: false,
-      parameters: node.parameters,
-      typeParameters: node.typeParameters,
-      returnType: TypeRef.from(node.returnType),
-    );
-
-    final typeAliasElm = TypeAliasElementImpl(name: node.name.lexeme, library: library);
-    library.addElement(typeAliasElm);
-    visitElementScoped(typeAliasElm, () {
-      typeRef.typeParameters?.visitChildren(this);
-    });
-    final type = resolveType(typeRef, currentElementAs<ElementImpl>());
-    typeAliasElm.aliasedType = type;
+    // final library = currentLibrary();
+    // if (library.getTypeAlias(node.name.lexeme) != null) {
+    //   return;
+    // }
+    // final typeRef = FunctionTypeRef(
+    //   node.name.lexeme,
+    //   isNullable: false,
+    //   parameters: node.parameters,
+    //   typeParameters: node.typeParameters,
+    //   returnType: TypeRef.from(node.returnType),
+    // );
+    //
+    // final typeAliasElm = TypeAliasElementImpl(name: node.name.lexeme, library: library);
+    // library.addElement(typeAliasElm);
+    // visitElementScoped(typeAliasElm, () {
+    //   typeRef.typeParameters?.visitChildren(this);
+    // });
+    // final type = resolveType(typeRef, currentElementAs<ElementImpl>());
+    // typeAliasElm.aliasedType = type;
   }
 
   @override
@@ -208,17 +211,19 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     }
     final classElement = ClassElementImpl(name: node.name.lexeme, library: libraryElement);
     libraryElement.addElement(classElement);
-    classElement.thisType = InterfaceTypeImpl(classElement, isNullable: false);
-
+    classElement.thisType = NamedTypeRef(
+      classElement.name,
+      libraryElement.identifierSrcOf(classElement.name, TopLevelIdentifierType.$class),
+    );
     visitElementScoped(classElement, () {
       node.typeParameters?.visitChildren(this);
       node.metadata.accept(this);
       for (final field in node.members.whereType<FieldDeclaration>()) {
         field.accept(this);
       }
-      for (final method in node.members.whereType<MethodDeclaration>()) {
-        method.accept(this);
-      }
+      // for (final method in node.members.whereType<MethodDeclaration>()) {
+      //   method.accept(this);
+      // }
     });
 
     _resolveSuperType(classElement, node.extendsClause?.superclass);
@@ -244,7 +249,10 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
       mixinElement = MixinElementImpl(name: node.name.lexeme, library: libraryElement);
       libraryElement.addElement(mixinElement);
     }
-    mixinElement.thisType = InterfaceTypeImpl(mixinElement, isNullable: false);
+    mixinElement.thisType = NamedTypeRef(
+      mixinElement.name,
+      libraryElement.identifierSrcOf(mixinElement.name, TopLevelIdentifierType.$mixin),
+    );
 
     visitElementScoped(mixinElement, () {
       node.typeParameters?.visitChildren(this);
@@ -263,7 +271,10 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
       enumElement = EnumElementImpl(name: node.name.lexeme, library: libraryElement);
       libraryElement.addElement(enumElement);
     }
-    enumElement.thisType = InterfaceTypeImpl(enumElement, isNullable: false);
+    enumElement.thisType = NamedTypeRef(
+      enumElement.name,
+      libraryElement.identifierSrcOf(enumElement.name, TopLevelIdentifierType.$enum),
+    );
     visitElementScoped(enumElement, () {
       for (final constant in node.constants) {
         final constantName = constant.name.lexeme;
@@ -298,9 +309,9 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
   void visitTypeParameter(TypeParameter node) {
     final element = currentElementAs<TypeParameterizedElementMixin>();
     final bound = node.bound;
-    DartType boundType = DartType.dynamicType;
+    TypeRef boundType = TypeRef.dynamicType;
     if (bound != null) {
-      boundType = resolveType(TypeRef.from(bound), element);
+      boundType = resolveType(bound, element);
     }
     element.addTypeParameter(TypeParameterElementImpl(element, node.name.lexeme, boundType));
   }
@@ -324,76 +335,67 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     }
   }
 
-  DartType resolveType(TypeRef typeRef, Element enclosingEle) {
-    if (!typeRef.isValid) {
-      return DartType.neverType;
+  TypeRef resolveType(TypeAnnotation? typeAnno, Element enclosingEle) {
+    if (typeAnno == null) {
+      return TypeRef.invalidType;
     }
-    if (enclosingEle is TypeParameterizedElementMixin) {
-      for (final typeParam in enclosingEle.allTypeParameters) {
-        if (typeParam.name == typeRef.name) {
-          return TypeParameterType(typeParam, bound: typeParam.bound, isNullable: typeRef.isNullable);
+    if (typeAnno is NamedType) {
+      if (enclosingEle is TypeParameterizedElementMixin) {
+        for (final typeParam in enclosingEle.allTypeParameters) {
+          if (typeParam.name == typeAnno.name2.lexeme) {
+            return TypeParameterTypeRef(typeParam, bound: typeParam.bound, isNullable: typeAnno.question != null);
+          }
         }
       }
+      return resolveNamedType(typeAnno, enclosingEle);
+    } else if (typeAnno is GenericFunctionType) {
+      return resolveFunctionType(typeAnno, FunctionElementImpl(name: 'Function', enclosingElement: enclosingEle));
     }
-
-    if (typeRef is NamedTypeRef) {
-      return resolveNamedType(typeRef, enclosingEle);
-    } else if (typeRef is FunctionTypeRef) {
-      return resolveFunctionType(typeRef, FunctionElementImpl(name: typeRef.name, enclosingElement: enclosingEle));
-    }
-    return DartType.neverType;
+    return TypeRef.invalidType;
   }
 
-  FunctionType resolveFunctionType(FunctionTypeRef typeRef, FunctionElement funcElement) {
+  FunctionTypeRef resolveFunctionType(GenericFunctionType typeAnnotation, FunctionElement funcElement) {
     visitElementScoped(funcElement, () {
-      typeRef.typeParameters?.visitChildren(this);
-      typeRef.parameters.visitChildren(this);
+      typeAnnotation.typeParameters?.visitChildren(this);
+      typeAnnotation.parameters.visitChildren(this);
     });
-    return FunctionTypeImpl(
-      name: funcElement.name,
-      returnType: resolveType(typeRef.returnType, funcElement),
-      typeParameters: funcElement.typeParameters,
-      parameters: funcElement.parameters,
-      isNullable: typeRef.isNullable,
+    return FunctionTypeRef(
+      funcElement.name,
+      returnType: resolveType(typeAnnotation.returnType, funcElement),
+      typeParameters: typeAnnotation.typeParameters,
+      parameters: typeAnnotation.parameters,
+      isNullable: typeAnnotation.question != null,
     );
   }
 
-  DartType resolveNamedType(NamedTypeRef typeRef, Element enclosingEle) {
-    final typename = typeRef.name;
+  TypeRef resolveNamedType(NamedType annotation, Element enclosingEle) {
+    final typename = annotation.name2.lexeme;
 
-    if (typename == DartType.neverType.name) {
-      return DartType.neverType;
-    }
+    if (TypeRef.isNever(typename)) return TypeRef.neverType;
+    if (TypeRef.isDynamic(typename)) return TypeRef.dynamicType;
+    if (TypeRef.isVoid(typename)) return TypeRef.voidType;
 
-    if (typename == DartType.voidType.name) {
-      return DartType.voidType;
-    }
-    if (typename == DartType.dynamicType.name) {
-      return DartType.dynamicType;
-    }
-
-    final typeArgs = <DartType>[];
-    for (final typeArg in typeRef.typeArguments) {
+    final typeArgs = <TypeRef>[];
+    for (final typeArg in [...?annotation.typeArguments?.arguments]) {
       typeArgs.add(resolveType(typeArg, enclosingEle));
     }
 
-    final element = resolveTopLevelElement(
-      typeRef.identifierRef ?? IdentifierRef(typename, importPrefix: typeRef.importPrefix),
-      enclosingEle.library,
+    final identifierSrc = _resolver.graph.getIdentifierSrc(
+      typename,
+      enclosingEle.library.srcId,
+      importPrefix: annotation.importPrefix?.name.lexeme,
     );
-    if (element is InterfaceElement) {
-      return InterfaceTypeImpl(element, typeArguments: typeArgs, isNullable: typeRef.isNullable);
-    } else if (element is TypeAliasElementImpl) {
-      return element.instantiate(typeArguments: typeArgs, isNullable: typeRef.isNullable);
-    }
-    return DartType.neverType;
-    throw Exception('Unsupported type element: ${element.runtimeType}');
+    assert(
+      identifierSrc != null,
+      'could not find identifier $annotation  in ${_resolver.graph.uriForAsset(enclosingEle.library.srcId)}',
+    );
+    return NamedTypeRef(typename, identifierSrc!, isNullable: annotation.question != null, typeArguments: typeArgs);
   }
 
   @override
   void visitFieldDeclaration(FieldDeclaration node) {
     final interfaceElement = currentElementAs<InterfaceElementImpl>();
-    final fieldType = resolveType(TypeRef.from(node.fields.type), interfaceElement);
+    final fieldType = resolveType(node.fields.type, interfaceElement);
     final constEvaluator = ConstantEvaluator(_resolver, interfaceElement.library, this);
     // Process each variable in the field declaration
     for (final variable in node.fields.variables) {
@@ -476,13 +478,13 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
       node.functionExpression.typeParameters?.visitChildren(this);
       node.functionExpression.parameters?.visitChildren(this);
     });
-    final returnType = resolveType(TypeRef.from(node.returnType), funcElement);
+    final returnType = resolveType((node.returnType), funcElement);
     funcElement.returnType = returnType;
-    funcElement.type = FunctionTypeImpl(
-      name: funcElement.name,
+    funcElement.type = FunctionTypeRef(
+      funcElement.name,
       returnType: returnType,
-      typeParameters: funcElement.typeParameters,
-      parameters: funcElement.parameters,
+      typeParameters: node.functionExpression.typeParameters,
+      parameters: node.functionExpression.parameters,
       isNullable: false,
     );
   }
@@ -527,6 +529,71 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     constructorEle.addParameter(parameterElement);
   }
 
+  (TypeRef, Expression?) _resolveSuperParam({
+    required IdentifierRef ref,
+    required LibraryElement library,
+    required String constructorName,
+    required SuperFormalParameter superParam,
+  }) {
+    final (lib, clazzNode as ClassDeclaration) = _resolver.astNodeFor(ref, library);
+
+    final constructorNode = clazzNode.members.whereType<ConstructorDeclaration>().firstWhere(
+      (e) => (e.name?.lexeme ?? '') == constructorName,
+    );
+
+    final FormalParameter targetParam;
+    final ancestorParams = constructorNode.parameters.parameters;
+    if (superParam.isNamed) {
+      targetParam = ancestorParams.firstWhere(
+        (e) => e.name?.lexeme == superParam.name.lexeme,
+        orElse: () => throw Exception('Could not find super param'),
+      );
+    } else {
+      final thisParams = [...?superParam.thisOrAncestorOfType<ConstructorDeclaration>()?.parameters.parameters];
+      final superParamIndex = thisParams.indexWhere((p) => p.name?.lexeme == superParam.name.lexeme);
+      if (superParamIndex != -1) {
+        targetParam = ancestorParams[superParamIndex];
+      } else {
+        throw Exception('Could not find super param');
+      }
+    }
+
+    InterfaceElement getTypeParamsCollector() {
+      final typeParamsCollector = InterfaceElementImpl(name: '', library: lib);
+      visitElementScoped(typeParamsCollector, () {
+        clazzNode.typeParameters?.visitChildren(this);
+      });
+      return typeParamsCollector;
+    }
+
+    (TypeRef, Expression?) buildParam(FormalParameter param, LibraryElement lib) {
+      if (param is FieldFormalParameter) {
+        final field = clazzNode.members.whereType<FieldDeclaration>().firstWhere(
+          (e) => e.fields.variables.any((v) => v.name.lexeme == param.name.lexeme),
+          orElse: () => throw Exception('Could not find field formal parameter'),
+        );
+        return (resolveType(field.fields.type, getTypeParamsCollector()), null);
+      } else if (param is SimpleFormalParameter) {
+        return (resolveType(param.type, getTypeParamsCollector()), null);
+      } else if (param is DefaultFormalParameter) {
+        return (buildParam(param.parameter, lib).$1, param.defaultValue);
+      } else if (param is SuperFormalParameter) {
+        final superInvocation = constructorNode.initializers.whereType<SuperConstructorInvocation>().singleOrNull;
+        final superType = clazzNode.extendsClause!.superclass;
+        return _resolveSuperParam(
+          ref: IdentifierRef(superType.name2.lexeme, importPrefix: superType.importPrefix?.name.lexeme),
+          library: lib,
+          constructorName: superInvocation?.constructorName?.name ?? '',
+          superParam: param,
+        );
+      } else {
+        throw Exception('Unknown parameter type: ${param.runtimeType}');
+      }
+    }
+
+    return buildParam(targetParam, lib);
+  }
+
   @override
   void visitSuperFormalParameter(SuperFormalParameter node) {
     final name = node.name.lexeme;
@@ -534,41 +601,39 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     if (constructorEle.getParameter(name) != null) {
       return;
     }
+    final library = currentLibrary();
+    final superConstRef = constructorEle.superConstructor!;
 
-    final superParams = [...?constructorEle.superConstructor?.parameters];
-    ParameterElementImpl? superParam;
-    int paramIndex = -1;
-    final paramsList = node.thisOrAncestorOfType<FormalParameterList>();
-    if (paramsList != null) {
-      paramIndex = paramsList.parameters.indexOf(node);
+    final (superType, initializer) = _resolveSuperParam(
+      ref: IdentifierRef(superConstRef.classType.name, src: superConstRef.classType.src),
+      library: library,
+      constructorName: superConstRef.name,
+      superParam: node,
+    );
+    final parameterElement = _buildParameter(node, constructorEle, isSuperFormal: true, type: superType);
+
+    if (initializer != null) {
+      parameterElement.setConstantComputeValue(() {
+        final constEvaluator = ConstantEvaluator(_resolver, library, this);
+        return constEvaluator.evaluate(initializer);
+      });
     }
-    for (var index = 0; index < superParams.length; index++) {
-      if (node.isPositional && superParams[index].isPositional && index == paramIndex) {
-        superParam = superParams[index] as ParameterElementImpl;
-        break;
-      } else if (node.isNamed && superParams[index].isNamed && superParams[index].name == name) {
-        superParam = superParams[index] as ParameterElementImpl;
-        break;
-      }
-    }
-    if (superParam == null) {
-      throw Exception('Could not find super parameter for ${node.name}');
-    }
-    final parameterElement = _buildParameter(node, constructorEle, isSuperFormal: true, type: superParam.type);
-    parameterElement.setConstantComputeValue(superParam.computeConstantValue);
     constructorEle.addParameter(parameterElement);
+    print('$superType $name');
+
+    // final parameterElement = _buildParameter(node, constructorEle, isSuperFormal: true, type: superParam.type);
   }
 
   ParameterElementImpl _buildParameter(
     FormalParameter node,
     ExecutableElementImpl executableElement, {
     bool isSuperFormal = false,
-    DartType? type,
+    TypeRef? type,
   }) {
     final name = node.name?.lexeme ?? '';
 
     if (type == null && node is SimpleFormalParameter) {
-      type = resolveType(TypeRef.from(node.type), executableElement);
+      type = resolveType((node.type), executableElement);
     }
 
     final parameterElement = ParameterElementImpl(
@@ -590,7 +655,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
       isOptionalPositional: node.isOptionalPositional,
       isSuperFormal: isSuperFormal,
     );
-    parameterElement.type = type ?? NeverType();
+    parameterElement.type = type ?? TypeRef.neverType;
     return parameterElement;
   }
 
@@ -598,7 +663,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
   void visitTopLevelVariableDeclaration(TopLevelVariableDeclaration node) {
     final library = currentLibrary();
     final constantEvaluator = ConstantEvaluator(_resolver, library, this);
-    final type = resolveType(TypeRef.from(node.variables.type), library);
+    final type = resolveType((node.variables.type), library);
     for (final variable in node.variables.variables) {
       final topLevelVar = TopLevelVariableElementImpl(
         name: variable.name.lexeme,
@@ -642,13 +707,13 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
       node.typeParameters?.visitChildren(this);
       node.parameters?.visitChildren(this);
     });
-    final returnType = resolveType(TypeRef.from(node.returnType), methodElement);
+    final returnType = resolveType((node.returnType), methodElement);
     methodElement.returnType = returnType;
-    methodElement.type = FunctionTypeImpl(
-      name: methodElement.name,
+    methodElement.type = FunctionTypeRef(
+      methodElement.name,
       returnType: returnType,
-      typeParameters: methodElement.typeParameters,
-      parameters: methodElement.parameters,
+      typeParameters: node.typeParameters,
+      parameters: node.parameters,
       isNullable: false,
     );
   }
@@ -656,22 +721,24 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
   @override
   void visitConstructorDeclaration(ConstructorDeclaration node) {
     final clazzElement = currentElementAs<ClassElementImpl>();
-    final name = node.name?.lexeme ?? '';
-    if (clazzElement.getConstructor(name) != null) {
+    final constructorName = node.name?.lexeme ?? '';
+    if (clazzElement.getConstructor(constructorName) != null) {
       return;
     }
-
+    //
     final initializers = node.initializers;
-    ConstructorElement? superConstructor;
+    ConstructorElementRef? superConstructor;
     if (clazzElement.superType != null) {
       final superConstName =
           initializers.whereType<SuperConstructorInvocation>().map((e) => e.constructorName?.name).firstOrNull;
-      final superClazz = clazzElement.superType!.element as ClassElementImpl;
-      superConstructor = superClazz.getConstructor(superConstName ?? '');
+      final superClazz = clazzElement.superType as NamedTypeRef?;
+      if (superClazz != null) {
+        superConstructor = ConstructorElementRef(superClazz, superConstName ?? '');
+      }
     }
 
     final constructorElement = ConstructorElementImpl(
-      name: name,
+      name: constructorName,
       enclosingElement: clazzElement,
       isConst: node.constKeyword != null,
       isFactory: node.factoryKeyword != null,
@@ -687,16 +754,16 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
       node.parameters.visitChildren(this);
     });
 
-    for (final initializer in initializers) {
-      if (initializer is ConstructorFieldInitializer) {
-        final field = clazzElement.getField(initializer.fieldName.name) as FieldElementImpl?;
-        if (field != null) {
-          field.setConstantComputeValue(() {
-            return _evaluateConstant(initializer.expression, clazzElement.library);
-          });
-        }
-      }
-    }
+    // for (final initializer in initializers) {
+    //   if (initializer is ConstructorFieldInitializer) {
+    //     final field = clazzElement.getField(initializer.fieldName.name) as FieldElementImpl?;
+    //     if (field != null) {
+    //       field.setConstantComputeValue(() {
+    //         return _evaluateConstant(initializer.expression, clazzElement.library);
+    //       });
+    //     }
+    //   }
+    // }
 
     final redirectedConstructor = node.redirectedConstructor;
     if (redirectedConstructor != null) {
@@ -715,14 +782,18 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
         }
       }
 
-      final resolvedType =
-          resolveType(NamedTypeRef.from(type, identifierRef: identifierRef), clazzElement) as InterfaceType;
-      constructorElement.returnType = resolvedType;
+      final identifierSrc = _resolver.graph.getIdentifierSrc(
+        identifierRef.name,
+        constructorElement.library.srcId,
+        importPrefix: identifierRef.importPrefix,
+      );
 
-      final redirectClass = resolvedType.element as ClassElementImpl;
-      final redirectConstructor = redirectClass.getConstructor(prefix == null ? '' : type.name2.lexeme);
-      // print('redirectConstructor: $redirectConstructor');
-      constructorElement.redirectedConstructor = redirectConstructor;
+      final resolvedType = NamedTypeRef(constructorName, identifierSrc!, isNullable: false, typeArguments: []);
+      constructorElement.returnType = resolvedType;
+      constructorElement.redirectedConstructor = ConstructorElementRef(
+        resolvedType,
+        redirectedConstructor.name?.name ?? '',
+      );
     }
   }
 

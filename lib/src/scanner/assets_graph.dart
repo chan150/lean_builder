@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:code_genie/src/resolvers/package_file_resolver.dart';
 import 'package:code_genie/src/scanner/directive_statement.dart';
 import 'package:code_genie/src/scanner/scan_results.dart';
 import 'package:collection/collection.dart';
@@ -16,7 +15,7 @@ class AssetsGraph extends AssetsScanResults {
 
   AssetsGraph._fromCache(this.packagesHash) : loadedFromCache = true;
 
-  late final _coreImportId = xxh3String(Uint8List.fromList('dart:core/core.dart'.codeUnits));
+  final _coreImportId = xxh3String(Uint8List.fromList('dart:core/core.dart'.codeUnits));
   late final _coreImport = [DirectiveStatement.import, _coreImportId];
 
   factory AssetsGraph.init(String packagesHash) {
@@ -42,9 +41,9 @@ class AssetsGraph extends AssetsScanResults {
 
   static const String version = '1.0.0';
 
-  Uri getUriForAsset(String pathHash) {
-    final asset = assets[pathHash];
-    assert(asset != null, 'Asset not found: $pathHash');
+  Uri uriForAsset(String id) {
+    final asset = assets[id];
+    assert(asset != null, 'Asset not found: $id');
     return Uri.parse(asset![0]);
   }
 
@@ -75,14 +74,10 @@ class AssetsGraph extends AssetsScanResults {
   }
 
   IdentifierSrc _buildRef(String identifier, MapEntry<String, int> srcEntry, {String? providerId}) {
-    final srcUri = getUriForAsset(srcEntry.key);
-    final providerUri = providerId != null ? getUriForAsset(providerId) : srcUri;
     return IdentifierSrc(
       identifier: identifier,
       srcId: srcEntry.key,
-      srcUri: srcUri,
       providerId: providerId ?? srcEntry.key,
-      providerUri: providerUri,
       type: TopLevelIdentifierType.fromValue(srcEntry.value),
     );
   }
@@ -114,14 +109,15 @@ class AssetsGraph extends AssetsScanResults {
 
     for (final importEntry in fileImports) {
       final importedFileHash = importEntry[1] as String;
-      final shows = importEntry.elementAtOrNull(2) as List<dynamic>? ?? const [];
-      final hides = importEntry.elementAtOrNull(3) as List<dynamic>? ?? const [];
       final prefix = importEntry.elementAtOrNull(4) as String?;
       if (importPrefix != null && importPrefix != prefix) continue;
 
-      // Skip if the identifier is hidden or not shown
-      if (shows.isNotEmpty && !shows.contains(identifier)) continue;
+      final hides = importEntry.elementAtOrNull(3) as List<dynamic>? ?? const [];
       if (hides.contains(identifier)) continue;
+
+      // Skip if the identifier is hidden or not shown
+      final shows = importEntry.elementAtOrNull(2) as List<dynamic>? ?? const [];
+      if (shows.isNotEmpty && !shows.contains(identifier)) continue;
 
       // Check if the imported file directly declares the identifier
       for (final entry in possibleSrcs.entries) {
@@ -132,7 +128,8 @@ class AssetsGraph extends AssetsScanResults {
     }
     for (final importEntry in fileImports) {
       final importedFileHash = importEntry[1] as String;
-      final src = _traceExportsOf(importedFileHash, identifier, possibleSrcs.keys);
+      final visitedSrcs = <String>{};
+      final src = _traceExportsOf(importedFileHash, identifier, possibleSrcs.keys, visitedSrcs);
       if (src != null) {
         final srcEntry = possibleSrcs.entries.firstWhere((k) => k.key == src);
         return _buildRef(identifier, srcEntry, providerId: importedFileHash);
@@ -141,15 +138,10 @@ class AssetsGraph extends AssetsScanResults {
     return null;
   }
 
-  String? _traceExportsOf(String srcId, String identifier, Iterable<String> possibleSrcs) {
-    if (identifier == 'PhysicalKeyboardKey') {
-      print('Trace exports of ${getUriForAsset(srcId)}');
-      // if (getUriForAsset(srcId).toString() == 'dart:ui/annotations.dart') {
-      //   final fileResolver = PackageFileResolver.forCurrentRoot('code_genie');
-      //   final assetSrc = fileResolver.buildAssetUri(Uri.parse('dart:ui/annotations.dart'), relativeTo: null);
-      //   print(assetSrc.uri);
-      // }
-    }
+  String? _traceExportsOf(String srcId, String identifier, Iterable<String> possibleSrcs, Set<String> visitedSrcs) {
+    if (visitedSrcs.contains(srcId)) return null;
+    visitedSrcs.add(srcId);
+
     final exports = exportsOf(srcId);
     final checkableExports = <String>{};
     for (final export in exports) {
@@ -162,15 +154,15 @@ class AssetsGraph extends AssetsScanResults {
       if (possibleSrcs.contains(exportedFileHash)) {
         return exportedFileHash;
       }
-      // if (shows.contains(identifier)) {
-      //   checkableExports.clear();
-      //   checkableExports.add(exportedFileHash);
-      //   break;
-      // }
+      if (shows.contains(identifier)) {
+        checkableExports.clear();
+        checkableExports.add(exportedFileHash);
+        break;
+      }
       checkableExports.add(exportedFileHash);
     }
     for (final exportedFileHash in checkableExports) {
-      final src = _traceExportsOf(exportedFileHash, identifier, possibleSrcs);
+      final src = _traceExportsOf(exportedFileHash, identifier, possibleSrcs, visitedSrcs);
       if (src != null) {
         return src;
       }

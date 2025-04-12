@@ -5,6 +5,7 @@ import 'package:code_genie/src/resolvers/package_file_resolver.dart';
 import 'package:code_genie/src/resolvers/parsed_units_cache.dart';
 import 'package:code_genie/src/resolvers/visitor/element_resolver_visitor.dart';
 import 'package:code_genie/src/scanner/assets_graph.dart';
+import 'package:code_genie/src/scanner/identifier_ref.dart';
 import 'package:code_genie/src/scanner/scan_results.dart';
 import 'package:collection/collection.dart';
 
@@ -12,13 +13,13 @@ class ElementResolver {
   final AssetsGraph graph;
   final SrcParser parser;
   final PackageFileResolver fileResolver;
-  final Map<String, LibraryElement> _libraryCache = {};
+  final Map<String, LibraryElementImpl> _libraryCache = {};
   final Map<String, (LibraryElement, AstNode)> _parsedUnitCache = {};
 
   ElementResolver(this.graph, this.fileResolver, this.parser);
 
   LibraryElement resolveLibrary(AssetSrc src) {
-    final unit = parser.parse(src.path);
+    final unit = parser.parse(src.path, key: src.id);
     final rootLibrary = libraryFor(src);
     final visitor = ElementResolverVisitor(this, rootLibrary);
     for (final child in unit.childEntities.whereType<AnnotatedNode>()) {
@@ -29,10 +30,10 @@ class ElementResolver {
     return rootLibrary;
   }
 
-  LibraryElement libraryFor(AssetSrc src) {
+  LibraryElementImpl libraryFor(AssetSrc src) {
     return _libraryCache.putIfAbsent(src.id, () {
-      final name = src.uri.pathSegments.last;
-      return LibraryElementImpl(name: name, src: src);
+      final unit = parser.parse(src.path, key: src.id);
+      return LibraryElementImpl(this, unit, src: src);
     });
   }
 
@@ -43,45 +44,48 @@ class ElementResolver {
       return _parsedUnitCache[unitId]!;
     }
 
-    final ref = graph.getIdentifierSrc(
-      identifier.topLevelTarget,
-      enclosingAsset.id,
-      requireProvider: true,
-      importPrefix: identifier.importPrefix,
-    );
+    final identifierSrc =
+        identifier.src ??
+        graph.getIdentifierSrc(
+          identifier.topLevelTarget,
+          enclosingAsset.id,
+          requireProvider: true,
+          importPrefix: identifier.importPrefix,
+        );
 
-    assert(ref != null, 'Identifier $identifier not found in ${enclosingAsset.uri}');
-    final assetFile = fileResolver.buildAssetUri(ref!.srcUri, relativeTo: enclosingAsset);
+    assert(identifierSrc != null, 'Identifier $identifier not found in ${enclosingAsset.uri}');
+    final srcUri = uriForAsset(identifierSrc!.srcId);
+    final assetFile = fileResolver.buildAssetUri(srcUri, relativeTo: enclosingAsset);
 
     final library = libraryFor(assetFile);
-    final parsedUnit = parser.parse(assetFile.path);
+    final compilationUnit = library.compilationUnit;
 
-    if (ref.type == TopLevelIdentifierType.$variable) {
-      final unit = parsedUnit.declarations.whereType<TopLevelVariableDeclaration>().firstWhere(
-        (e) => e.variables.variables.any((v) => v.name.lexeme == ref.identifier),
-        orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
+    if (identifierSrc.type == TopLevelIdentifierType.$variable) {
+      final unit = compilationUnit.declarations.whereType<TopLevelVariableDeclaration>().firstWhere(
+        (e) => e.variables.variables.any((v) => v.name.lexeme == identifierSrc.identifier),
+        orElse: () => throw Exception('Identifier  ${identifierSrc.identifier} not found in $srcUri'),
       );
       return _parsedUnitCache[unitId] = (library, unit);
-    } else if (ref.type == TopLevelIdentifierType.$function) {
-      final unit = parsedUnit.declarations.whereType<FunctionDeclaration>().firstWhere(
-        (e) => e.name.lexeme == ref.identifier,
-        orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
+    } else if (identifierSrc.type == TopLevelIdentifierType.$function) {
+      final unit = compilationUnit.declarations.whereType<FunctionDeclaration>().firstWhere(
+        (e) => e.name.lexeme == identifierSrc.identifier,
+        orElse: () => throw Exception('Identifier  ${identifierSrc.identifier} not found in $srcUri'),
       );
       return _parsedUnitCache[unitId] = (library, unit);
-    } else if (ref.type == TopLevelIdentifierType.$typeAlias) {
-      final unit = parsedUnit.declarations.whereType<TypeAlias>().firstWhere(
-        (e) => e.name.lexeme == ref.identifier,
-        orElse: () => throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}'),
+    } else if (identifierSrc.type == TopLevelIdentifierType.$typeAlias) {
+      final unit = compilationUnit.declarations.whereType<TypeAlias>().firstWhere(
+        (e) => e.name.lexeme == identifierSrc.identifier,
+        orElse: () => throw Exception('Identifier  ${identifierSrc.identifier} not found in $srcUri'),
       );
       return _parsedUnitCache[unitId] = (library, unit);
     }
 
-    final unit = parsedUnit.declarations.whereType<NamedCompilationUnitMember>().firstWhereOrNull(
-      (e) => e.name.lexeme == ref.identifier,
+    final unit = compilationUnit.declarations.whereType<NamedCompilationUnitMember>().firstWhereOrNull(
+      (e) => e.name.lexeme == identifierSrc.identifier,
     );
 
     if (unit == null) {
-      throw Exception('Identifier  ${ref.identifier} not found in ${ref.srcUri}');
+      throw Exception('Identifier  ${identifierSrc.identifier} not found in $srcUri');
     } else if (identifier.isPrefixed) {
       final targetIdentifier = identifier.name;
 
@@ -104,10 +108,14 @@ class ElementResolver {
           }
         }
       }
-      throw Exception('Identifier $targetIdentifier (${identifier.toString()}) not found in ${ref.srcUri}');
+      throw Exception('Identifier $targetIdentifier (${identifier.toString()}) not found in $srcUri');
     }
 
     return _parsedUnitCache[unitId] = (library, unit);
+  }
+
+  Uri uriForAsset(String id) {
+    return graph.uriForAsset(id);
   }
 }
 
@@ -115,8 +123,9 @@ class IdentifierRef {
   final String name;
   final String? prefix;
   final String? importPrefix;
+  final IdentifierSrc? src;
 
-  IdentifierRef(this.name, {this.prefix, this.importPrefix});
+  IdentifierRef(this.name, {this.prefix, this.importPrefix, this.src});
 
   bool get isPrefixed => prefix != null;
 

@@ -5,10 +5,10 @@ abstract class FunctionTypedElement implements TypeParameterizedElement {
   List<ParameterElement> get parameters;
 
   /// The return type defined by this element.
-  DartType get returnType;
+  TypeRef get returnType;
 
   /// The type defined by this element.
-  FunctionType get type;
+  FunctionTypeRef get type;
 
   ParameterElement? getParameter(String name);
 }
@@ -85,12 +85,12 @@ abstract class ConstructorElement implements ClassMemberElement, ExecutableEleme
   /// The constructor to which this constructor is redirecting, or `null` if
   /// this constructor does not redirect to another constructor or if the
   /// library containing this constructor has not yet been resolved.
-  ConstructorElement? get redirectedConstructor;
+  ConstructorElementRef? get redirectedConstructor;
 
   /// The constructor of the superclass that this constructor invokes, or
   /// `null` if this constructor redirects to another constructor, or if the
   /// library containing this constructor has not yet been resolved.
-  ConstructorElement? get superConstructor;
+  ConstructorElementRef? get superConstructor;
 }
 
 abstract class MethodElement implements ClassMemberElement, ExecutableElement {}

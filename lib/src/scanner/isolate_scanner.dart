@@ -67,7 +67,11 @@ class IsolateTLScanner {
       updateIncrementalAssets(scanner);
     }
 
-    await AssetsGraph.cacheFile.writeAsString(jsonEncode(assetsGraph.toJson()));
+    final file = AssetsGraph.cacheFile;
+    if (!file.existsSync()) {
+      file.createSync(recursive: true);
+    }
+    await file.writeAsString(jsonEncode(assetsGraph.toJson()));
   }
 
   Future<void> scanWithIsolates(List<AssetSrc> assets, Map<String, dynamic> packageResolverData) async {

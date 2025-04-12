@@ -353,7 +353,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> {
     final value = node.function.accept(this);
     if (value is ConstFunctionReferenceImpl) {
       for (final typeArg in [...?node.typeArguments?.arguments]) {
-        final type = _elementResolverVisitor.resolveType(TypeRef.from(typeArg), _library);
+        final type = _elementResolverVisitor.resolveType((typeArg), _library);
         value.addTypeArgument(type);
       }
     }

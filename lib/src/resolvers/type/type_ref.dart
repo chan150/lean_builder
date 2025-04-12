@@ -1,64 +1,117 @@
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:code_genie/src/resolvers/element_resolver.dart';
+import 'package:code_genie/src/scanner/identifier_ref.dart';
+import 'package:code_genie/src/resolvers/element/element.dart';
 
 abstract class TypeRef {
   final bool isNullable;
   final String name;
 
-  TypeRef(this.name, {required this.isNullable});
+  const TypeRef(this.name, {required this.isNullable});
 
-  bool get isValid => this is! _InvalidTypeRef;
+  bool get isValid => this != invalidType;
 
-  factory TypeRef.from(TypeAnnotation? type) {
-    if (type == null) {
-      return _InvalidTypeRef();
-    } else if (type is NamedType) {
-      return NamedTypeRef.from(type);
-    } else if (type is GenericFunctionType) {
-      return FunctionTypeRef.from(type);
-    } else if (type is RecordTypeAnnotation) {
-      return RecordTypeRef.from(type);
-    } else {
-      throw UnimplementedError('Unknown type: $type');
-    }
+  static const voidType = _NoElementType('void', isNullable: false);
+  static const dynamicType = _NoElementType('dynamic', isNullable: true);
+  static const neverType = _NoElementType('Never', isNullable: false);
+  static const nullType = _NoElementType('Null', isNullable: true);
+  static const invalidType = _NoElementType('Invalid', isNullable: false);
+
+  static bool isVoid(String name) {
+    return voidType.name == name;
+  }
+
+  static bool isDynamic(String name) {
+    return dynamicType.name == name;
+  }
+
+  static bool isNever(String name) {
+    return neverType.name == name;
+  }
+
+  static bool isNull(String name) {
+    return nullType.name == name;
+  }
+
+  static bool isVoidOrDynamic(String name) {
+    return isVoid(name) || isDynamic(name);
   }
 }
 
-class _InvalidTypeRef extends TypeRef {
-  _InvalidTypeRef() : super('', isNullable: false);
+class _NoElementType extends TypeRef {
+  const _NoElementType(super.name, {required super.isNullable});
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is _NoElementType && runtimeType == other.runtimeType;
+
+  @override
+  int get hashCode => name.hashCode;
+
+  @override
+  String toString() => name;
 }
 
-class NamedTypeRef extends TypeRef {
+abstract class SourcedTypeRef extends TypeRef {
+  final IdentifierSrc src;
+
+  SourcedTypeRef(super.name, this.src, {required super.isNullable});
+}
+
+class NamedTypeRef extends SourcedTypeRef {
   final List<TypeRef> typeArguments;
   final String? importPrefix;
-  final IdentifierRef? identifierRef;
+
+  // final IdentifierRef? identifierRef;
 
   bool get hasTypeArguments => typeArguments.isNotEmpty;
 
   NamedTypeRef(
-    super.name, {
-    required super.isNullable,
-    required this.typeArguments,
-    this.identifierRef,
+    super.name,
+    super.src, {
+    super.isNullable = false,
+    this.typeArguments = const [],
+    // this.identifierRef,
     this.importPrefix,
   });
 
-  factory NamedTypeRef.from(NamedType namedType, {IdentifierRef? identifierRef}) {
-    final typeArguments = namedType.typeArguments?.arguments.map((e) {
-      return TypeRef.from(e);
-    });
-    return NamedTypeRef(
-      namedType.name2.lexeme,
-      isNullable: namedType.question != null,
-      typeArguments: [...?typeArguments],
-      importPrefix: namedType.importPrefix?.name.lexeme,
-      identifierRef: identifierRef,
-    );
+  @override
+  String toString() {
+    final buffer = StringBuffer();
+    buffer.write(name);
+    if (hasTypeArguments) {
+      buffer.write('<');
+      buffer.write(typeArguments.map((e) => e.toString()).join(', '));
+      buffer.write('>');
+    }
+    if (isNullable) {
+      buffer.write('?');
+    }
+    return buffer.toString();
   }
 }
 
+class InterfaceTypeRef extends NamedTypeRef {
+  InterfaceTypeRef(
+    super.name,
+    super.src, {
+    this.interfaces = const [],
+    this.mixins = const [],
+    this.superclass,
+    this.superclassConstraints = const [],
+    super.isNullable = false,
+    super.typeArguments = const [],
+  });
+
+  final List<InterfaceTypeRef> interfaces;
+  final List<InterfaceTypeRef> mixins;
+
+  final InterfaceTypeRef? superclass;
+
+  final List<InterfaceTypeRef> superclassConstraints;
+}
+
 class FunctionTypeRef extends TypeRef {
-  final FormalParameterList parameters;
+  final FormalParameterList? parameters;
   final TypeParameterList? typeParameters;
   final TypeRef returnType;
 
@@ -70,29 +123,55 @@ class FunctionTypeRef extends TypeRef {
     required this.returnType,
   });
 
-  factory FunctionTypeRef.from(GenericFunctionType functionType) {
-    return FunctionTypeRef(
-      'Function',
-      isNullable: functionType.question != null,
-      parameters: functionType.parameters,
-      typeParameters: functionType.typeParameters,
-      returnType: TypeRef.from(functionType.returnType),
-    );
+  @override
+  String toString() {
+    final buffer = StringBuffer();
+    if (typeParameters != null) {
+      buffer.write('<');
+      buffer.write(typeParameters.toString());
+      buffer.write('>');
+    }
+    buffer.write(name);
+    if (parameters != null) {
+      buffer.write(parameters.toString());
+    }
+    if (isNullable) {
+      buffer.write('?');
+    }
+    return buffer.toString();
   }
 }
 
-class RecordTypeRef extends TypeRef {
-  NodeList<RecordTypeAnnotationNamedField>? namedFields;
-  NodeList<RecordTypeAnnotationPositionalField> positionalFields;
+class TypeParameterTypeRef extends TypeRef {
+  final TypeRef bound;
 
-  RecordTypeRef(super.name, {required super.isNullable, required this.positionalFields, this.namedFields});
+  final TypeParameterElement element;
 
-  factory RecordTypeRef.from(RecordTypeAnnotation recordType) {
-    return RecordTypeRef(
-      'Record',
-      isNullable: recordType.question != null,
-      positionalFields: recordType.positionalFields,
-      namedFields: recordType.namedFields?.fields,
-    );
+  TypeParameterTypeRef(this.element, {required this.bound, required super.isNullable}) : super(element.name);
+
+  @override
+  String toString() {
+    final buffer = StringBuffer();
+    buffer.write(name);
+    if (isNullable) {
+      buffer.write('?');
+    }
+    return buffer.toString();
   }
 }
+
+// class RecordTypeRef extends TypeRef {
+//   NodeList<RecordTypeAnnotationNamedField>? namedFields;
+//   NodeList<RecordTypeAnnotationPositionalField> positionalFields;
+//
+//   RecordTypeRef(super.name, {required super.isNullable, required this.positionalFields, this.namedFields});
+//
+//   factory RecordTypeRef.from(RecordTypeAnnotation recordType) {
+//     return RecordTypeRef(
+//       'Record',
+//       isNullable: recordType.question != null,
+//       positionalFields: recordType.positionalFields,
+//       namedFields: recordType.namedFields?.fields,
+//     );
+//   }
+// }

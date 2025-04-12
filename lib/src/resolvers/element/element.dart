@@ -1,11 +1,12 @@
-import 'dart:io';
-
+import 'package:analyzer/dart/analysis/results.dart';
+import 'package:analyzer/dart/ast/ast.dart';
 import 'package:code_genie/src/resolvers/const/constant.dart';
+import 'package:code_genie/src/resolvers/element_resolver.dart';
 import 'package:code_genie/src/resolvers/file_asset.dart';
-import 'package:code_genie/src/resolvers/type/type.dart';
+import 'package:code_genie/src/resolvers/type/type_ref.dart';
+import 'package:code_genie/src/scanner/identifier_ref.dart';
+import 'package:code_genie/src/scanner/scan_results.dart';
 import 'package:collection/collection.dart';
-
-import '../type/substitution.dart';
 
 part 'element_annotation.dart';
 
@@ -30,12 +31,10 @@ abstract class Element {
   String get identifier;
 
   List<ElementAnnotation> get metadata;
-
-  static final nullElement = NullElementImpl();
 }
 
 abstract class TypeParameterElement implements Element {
-  DartType get bound;
+  TypeRef get bound;
 }
 
 abstract class TypeParameterizedElement extends Element {
@@ -43,8 +42,7 @@ abstract class TypeParameterizedElement extends Element {
 }
 
 abstract class TypeAliasElement implements TypeParameterizedElement {
-  Element? get aliasedElement;
-  DartType get aliasedType;
+  TypeRef get aliasedType;
 }
 
 abstract class InstanceElement extends Element implements TypeParameterizedElement {
@@ -54,17 +52,17 @@ abstract class InstanceElement extends Element implements TypeParameterizedEleme
 
   List<MethodElement> get methods;
 
-  DartType get thisType;
+  TypeRef get thisType;
 }
 
 abstract class InterfaceElement extends InstanceElement with TypeParameterizedElementMixin {
-  InterfaceType? get superType;
+  TypeRef? get superType;
 
-  List<InterfaceType> get allSuperTypes;
+  List<TypeRef> get allSuperTypes;
 
-  List<InterfaceType> get mixins;
+  List<TypeRef> get mixins;
 
-  List<InterfaceType> get interfaces;
+  List<TypeRef> get interfaces;
 
   MethodElement? getMethod(String name) => methods.firstWhereOrNull((e) => e.name == name);
 
@@ -75,6 +73,8 @@ abstract class LibraryElement extends Element {
   AssetSrc get src;
 
   String get srcId => src.id;
+
+  IdentifierSrc identifierSrcOf(String identifier, TopLevelIdentifierType type);
 
   List<Element> get resolvedElements;
 
@@ -117,7 +117,7 @@ abstract class VariableElement extends Element {
   @override
   String get name;
 
-  DartType get type;
+  TypeRef get type;
 
   Constant? get constantValue;
 }
@@ -186,7 +186,7 @@ abstract class ClassElement extends InterfaceElement {
 abstract class EnumElement implements InterfaceElement {}
 
 abstract class MixinElement implements Element {
-  List<InterfaceType> get superclassConstraints;
+  List<TypeRef> get superclassConstraints;
 }
 
 abstract class NullElement extends Element {}

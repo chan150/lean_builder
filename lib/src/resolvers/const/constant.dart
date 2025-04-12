@@ -1,4 +1,5 @@
 import 'package:code_genie/src/resolvers/type/type.dart';
+import 'package:code_genie/src/resolvers/type/type_ref.dart';
 
 abstract class Constant<T> {
   const Constant(this.value);
@@ -74,14 +75,14 @@ class ConstEnumValue extends ConstValue<String> {
 abstract class ConstFunctionReference extends Constant<String> {
   const ConstFunctionReference(super.value);
 
-  FunctionType? get type;
+  FunctionTypeRef? get type;
 
-  List<DartType> get typeArguments;
+  List<TypeRef> get typeArguments;
 }
 
 class ConstFunctionReferenceImpl extends ConstFunctionReference {
   @override
-  final FunctionType? type;
+  final FunctionTypeRef? type;
 
   ConstFunctionReferenceImpl(super.value, this.type);
 
@@ -89,11 +90,11 @@ class ConstFunctionReferenceImpl extends ConstFunctionReference {
   String toString() => value;
 
   @override
-  List<DartType> get typeArguments => _typeArguments;
+  List<TypeRef> get typeArguments => _typeArguments;
 
-  final List<DartType> _typeArguments = [];
+  final List<TypeRef> _typeArguments = [];
 
-  void addTypeArgument(DartType type) {
+  void addTypeArgument(TypeRef type) {
     _typeArguments.add(type);
   }
 }

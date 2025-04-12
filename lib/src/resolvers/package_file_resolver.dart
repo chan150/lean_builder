@@ -113,7 +113,6 @@ class PackageFileResolverImpl implements PackageFileResolver {
       pathToPackage[sdkPath] = PackageFileResolver.dartSdk;
       packageToPath[PackageFileResolver.dartSdk] = sdkPath;
     }
-    print(packageToPath[PackageFileResolver.dartSdk]);
     return _PackageConfig(packageToPath, pathToPackage, packagesHash);
   }
 
