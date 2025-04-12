@@ -3,6 +3,7 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:code_genie/src/resolvers/const/constant.dart';
 import 'package:code_genie/src/resolvers/element_resolver.dart';
 import 'package:code_genie/src/resolvers/file_asset.dart';
+import 'package:code_genie/src/resolvers/type/substitution.dart';
 import 'package:code_genie/src/resolvers/type/type_ref.dart';
 import 'package:code_genie/src/scanner/identifier_ref.dart';
 import 'package:code_genie/src/scanner/scan_results.dart';
@@ -33,16 +34,17 @@ abstract class Element {
   List<ElementAnnotation> get metadata;
 }
 
-abstract class TypeParameterElement implements Element {
-  TypeRef get bound;
-}
-
 abstract class TypeParameterizedElement extends Element {
-  List<TypeParameterElement> get typeParameters;
+  List<TypeParameterTypeRef> get typeParameters;
+  TypeRef instantiate(NamedTypeRef typeRef);
 }
 
 abstract class TypeAliasElement implements TypeParameterizedElement {
   TypeRef get aliasedType;
+}
+
+abstract class InstantiatableElement extends Element {
+  TypeRef instantiate(NamedTypeRef typeRef);
 }
 
 abstract class InstanceElement extends Element implements TypeParameterizedElement {
@@ -74,7 +76,7 @@ abstract class LibraryElement extends Element {
 
   String get srcId => src.id;
 
-  IdentifierSrc identifierSrcOf(String identifier, TopLevelIdentifierType type);
+  IdentifierLocation identifierLocationOf(String identifier, TopLevelIdentifierType type);
 
   List<Element> get resolvedElements;
 
@@ -172,7 +174,7 @@ abstract class ParameterElement extends VariableElement {
 
   List<ParameterElement> get parameters;
 
-  List<TypeParameterElement> get typeParameters;
+  List<TypeParameterTypeRef> get typeParameters;
 }
 
 abstract class ClassElement extends InterfaceElement {

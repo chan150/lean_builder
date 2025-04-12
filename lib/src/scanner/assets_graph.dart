@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:code_genie/src/resolvers/file_asset.dart';
 import 'package:code_genie/src/scanner/directive_statement.dart';
 import 'package:code_genie/src/scanner/scan_results.dart';
 import 'package:collection/collection.dart';
@@ -73,39 +74,41 @@ class AssetsGraph extends AssetsScanResults {
     return assets;
   }
 
-  IdentifierSrc _buildRef(String identifier, MapEntry<String, int> srcEntry, {String? providerId}) {
-    return IdentifierSrc(
-      identifier: identifier,
-      srcId: srcEntry.key,
-      providerId: providerId ?? srcEntry.key,
-      type: TopLevelIdentifierType.fromValue(srcEntry.value),
-    );
-  }
-
-  IdentifierSrc? getIdentifierSrc(
+  IdentifierLocation? getIdentifierLocation(
     String identifier,
-    String rootSrcId, {
+    AssetSrc importingSrc, {
     bool requireProvider = true,
     String? importPrefix,
   }) {
+    IdentifierLocation buildRef(MapEntry<String, int> srcEntry, {String? providerId}) {
+      return IdentifierLocation(
+        identifier: identifier,
+        srcId: srcEntry.key,
+        srcUri: uriForAsset(srcEntry.key),
+        providerId: providerId ?? srcEntry.key,
+        type: TopLevelIdentifierType.fromValue(srcEntry.value),
+        importingLibrary: importingSrc,
+      );
+    }
+
     final possibleSrcs = Map<String, int>.fromEntries(
       identifiers.where((e) => e[0] == identifier).map((e) => MapEntry(e[1], e[2])),
     );
 
     // if [requireProvider] is false, we only care about the identifier src, not the provider
     if (!requireProvider && possibleSrcs.length == 1) {
-      return _buildRef(identifier, possibleSrcs.entries.first);
+      return buildRef(possibleSrcs.entries.first);
     }
 
     // First check if the identifier is declared directly in this file
     for (final entry in possibleSrcs.entries) {
-      if (entry.key == rootSrcId) {
-        return _buildRef(identifier, entry, providerId: rootSrcId);
+      if (entry.key == importingSrc.id) {
+        return buildRef(entry, providerId: importingSrc.id);
       }
     }
 
     // Check all imports of the source file
-    final fileImports = [...importsOf(rootSrcId), if (assets.containsKey(_coreImportId)) _coreImport];
+    final fileImports = [...importsOf(importingSrc.id), if (assets.containsKey(_coreImportId)) _coreImport];
 
     for (final importEntry in fileImports) {
       final importedFileHash = importEntry[1] as String;
@@ -122,7 +125,7 @@ class AssetsGraph extends AssetsScanResults {
       // Check if the imported file directly declares the identifier
       for (final entry in possibleSrcs.entries) {
         if (entry.key == importedFileHash) {
-          return _buildRef(identifier, entry, providerId: importedFileHash);
+          return buildRef(entry, providerId: importedFileHash);
         }
       }
     }
@@ -132,7 +135,7 @@ class AssetsGraph extends AssetsScanResults {
       final src = _traceExportsOf(importedFileHash, identifier, possibleSrcs.keys, visitedSrcs);
       if (src != null) {
         final srcEntry = possibleSrcs.entries.firstWhere((k) => k.key == src);
-        return _buildRef(identifier, srcEntry, providerId: importedFileHash);
+        return buildRef(srcEntry, providerId: importedFileHash);
       }
     }
     return null;

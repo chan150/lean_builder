@@ -3,6 +3,7 @@ import 'package:code_genie/src/resolvers/element/element.dart';
 import 'package:code_genie/src/resolvers/file_asset.dart';
 import 'package:code_genie/src/resolvers/package_file_resolver.dart';
 import 'package:code_genie/src/resolvers/parsed_units_cache.dart';
+import 'package:code_genie/src/resolvers/type/type_ref.dart';
 import 'package:code_genie/src/resolvers/visitor/element_resolver_visitor.dart';
 import 'package:code_genie/src/scanner/assets_graph.dart';
 import 'package:code_genie/src/scanner/identifier_ref.dart';
@@ -30,6 +31,34 @@ class ElementResolver {
     return rootLibrary;
   }
 
+  IdentifierLocation? getIdentifierLocation(
+    String identifier,
+    AssetSrc importingSrc, {
+    bool requireProvider = true,
+    String? importPrefix,
+  }) {
+    return graph.getIdentifierLocation(
+      identifier,
+      importingSrc,
+      requireProvider: requireProvider,
+      importPrefix: importPrefix,
+    );
+  }
+
+  Element? elementOf(TypeRef ref) {
+    if (ref is! SourcedTypeRef) {
+      return null;
+    } else if (ref is NamedTypeRef) {
+      final importingLib = libraryFor(ref.src.importingLibrary);
+      final identifier = IdentifierRef(ref.name, importPrefix: ref.importPrefix);
+      final (library, unit) = astNodeFor(identifier, importingLib);
+      final visitor = ElementResolverVisitor(this, library);
+      unit.accept(visitor);
+      return library.getElement(ref.name);
+    }
+    throw Exception('Element not found for type ref: $ref');
+  }
+
   LibraryElementImpl libraryFor(AssetSrc src) {
     return _libraryCache.putIfAbsent(src.id, () {
       final unit = parser.parse(src.path, key: src.id);
@@ -46,9 +75,9 @@ class ElementResolver {
 
     final identifierSrc =
         identifier.src ??
-        graph.getIdentifierSrc(
+        getIdentifierLocation(
           identifier.topLevelTarget,
-          enclosingAsset.id,
+          enclosingAsset,
           requireProvider: true,
           importPrefix: identifier.importPrefix,
         );
@@ -123,7 +152,7 @@ class IdentifierRef {
   final String name;
   final String? prefix;
   final String? importPrefix;
-  final IdentifierSrc? src;
+  final IdentifierLocation? src;
 
   IdentifierRef(this.name, {this.prefix, this.importPrefix, this.src});
 

@@ -1,3 +1,5 @@
+import 'package:code_genie/test/test2.dart';
+
 class Annotation {
   // final String? str;
   // final String str2 = 'Hello';
@@ -6,14 +8,6 @@ class Annotation {
   const Annotation();
 }
 
-class SuperClass2<T> {
-  final List<T> list;
-  const SuperClass2(this.list, {String? x});
-}
-
-class SuperClass extends SuperClass2 {
-  const SuperClass(super.list2);
-}
 //
 // @Annotation()
 // class Widgets extends StatelessWidget {
@@ -35,9 +29,13 @@ class SuperClass extends SuperClass2 {
 //   }
 // }
 
+typedef ValueChanged<T> = T? Function(T value, {T? value2});
+
 @Annotation()
-class AnnotatedClass extends SuperClass2 {
-  AnnotatedClass(super.diffListName);
+class AnnotatedClass {
+  AnnotatedClass(this.number);
+
+  final FieldType<String> number;
 
   // final Target target;
   // final Future futre;
@@ -45,7 +43,15 @@ class AnnotatedClass extends SuperClass2 {
   // // final FieldType type = FieldType('Hello', 1);
   //
   // // final List<String> list = ['one', 'two', 'three'];
-  // final double height = 5.6;
+  // final int intx = 1;
+  // final bool boolx = true;
+  // final String stringx = 'Hello';
+  // final Future futurex = Future.value('Hello');
+  // final List<String> listx = ['one', 'two', 'three'];
+  // final Set<String> setx = {'one', 'two', 'three'};
+  // final Iterable<String> iterablex = ['one', 'two', 'three'];
+  // final Map<String, String> mapx = {'one': 'one', 'two': 'two', 'three': 'three'};
+
   // final ColorEnum color = ColorEnum.red;
   // void x;
   // dynamic dynamicField;

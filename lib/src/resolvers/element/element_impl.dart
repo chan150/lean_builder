@@ -112,37 +112,30 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   Iterable<TypeAliasElement> get typeAliases => resolvedElements.whereType<TypeAliasElement>();
 
   @override
-  IdentifierSrc identifierSrcOf(String identifier, TopLevelIdentifierType type) {
-    return IdentifierSrc(identifier: identifier, srcId: srcId, providerId: srcId, type: type);
+  IdentifierLocation identifierLocationOf(String identifier, TopLevelIdentifierType type) {
+    return IdentifierLocation(
+      identifier: identifier,
+      srcId: srcId,
+      srcUri: _resolver.uriForAsset(srcId),
+      providerId: srcId,
+      type: type,
+      importingLibrary: src,
+    );
   }
-}
-
-class TypeParameterElementImpl extends ElementImpl implements TypeParameterElement {
-  @override
-  final Element enclosingElement;
-  @override
-  final String name;
-  @override
-  final TypeRef bound;
-
-  TypeParameterElementImpl(this.enclosingElement, this.name, this.bound);
-
-  @override
-  LibraryElement get library => enclosingElement.library;
 }
 
 mixin TypeParameterizedElementMixin on Element implements TypeParameterizedElement {
-  final List<TypeParameterElement> _typeParameters = [];
+  final List<TypeParameterTypeRef> _typeParameters = [];
 
   @override
-  List<TypeParameterElement> get typeParameters => _typeParameters;
+  List<TypeParameterTypeRef> get typeParameters => _typeParameters;
 
-  void addTypeParameter(TypeParameterElement typeParameter) {
+  void addTypeParameter(TypeParameterTypeRef typeParameter) {
     _typeParameters.add(typeParameter);
   }
 
-  List<TypeParameterElement> get allTypeParameters {
-    final List<TypeParameterElement> allTypeParameters = [];
+  List<TypeParameterTypeRef> get allTypeParameters {
+    final List<TypeParameterTypeRef> allTypeParameters = [];
     allTypeParameters.addAll(typeParameters);
     if (enclosingElement is TypeParameterizedElementMixin) {
       allTypeParameters.addAll((enclosingElement as TypeParameterizedElementMixin).allTypeParameters);
@@ -190,7 +183,7 @@ class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixi
   List<TypeRef> get mixins => _mixins;
 
   @override
-  List<TypeParameterElement> get typeParameters => _typeParameters;
+  List<TypeParameterTypeRef> get typeParameters => _typeParameters;
 
   void addMixin(TypeRef mixin) {
     _mixins.add(mixin);
@@ -255,6 +248,12 @@ class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixi
       }
     }
     return null;
+  }
+
+  @override
+  TypeRef instantiate(NamedTypeRef typeRef) {
+    var substitution = Substitution.fromPairs(typeParameters, typeRef.typeArguments);
+    return substitution.substituteType(thisType, isNullable: typeRef.isNullable);
   }
 }
 
@@ -432,11 +431,11 @@ class ParameterElementImpl extends VariableElementImpl implements ParameterEleme
   }
 
   @override
-  List<TypeParameterElement> get typeParameters {
+  List<TypeParameterTypeRef> get typeParameters {
     final type = this.type;
-    // if (type is FunctionType) {
-    //   return type.typeParameters;
-    // }
+    if (type is FunctionTypeRef) {
+      return type.typeParameters;
+    }
     return [];
   }
 }
@@ -500,44 +499,9 @@ class TypeAliasElementImpl extends ElementImpl with TypeParameterizedElementMixi
     _aliasedType = aliasedType;
   }
 
-  TypeRef instantiate({required List<TypeRef> typeArguments, required bool isNullable}) {
-    // var substitution = Substitution.fromPairs(typeParameters, typeArguments);
-    // var type = substitution.substituteType(aliasedType);
-    // if (type is FunctionTypeRef) {
-    //   return FunctionTypeRef(
-    //     // typeFormals: type.typeFormals,
-    //     name: type.name,
-    //     parameters: type.parameters,
-    //     returnType: type.returnType,
-    //     isNullable: isNullable,
-    //     alias: InstantiatedTypeAlias(this, typeArguments),
-    //   );
-    // } else if (type is InterfaceType) {
-    //   return InterfaceTypeImpl(
-    //     type.element,
-    //     typeArguments: type.typeArguments,
-    //     isNullable: isNullable,
-    //     alias: InstantiatedTypeAlias(this, typeArguments),
-    //   );
-    // }
-    return TypeRef.invalidType;
-    throw 'not supported';
-    //
-    // else if (type is RecordTypeImpl) {
-    //   return RecordTypeImpl(
-    //     positionalFields: type.positionalFields,
-    //     namedFields: type.namedFields,
-    //     nullabilitySuffix: resultNullability,
-    //     alias: InstantiatedTypeAliasElementImpl(element: this, typeArguments: typeArguments),
-    //   );
-    // } else if (type is TypeParameterType) {
-    //   return TypeParameterTypeImpl(
-    //     element: type.element,
-    //     nullabilitySuffix: resultNullability,
-    //     alias: InstantiatedTypeAliasElementImpl(element: this, typeArguments: typeArguments),
-    //   );
-    // } else {
-    //   return (type as DartTypeImpl);
-    // }
+  @override
+  TypeRef instantiate(NamedTypeRef typeRef) {
+    var substitution = Substitution.fromPairs(typeParameters, typeRef.typeArguments);
+    return substitution.substituteType(aliasedType, isNullable: typeRef.isNullable);
   }
 }

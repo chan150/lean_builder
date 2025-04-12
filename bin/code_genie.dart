@@ -1,3 +1,4 @@
+import 'package:code_genie/src/resolvers/element/element.dart';
 import 'package:code_genie/src/resolvers/element_resolver.dart';
 import 'package:code_genie/src/resolvers/package_file_resolver.dart';
 import 'package:code_genie/src/resolvers/parsed_units_cache.dart';
@@ -24,8 +25,8 @@ void main(List<String> args) async {
 
   final parser = SrcParser();
   final resolver = ElementResolver(assetsGraph, fileResolver, parser);
-  final packageAssets = assetsGraph.getAssetsForPackage('listize');
-  // final packageAssets = assetsGraph.getAssetsForPackage(rootPackageName);
+  // final packageAssets = assetsGraph.getAssetsForPackage('listize');
+  final packageAssets = assetsGraph.getAssetsForPackage(rootPackageName);
   int count = 0;
   for (final asset in packageAssets) {
     final assetFile = fileResolver.buildAssetUri(asset.uri);
@@ -40,6 +41,13 @@ void main(List<String> args) async {
         print('Fields -----------');
         for (final field in clazz.fields) {
           print('${field.type} ${field.name} ');
+          final element = resolver.elementOf(field.type);
+          final type = field.type;
+          if (element is TypeParameterizedElement && type is NamedTypeRef) {
+            final initiatedType = element.instantiate(type);
+            print(initiatedType);
+          }
+
           // final type = field.type;
           // if (type is NamedTypeRef) {
           //   print(
@@ -47,10 +55,10 @@ void main(List<String> args) async {
           //   );
           // }
         }
-        print('Params -----------');
-        for (final param in [...?clazz.constructors.firstOrNull?.parameters]) {
-          print('${param.type} ${param.name} ');
-        }
+        // print('Params -----------');
+        // for (final param in [...?clazz.constructors.firstOrNull?.parameters]) {
+        //   print('${param.type} ${param.name} ');
+        // }
       }
       print('Asset: took: ${assetStopWatch.elapsed.inMilliseconds} ms');
     }

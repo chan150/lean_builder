@@ -84,6 +84,12 @@ abstract class ExecutableElementImpl extends ElementImpl
   set type(FunctionTypeRef type) {
     _type = type;
   }
+
+  @override
+  TypeRef instantiate(NamedTypeRef typeRef) {
+    var substitution = Substitution.fromPairs(typeParameters, typeRef.typeArguments);
+    return substitution.substituteType(type, isNullable: typeRef.isNullable);
+  }
 }
 
 class FunctionElementImpl extends ExecutableElementImpl implements FunctionElement {

@@ -97,7 +97,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     _resolveInterfaces(clazzElement, implementsClause: node.implementsClause);
     clazzElement.thisType = NamedTypeRef(
       clazzElement.name,
-      library.identifierSrcOf(clazzElement.name, TopLevelIdentifierType.$class),
+      library.identifierLocationOf(clazzElement.name, TopLevelIdentifierType.$class),
     );
     visitElementScoped(clazzElement, () {
       for (final constructor in node.members.whereType<ConstructorDeclaration>()) {
@@ -124,7 +124,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
 
   void _resolveSuperType(InterfaceElementImpl element, NamedType? type) {
     if (type == null) return;
-    final resolvedSuperType = resolveType(type, element);
+    final resolvedSuperType = resolveTypeRef(type, element);
     assert(resolvedSuperType is NamedTypeRef, 'Super type must be an interface type ${resolvedSuperType.runtimeType}');
     element.superType = resolvedSuperType as NamedTypeRef;
   }
@@ -137,14 +137,14 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
   }) {
     if (withClause != null) {
       for (final mixin in withClause.mixinTypes) {
-        final mixinType = resolveType((mixin), element);
+        final mixinType = resolveTypeRef((mixin), element);
         assert(mixinType is NamedTypeRef, 'Mixin type must be an interface type');
         element.addMixin(mixinType as NamedTypeRef);
       }
     }
     if (implementsClause != null) {
       for (final interface in implementsClause.interfaces) {
-        final interfaceType = resolveType((interface), element);
+        final interfaceType = resolveTypeRef((interface), element);
         assert(interfaceType is NamedTypeRef, 'Interface type must be an interface type');
         element.addInterface(interfaceType as NamedTypeRef);
       }
@@ -153,7 +153,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     if (onClause != null) {
       assert(element is MixinElementImpl);
       for (final interface in onClause.superclassConstraints) {
-        final interfaceType = resolveType((interface), element);
+        final interfaceType = resolveTypeRef((interface), element);
         assert(interfaceType is NamedTypeRef, 'Interface type must be an interface type');
         (element as MixinElementImpl).addSuperConstrain(interfaceType as NamedTypeRef);
       }
@@ -162,7 +162,6 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
 
   @override
   void visitGenericTypeAlias(GenericTypeAlias node) {
-    print('${node.name.lexeme}');
     final library = currentLibrary();
     if (library.getTypeAlias(node.name.lexeme) != null) {
       return;
@@ -174,33 +173,30 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
       node.typeParameters?.visitChildren(this);
     });
     final targetType = node.functionType != null ? node.functionType! : node.type;
-    final type = resolveType((targetType), typeAliasElm);
+    final type = resolveTypeRef((targetType), typeAliasElm);
     typeAliasElm.aliasedType = type;
-    ZoneDelegate;
-    print('${node.name.lexeme} type: $type');
   }
 
   @override
   void visitFunctionTypeAlias(FunctionTypeAlias node) {
-    // final library = currentLibrary();
-    // if (library.getTypeAlias(node.name.lexeme) != null) {
-    //   return;
-    // }
-    // final typeRef = FunctionTypeRef(
-    //   node.name.lexeme,
-    //   isNullable: false,
-    //   parameters: node.parameters,
-    //   typeParameters: node.typeParameters,
-    //   returnType: TypeRef.from(node.returnType),
-    // );
-    //
-    // final typeAliasElm = TypeAliasElementImpl(name: node.name.lexeme, library: library);
-    // library.addElement(typeAliasElm);
-    // visitElementScoped(typeAliasElm, () {
-    //   typeRef.typeParameters?.visitChildren(this);
-    // });
-    // final type = resolveType(typeRef, currentElementAs<ElementImpl>());
-    // typeAliasElm.aliasedType = type;
+    final library = currentLibrary();
+    if (library.getTypeAlias(node.name.lexeme) != null) {
+      return;
+    }
+    final funcElement = FunctionElementImpl(name: node.name.lexeme, enclosingElement: library);
+    visitElementScoped(funcElement, () {
+      node.typeParameters?.visitChildren(this);
+      node.parameters.visitChildren(this);
+    });
+    final typeAliasElm = TypeAliasElementImpl(name: node.name.lexeme, library: library);
+    library.addElement(typeAliasElm);
+    typeAliasElm.aliasedType = FunctionTypeRef(
+      node.name.lexeme,
+      isNullable: false,
+      parameters: funcElement.parameters,
+      typeParameters: funcElement.typeParameters,
+      returnType: resolveTypeRef(node.returnType, funcElement),
+    );
   }
 
   @override
@@ -211,10 +207,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     }
     final classElement = ClassElementImpl(name: node.name.lexeme, library: libraryElement);
     libraryElement.addElement(classElement);
-    classElement.thisType = NamedTypeRef(
-      classElement.name,
-      libraryElement.identifierSrcOf(classElement.name, TopLevelIdentifierType.$class),
-    );
+
     visitElementScoped(classElement, () {
       node.typeParameters?.visitChildren(this);
       node.metadata.accept(this);
@@ -225,6 +218,12 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
       //   method.accept(this);
       // }
     });
+
+    classElement.thisType = NamedTypeRef(
+      classElement.name,
+      libraryElement.identifierLocationOf(classElement.name, TopLevelIdentifierType.$class),
+      typeArguments: classElement.typeParameters,
+    );
 
     _resolveSuperType(classElement, node.extendsClause?.superclass);
 
@@ -249,15 +248,15 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
       mixinElement = MixinElementImpl(name: node.name.lexeme, library: libraryElement);
       libraryElement.addElement(mixinElement);
     }
-    mixinElement.thisType = NamedTypeRef(
-      mixinElement.name,
-      libraryElement.identifierSrcOf(mixinElement.name, TopLevelIdentifierType.$mixin),
-    );
 
     visitElementScoped(mixinElement, () {
       node.typeParameters?.visitChildren(this);
     });
-
+    mixinElement.thisType = NamedTypeRef(
+      mixinElement.name,
+      libraryElement.identifierLocationOf(mixinElement.name, TopLevelIdentifierType.$mixin),
+      typeArguments: mixinElement.typeParameters,
+    );
     _resolveInterfaces(mixinElement, implementsClause: node.implementsClause, onClause: node.onClause);
   }
 
@@ -273,7 +272,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     }
     enumElement.thisType = NamedTypeRef(
       enumElement.name,
-      libraryElement.identifierSrcOf(enumElement.name, TopLevelIdentifierType.$enum),
+      libraryElement.identifierLocationOf(enumElement.name, TopLevelIdentifierType.$enum),
     );
     visitElementScoped(enumElement, () {
       for (final constant in node.constants) {
@@ -311,9 +310,9 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     final bound = node.bound;
     TypeRef boundType = TypeRef.dynamicType;
     if (bound != null) {
-      boundType = resolveType(bound, element);
+      boundType = resolveTypeRef(bound, element);
     }
-    element.addTypeParameter(TypeParameterElementImpl(element, node.name.lexeme, boundType));
+    element.addTypeParameter(TypeParameterTypeRef(node.name.lexeme, bound: boundType));
   }
 
   Element resolveTopLevelElement(IdentifierRef identifier, LibraryElement enclosingLibrary) {
@@ -335,7 +334,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     }
   }
 
-  TypeRef resolveType(TypeAnnotation? typeAnno, Element enclosingEle) {
+  TypeRef resolveTypeRef(TypeAnnotation? typeAnno, Element enclosingEle) {
     if (typeAnno == null) {
       return TypeRef.invalidType;
     }
@@ -343,7 +342,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
       if (enclosingEle is TypeParameterizedElementMixin) {
         for (final typeParam in enclosingEle.allTypeParameters) {
           if (typeParam.name == typeAnno.name2.lexeme) {
-            return TypeParameterTypeRef(typeParam, bound: typeParam.bound, isNullable: typeAnno.question != null);
+            return typeParam.withNullability(typeAnno.question != null);
           }
         }
       }
@@ -361,9 +360,9 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     });
     return FunctionTypeRef(
       funcElement.name,
-      returnType: resolveType(typeAnnotation.returnType, funcElement),
-      typeParameters: typeAnnotation.typeParameters,
-      parameters: typeAnnotation.parameters,
+      returnType: resolveTypeRef(typeAnnotation.returnType, funcElement),
+      typeParameters: funcElement.typeParameters,
+      parameters: funcElement.parameters,
       isNullable: typeAnnotation.question != null,
     );
   }
@@ -377,25 +376,30 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
 
     final typeArgs = <TypeRef>[];
     for (final typeArg in [...?annotation.typeArguments?.arguments]) {
-      typeArgs.add(resolveType(typeArg, enclosingEle));
+      typeArgs.add(resolveTypeRef(typeArg, enclosingEle));
     }
 
-    final identifierSrc = _resolver.graph.getIdentifierSrc(
+    final identifierLocation = _resolver.graph.getIdentifierLocation(
       typename,
-      enclosingEle.library.srcId,
+      enclosingEle.library.src,
       importPrefix: annotation.importPrefix?.name.lexeme,
     );
     assert(
-      identifierSrc != null,
-      'could not find identifier $annotation  in ${_resolver.graph.uriForAsset(enclosingEle.library.srcId)}',
+      identifierLocation != null,
+      'could not find identifier $annotation in ${_resolver.graph.uriForAsset(enclosingEle.library.srcId)}',
     );
-    return NamedTypeRef(typename, identifierSrc!, isNullable: annotation.question != null, typeArguments: typeArgs);
+    return NamedTypeRef(
+      typename,
+      identifierLocation!,
+      isNullable: annotation.question != null,
+      typeArguments: typeArgs,
+    );
   }
 
   @override
   void visitFieldDeclaration(FieldDeclaration node) {
     final interfaceElement = currentElementAs<InterfaceElementImpl>();
-    final fieldType = resolveType(node.fields.type, interfaceElement);
+    final fieldType = resolveTypeRef(node.fields.type, interfaceElement);
     final constEvaluator = ConstantEvaluator(_resolver, interfaceElement.library, this);
     // Process each variable in the field declaration
     for (final variable in node.fields.variables) {
@@ -478,13 +482,13 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
       node.functionExpression.typeParameters?.visitChildren(this);
       node.functionExpression.parameters?.visitChildren(this);
     });
-    final returnType = resolveType((node.returnType), funcElement);
+    final returnType = resolveTypeRef((node.returnType), funcElement);
     funcElement.returnType = returnType;
     funcElement.type = FunctionTypeRef(
       funcElement.name,
       returnType: returnType,
-      typeParameters: node.functionExpression.typeParameters,
-      parameters: node.functionExpression.parameters,
+      typeParameters: funcElement.typeParameters,
+      parameters: funcElement.parameters,
       isNullable: false,
     );
   }
@@ -572,9 +576,9 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
           (e) => e.fields.variables.any((v) => v.name.lexeme == param.name.lexeme),
           orElse: () => throw Exception('Could not find field formal parameter'),
         );
-        return (resolveType(field.fields.type, getTypeParamsCollector()), null);
+        return (resolveTypeRef(field.fields.type, getTypeParamsCollector()), null);
       } else if (param is SimpleFormalParameter) {
-        return (resolveType(param.type, getTypeParamsCollector()), null);
+        return (resolveTypeRef(param.type, getTypeParamsCollector()), null);
       } else if (param is DefaultFormalParameter) {
         return (buildParam(param.parameter, lib).$1, param.defaultValue);
       } else if (param is SuperFormalParameter) {
@@ -633,7 +637,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     final name = node.name?.lexeme ?? '';
 
     if (type == null && node is SimpleFormalParameter) {
-      type = resolveType((node.type), executableElement);
+      type = resolveTypeRef((node.type), executableElement);
     }
 
     final parameterElement = ParameterElementImpl(
@@ -663,7 +667,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
   void visitTopLevelVariableDeclaration(TopLevelVariableDeclaration node) {
     final library = currentLibrary();
     final constantEvaluator = ConstantEvaluator(_resolver, library, this);
-    final type = resolveType((node.variables.type), library);
+    final type = resolveTypeRef((node.variables.type), library);
     for (final variable in node.variables.variables) {
       final topLevelVar = TopLevelVariableElementImpl(
         name: variable.name.lexeme,
@@ -707,13 +711,13 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
       node.typeParameters?.visitChildren(this);
       node.parameters?.visitChildren(this);
     });
-    final returnType = resolveType((node.returnType), methodElement);
+    final returnType = resolveTypeRef((node.returnType), methodElement);
     methodElement.returnType = returnType;
     methodElement.type = FunctionTypeRef(
       methodElement.name,
       returnType: returnType,
-      typeParameters: node.typeParameters,
-      parameters: node.parameters,
+      typeParameters: methodElement.typeParameters,
+      parameters: methodElement.parameters,
       isNullable: false,
     );
   }
@@ -782,9 +786,9 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
         }
       }
 
-      final identifierSrc = _resolver.graph.getIdentifierSrc(
+      final identifierSrc = _resolver.graph.getIdentifierLocation(
         identifierRef.name,
-        constructorElement.library.srcId,
+        constructorElement.library.src,
         importPrefix: identifierRef.importPrefix,
       );
 
