@@ -27,24 +27,34 @@ abstract class ElementImpl implements Element {
 }
 
 class LibraryElementImpl extends ElementImpl implements LibraryElement {
-  LibraryElementImpl(this._resolver, this.compilationUnit, {required this.src});
+  LibraryElementImpl(this.resolver, this.compilationUnit, {required this.src});
 
-  final ElementResolver _resolver;
+  @override
   final CompilationUnit compilationUnit;
+  final ElementResolver resolver;
   final List<Element> _resolvedElements = [];
+
+  bool _didResolveDirectives = false;
+
+  bool _didResolveAllTypeAliases = false;
+
+  bool _didResolveAllClasses = false;
+
+  bool _didResolveAllMixins = false;
+
+  bool _didResolveAllEnums = false;
+
+  bool _didResolveAllFunctions = false;
 
   void addElement(Element element) {
     _resolvedElements.add(element);
   }
 
   @override
-  late final String name = _resolver.uriForAsset(srcId).pathSegments.last;
+  late final String name = src.shortPath.pathSegments.last;
 
   @override
   final AssetSrc src;
-
-  @override
-  String get srcId => src.id;
 
   @override
   Null get enclosingElement => null;
@@ -52,52 +62,107 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   @override
   LibraryElement get library => this;
 
-  @override
-  List<Element> get resolvedElements => List.unmodifiable(_resolvedElements);
+  List<E> _elementsOfType<E extends Element>() {
+    return List<E>.unmodifiable(_resolvedElements.whereType<E>());
+  }
 
   @override
-  Iterable<ClassElementImpl> get classes => resolvedElements.whereType<ClassElementImpl>();
+  List<ClassElementImpl> get classes {
+    if (!_didResolveAllClasses) {
+      resolver.resolveClasses(this);
+      _didResolveAllClasses = true;
+    }
+    return _elementsOfType<ClassElementImpl>();
+  }
 
   @override
-  Iterable<MixinElementImpl> get mixins => resolvedElements.whereType<MixinElementImpl>();
+  List<MixinElementImpl> get mixins {
+    if (!_didResolveAllMixins) {
+      resolver.resolveMixins(this);
+      _didResolveAllMixins = true;
+    }
+    return _elementsOfType<MixinElementImpl>();
+  }
 
   @override
-  Iterable<EnumElementImpl> get enums => resolvedElements.whereType<EnumElementImpl>();
+  List<EnumElementImpl> get enums {
+    if (!_didResolveAllEnums) {
+      resolver.resolveEnums(this);
+      _didResolveAllEnums = true;
+    }
+    return _elementsOfType<EnumElementImpl>();
+  }
 
   @override
-  Iterable<FunctionElement> get functions => resolvedElements.whereType<FunctionElement>();
+  List<FunctionElement> get functions {
+    if (!_didResolveAllFunctions) {
+      resolver.resolveFunctions(this);
+      _didResolveAllFunctions = true;
+    }
+    return _elementsOfType<FunctionElement>();
+  }
 
   @override
-  ClassElementImpl? getClass(String name) => classes.firstWhereOrNull((e) => e.name == name);
+  List<TypeAliasElement> get typeAliases {
+    if (!_didResolveAllTypeAliases) {
+      resolver.resolveTypeAliases(this);
+      _didResolveAllTypeAliases = true;
+    }
+    return _elementsOfType<TypeAliasElement>();
+  }
+
+  bool hasElement(String name) {
+    return _resolvedElements.any((e) => e.name == name);
+  }
 
   @override
-  InterfaceElement? getInterfaceElement(String name) {
-    return resolvedElements.whereType<InterfaceElement>().firstWhereOrNull((e) => e.name == name);
+  ClassElementImpl? getClass(String name) {
+    if (_didResolveAllClasses || hasElement(name)) {
+      return _elementsOfType<ClassElementImpl>().firstWhereOrNull((e) => e.name == name);
+    }
+    resolver.resolveClasses(this, predicate: (e) => e.name.lexeme == name);
+    return _elementsOfType<ClassElementImpl>().firstWhereOrNull((e) => e.name == name);
   }
 
   @override
   Element? getElement(String name) {
-    return resolvedElements.firstWhereOrNull((e) => e.name == name);
+    return _resolvedElements.firstWhereOrNull((e) => e.name == name);
   }
 
   @override
   MixinElementImpl? getMixin(String name) {
-    return mixins.firstWhereOrNull((e) => e.name == name);
+    if (_didResolveAllMixins || hasElement(name)) {
+      return _elementsOfType<MixinElementImpl>().firstWhereOrNull((e) => e.name == name);
+    }
+    resolver.resolveMixins(this, predicate: (e) => e.name.lexeme == name);
+    return _elementsOfType<MixinElementImpl>().firstWhereOrNull((e) => e.name == name);
   }
 
   @override
   EnumElementImpl? getEnum(String name) {
-    return enums.firstWhereOrNull((e) => e.name == name);
+    if (_didResolveAllEnums || hasElement(name)) {
+      return _elementsOfType<EnumElementImpl>().firstWhereOrNull((e) => e.name == name);
+    }
+    resolver.resolveEnums(this, predicate: (e) => e.name.lexeme == name);
+    return _elementsOfType<EnumElementImpl>().firstWhereOrNull((e) => e.name == name);
   }
 
   @override
   TypeAliasElement? getTypeAlias(String name) {
-    return typeAliases.firstWhereOrNull((e) => e.name == name);
+    if (_didResolveAllTypeAliases || hasElement(name)) {
+      return _elementsOfType<TypeAliasElement>().firstWhereOrNull((e) => e.name == name);
+    }
+    resolver.resolveTypeAliases(this, predicate: (e) => e.name.lexeme == name);
+    return _elementsOfType<TypeAliasElement>().firstWhereOrNull((e) => e.name == name);
   }
 
   @override
   FunctionElement? getFunction(String name) {
-    return functions.firstWhereOrNull((e) => e.name == name);
+    if (_didResolveAllFunctions || hasElement(name)) {
+      return _elementsOfType<FunctionElement>().firstWhereOrNull((e) => e.name == name);
+    }
+    resolver.resolveFunctions(this, predicate: (e) => e.name.lexeme == name);
+    return _elementsOfType<FunctionElement>().firstWhereOrNull((e) => e.name == name);
   }
 
   @override
@@ -109,18 +174,24 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   int get hashCode => src.id.hashCode;
 
   @override
-  Iterable<TypeAliasElement> get typeAliases => resolvedElements.whereType<TypeAliasElement>();
-
-  @override
-  IdentifierLocation identifierLocationOf(String identifier, TopLevelIdentifierType type) {
+  IdentifierLocation buildIdentifierLocation(String identifier, TopLevelIdentifierType type) {
     return IdentifierLocation(
       identifier: identifier,
-      srcId: srcId,
-      srcUri: _resolver.uriForAsset(srcId),
-      providerId: srcId,
+      srcId: src.id,
+      srcUri: resolver.uriForAsset(src.id),
+      providerId: src.id,
       type: type,
       importingLibrary: src,
     );
+  }
+
+  @override
+  List<DirectiveElement> get directives {
+    if (!_didResolveDirectives) {
+      resolver.resolveDirectives(this);
+      _didResolveDirectives = true;
+    }
+    return _elementsOfType<DirectiveElement>();
   }
 }
 
@@ -144,25 +215,13 @@ mixin TypeParameterizedElementMixin on Element implements TypeParameterizedEleme
   }
 }
 
-// abstract class InstanceElementImpl extends InstanceElement implements TypeParameterizedElement {
-//   @override
-//   List<PropertyAccessorElement> get accessors;
-//
-//   @override
-//   List<FieldElement> get fields;
-//
-//   @override
-//   List<MethodElement> get methods;
-//
-//   @override
-//   DartType get thisType;
-// }
-
 class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixin implements InterfaceElement {
   final List<NamedTypeRef> _mixins = [];
   final List<NamedTypeRef> _interfaces = [];
   final List<NamedTypeRef> _superConstrains = [];
   final List<MethodElement> _methods = [];
+
+  bool _didResolveMethods = false;
   final List<FieldElement> _fields = [];
 
   NamedTypeRef? _superType;
@@ -174,7 +233,13 @@ class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixi
   List<FieldElement> get fields => _fields;
 
   @override
-  List<MethodElement> get methods => _methods;
+  List<MethodElement> get methods {
+    if (!_didResolveMethods) {
+      library.resolver.resolveMethods(this);
+      _didResolveMethods = true;
+    }
+    return _methods;
+  }
 
   @override
   List<TypeRef> get interfaces => _interfaces;
@@ -208,7 +273,7 @@ class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixi
   final String name;
 
   @override
-  final LibraryElement library;
+  final LibraryElementImpl library;
 
   @override
   Element? get enclosingElement => library;
@@ -242,6 +307,21 @@ class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixi
 
   @override
   MethodElement? getMethod(String name) {
+    if (_didResolveMethods) {
+      for (final method in _methods) {
+        if (method.name == name) {
+          return method;
+        }
+      }
+      return null;
+    }
+    library.resolver.resolveMethods(
+      this,
+      predicate: (m) {
+        return m.name.lexeme == name;
+      },
+    );
+
     for (final method in _methods) {
       if (method.name == name) {
         return method;
@@ -424,9 +504,9 @@ class ParameterElementImpl extends VariableElementImpl implements ParameterEleme
   @override
   List<ParameterElement> get parameters {
     final type = this.type;
-    // if (type is FunctionType) {
-    //   return type.parameters;
-    // }
+    if (type is FunctionTypeRef) {
+      return type.parameters;
+    }
     return [];
   }
 
@@ -459,6 +539,19 @@ class ClassElementImpl extends InterfaceElementImpl implements ClassElement {
 
   @override
   ConstructorElement? get unnamedConstructor => _constructors.firstWhereOrNull((e) => e.name.isEmpty);
+}
+
+class ClassTypeAliasElementImpl extends InterfaceElementImpl implements ClassTypeAliasElement, TypeAliasElement {
+  ClassTypeAliasElementImpl({required super.name, required super.library});
+
+  @override
+  TypeRef get aliasedType => _aliasedType!;
+
+  TypeRef? _aliasedType;
+
+  set aliasedType(TypeRef? aliasedType) {
+    _aliasedType = aliasedType;
+  }
 }
 
 class EnumElementImpl extends InterfaceElementImpl implements EnumElement {

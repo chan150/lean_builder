@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:code_genie/src/resolvers/const/constant.dart';
@@ -74,25 +76,23 @@ abstract class InterfaceElement extends InstanceElement with TypeParameterizedEl
 abstract class LibraryElement extends Element {
   AssetSrc get src;
 
-  String get srcId => src.id;
+  IdentifierLocation buildIdentifierLocation(String identifier, TopLevelIdentifierType type);
 
-  IdentifierLocation identifierLocationOf(String identifier, TopLevelIdentifierType type);
+  CompilationUnit get compilationUnit;
 
-  List<Element> get resolvedElements;
+  List<ClassElementImpl> get classes;
 
-  Iterable<ClassElementImpl> get classes;
+  List<MixinElementImpl> get mixins;
 
-  Iterable<MixinElementImpl> get mixins;
+  List<EnumElementImpl> get enums;
 
-  Iterable<EnumElementImpl> get enums;
+  List<FunctionElement> get functions;
 
-  Iterable<FunctionElement> get functions;
+  List<TypeAliasElement> get typeAliases;
 
-  Iterable<TypeAliasElement> get typeAliases;
+  List<DirectiveElement> get directives;
 
   ClassElementImpl? getClass(String name);
-
-  InterfaceElement? getInterfaceElement(String name);
 
   Element? getElement(String name);
 
@@ -184,6 +184,8 @@ abstract class ClassElement extends InterfaceElement {
 
   ConstructorElement? get unnamedConstructor;
 }
+
+abstract class ClassTypeAliasElement extends InterfaceElement {}
 
 abstract class EnumElement implements InterfaceElement {}
 

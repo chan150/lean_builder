@@ -6,16 +6,19 @@ import 'package:code_genie/src/resolvers/parsed_units_cache.dart';
 import 'package:code_genie/src/resolvers/type/type_ref.dart';
 import 'package:code_genie/src/resolvers/visitor/element_resolver_visitor.dart';
 import 'package:code_genie/src/scanner/assets_graph.dart';
+import 'package:code_genie/src/scanner/directive_statement.dart';
 import 'package:code_genie/src/scanner/identifier_ref.dart';
 import 'package:code_genie/src/scanner/scan_results.dart';
 import 'package:collection/collection.dart';
+
+typedef ResolvePredicate<T> = bool Function(T member);
 
 class ElementResolver {
   final AssetsGraph graph;
   final SrcParser parser;
   final PackageFileResolver fileResolver;
   final Map<String, LibraryElementImpl> _libraryCache = {};
-  final Map<String, (LibraryElement, AstNode)> _parsedUnitCache = {};
+  final Map<String, (LibraryElementImpl, AstNode)> _parsedUnitCache = {};
 
   ElementResolver(this.graph, this.fileResolver, this.parser);
 
@@ -64,7 +67,7 @@ class ElementResolver {
     });
   }
 
-  (LibraryElement, AstNode) astNodeFor(IdentifierRef identifier, LibraryElement enclosingLibrary) {
+  (LibraryElementImpl, AstNode) astNodeFor(IdentifierRef identifier, LibraryElement enclosingLibrary) {
     final enclosingAsset = enclosingLibrary.src;
     final unitId = '${enclosingAsset.id}#${identifier.toString()}';
     if (_parsedUnitCache.containsKey(unitId)) {
@@ -143,6 +146,107 @@ class ElementResolver {
 
   Uri uriForAsset(String id) {
     return graph.uriForAsset(id);
+  }
+
+  void resolveDirectives(LibraryElementImpl library) {
+    final directives = graph.directives[library.src.id];
+    if (directives == null) return;
+
+    for (final directive in directives) {
+      if (directive[0] == DirectiveStatement.import) {
+        final element = ImportElementImpl(
+          uri: uriForAsset(directive[1]),
+          library: library,
+          prefix: directive.elementAtOrNull(4),
+          combinators: [
+            if (directive[2] != null) ShowElementCombinator(directive[2]),
+            if (directive[3] != null) HideElementCombinator(directive[3]),
+          ],
+        );
+        library.addElement(element);
+      } else if (directive[0] == DirectiveStatement.export) {
+        final element = ExportElementImpl(
+          uri: uriForAsset(directive[1]),
+          library: library,
+          combinators: [
+            if (directive[2] != null) ShowElementCombinator(directive[2]),
+            if (directive[3] != null) HideElementCombinator(directive[3]),
+          ],
+        );
+        library.addElement(element);
+      } else if (directive[0] == DirectiveStatement.part) {
+        final element = PartElementImpl(uri: uriForAsset(directive[1]), library: library);
+        library.addElement(element);
+      } else if (directive[0] == DirectiveStatement.partOf) {
+        final element = PartOfElementImpl(uri: uriForAsset(directive[1]), library: library);
+        library.addElement(element);
+      } else if (directive[0] == DirectiveStatement.partOfLibrary) {
+        final element = PartOfElementImpl(uri: uriForAsset(directive[1]), library: library);
+        library.addElement(element);
+      }
+    }
+  }
+
+  void resolveMethods(InterfaceElement elem, {ResolvePredicate<MethodDeclaration>? predicate}) {
+    final astResolver = ElementResolverVisitor(this, elem.library);
+    final declaration = elem.library.compilationUnit.declarations.whereType<NamedCompilationUnitMember>();
+    final interfaceElemDeclaration = declaration.firstWhere(
+      (d) => d.name.lexeme == elem.name,
+      orElse: () => throw Exception('Could not find element declaration named ${elem.name}'),
+    );
+    final methods = interfaceElemDeclaration.childEntities.filterAs<MethodDeclaration>(predicate);
+    astResolver.visitElementScoped(elem, () {
+      for (final method in methods) {
+        method.accept(astResolver);
+      }
+    });
+  }
+
+  void resolveTypeAliases(LibraryElementImpl library, {ResolvePredicate<TypeAlias>? predicate}) {
+    final unit = library.compilationUnit;
+    final visitor = ElementResolverVisitor(this, library);
+    for (final typeAlias in unit.declarations.filterAs<TypeAlias>(predicate)) {
+      typeAlias.accept(visitor);
+    }
+  }
+
+  void resolveMixins(LibraryElementImpl library, {ResolvePredicate<MixinDeclaration>? predicate}) {
+    final unit = library.compilationUnit;
+    final visitor = ElementResolverVisitor(this, library);
+    for (final mixin in unit.declarations.filterAs<MixinDeclaration>(predicate)) {
+      mixin.accept(visitor);
+    }
+  }
+
+  void resolveEnums(LibraryElementImpl library, {ResolvePredicate<EnumDeclaration>? predicate}) {
+    final unit = library.compilationUnit;
+    final visitor = ElementResolverVisitor(this, library);
+    for (final enumDeclaration in unit.declarations.filterAs<EnumDeclaration>(predicate)) {
+      enumDeclaration.accept(visitor);
+    }
+  }
+
+  void resolveFunctions(LibraryElementImpl library, {ResolvePredicate<FunctionDeclaration>? predicate}) {
+    final unit = library.compilationUnit;
+    final visitor = ElementResolverVisitor(this, library);
+    for (final function in unit.declarations.filterAs<FunctionDeclaration>(predicate)) {
+      function.accept(visitor);
+    }
+  }
+
+  void resolveClasses(LibraryElementImpl library, {ResolvePredicate<ClassDeclaration>? predicate}) {
+    final unit = library.compilationUnit;
+    final visitor = ElementResolverVisitor(this, library);
+    for (final classDeclaration in unit.declarations.filterAs<ClassDeclaration>(predicate)) {
+      classDeclaration.accept(visitor);
+    }
+  }
+}
+
+extension IterableFilterExt<E> on Iterable<E> {
+  Iterable<T> filterAs<T>([ResolvePredicate<T>? predicate]) {
+    if (predicate == null) return whereType<T>();
+    return whereType<T>().where(predicate);
   }
 }
 

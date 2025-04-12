@@ -1,8 +1,6 @@
-import 'package:code_genie/src/resolvers/element/element.dart';
 import 'package:code_genie/src/resolvers/element_resolver.dart';
 import 'package:code_genie/src/resolvers/package_file_resolver.dart';
 import 'package:code_genie/src/resolvers/parsed_units_cache.dart';
-import 'package:code_genie/src/resolvers/type/type_ref.dart';
 import 'package:code_genie/src/scanner/assets_graph.dart';
 import 'package:code_genie/src/scanner/isolate_scanner.dart';
 import 'package:code_genie/src/utils.dart';
@@ -40,12 +38,12 @@ void main(List<String> args) async {
         print('Class: ${clazz.name} --------------------- *** ');
         print('Fields -----------');
         for (final field in clazz.fields) {
-          print('${field.type} ${field.name} ');
-          final element = resolver.elementOf(field.type);
-          final type = field.type;
-          if (element is TypeAliasElement && type is NamedTypeRef) {
-            print(element.instantiate(type));
-          }
+          // print('${field.type} ${field.name} ');
+          // final element = resolver.elementOf(field.type);
+          // final type = field.type;
+          // if (element is TypeAliasElement && type is NamedTypeRef) {
+          //   print(element.instantiate(type));
+          // }
 
           // final type = field.type;
           // if (type is NamedTypeRef) {
@@ -54,6 +52,9 @@ void main(List<String> args) async {
           //   );
           // }
         }
+
+        print(library.directives);
+
         // print('Params -----------');
         // for (final param in [...?clazz.constructors.firstOrNull?.parameters]) {
         //   print('${param.type} ${param.name} ');

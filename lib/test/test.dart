@@ -29,14 +29,9 @@ class Annotation {
 //   }
 // }
 
-typedef RecordType<T> = (T x, int y);
-typedef ValueChanged<T> = T? Function(T value, {T? value2});
-
 @Annotation()
 class AnnotatedClass {
-  AnnotatedClass(this.record);
-
-  final RecordType record;
+  AnnotatedClass();
 
   // final Target target;
   // final Future futre;
@@ -60,6 +55,8 @@ class AnnotatedClass {
   // // AnnotatedClass(this.type, this.name, this.age, this.isAlive);
   //
   void method([String x = 'default']) {}
+
+  void method2([String x = 'default']) {}
 
   // factory AnnotatedClass.redirected() = RedirectedClass.red;
   //

@@ -227,33 +227,33 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> {
   Constant? visitMethodInvocation(MethodInvocation node) {
     print('MethodInvocation: ${node.methodName}');
     return Constant.invalid;
-    final element = _elementResolverVisitor.resolveTopLevelElement(IdentifierRef.from(node.methodName), _library);
-
-    if (element is! InterfaceElement) return Constant.invalid;
-    for (final field in element.fields) {
-      print('${field.name} ${field.constantValue}');
-    }
-
-    Map<String, Constant> argumentValues = {};
-    final argumentList = node.argumentList.arguments;
-    if (argumentList.isNotEmpty) {
-      for (var i = 0; i < argumentList.length; i++) {
-        final arg = argumentList[i];
-        if (arg is NamedExpression) {
-          final name = arg.name.label.name;
-          final value = arg.expression.accept(this);
-          if (value != null) {
-            argumentValues[name] = value;
-          }
-        } else {
-          final value = arg.accept(this);
-          if (value != null) {
-            argumentValues['$i'] = value;
-          }
-        }
-      }
-    }
-    print(argumentValues);
+    // final element = _elementResolverVisitor.resolveTopLevelElement(IdentifierRef.from(node.methodName), _library);
+    //
+    // if (element is! InterfaceElement) return Constant.invalid;
+    // for (final field in element.fields) {
+    //   print('${field.name} ${field.constantValue}');
+    // }
+    //
+    // Map<String, Constant> argumentValues = {};
+    // final argumentList = node.argumentList.arguments;
+    // if (argumentList.isNotEmpty) {
+    //   for (var i = 0; i < argumentList.length; i++) {
+    //     final arg = argumentList[i];
+    //     if (arg is NamedExpression) {
+    //       final name = arg.name.label.name;
+    //       final value = arg.expression.accept(this);
+    //       if (value != null) {
+    //         argumentValues[name] = value;
+    //       }
+    //     } else {
+    //       final value = arg.accept(this);
+    //       if (value != null) {
+    //         argumentValues['$i'] = value;
+    //       }
+    //     }
+    //   }
+    // }
+    // print(argumentValues);
   }
 
   @override

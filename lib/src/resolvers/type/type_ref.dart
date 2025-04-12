@@ -10,32 +10,25 @@ sealed class TypeRef {
 
   bool get isValid => this != invalidType;
 
-  static const voidType = _UnSourcedTypeRef('void', isNullable: false);
-  static const dynamicType = _UnSourcedTypeRef('dynamic', isNullable: true);
-  static const neverType = _UnSourcedTypeRef('Never', isNullable: false);
-  static const invalidType = _UnSourcedTypeRef('Invalid', isNullable: false);
+  static const voidType = NonElementTypeRef('void', isNullable: false);
+  static const dynamicType = NonElementTypeRef('dynamic', isNullable: true);
+  static const neverType = NonElementTypeRef('Never', isNullable: false);
+  static const invalidType = NonElementTypeRef('Invalid', isNullable: false);
 
-  static bool isVoid(String name) {
-    return voidType.name == name;
-  }
+  /// Return `true` if this type represents the type 'void'
+  bool get isVoid;
 
-  static bool isDynamic(String name) {
-    return dynamicType.name == name;
-  }
+  /// Return `true` if this type represents the type 'dynamic'
+  bool get isDynamic;
 
-  static bool isNever(String name) {
-    return neverType.name == name;
-  }
-
-  static bool isVoidOrDynamic(String name) {
-    return isVoid(name) || isDynamic(name);
-  }
+  /// Return `true` if this type represents the type 'Never'
+  bool get isNever;
 
   /// Return `true` if this type represents the type 'Future' defined in the
   /// dart:async library.
   bool get isDartAsyncFuture;
 
-  /// Return `true` if this type represents the type 'FutureOr<T>' defined in
+  /// Return `true` if this type represents the type 'FutureOr&lt;T&gt;' defined in
   /// the dart:async library.
   bool get isDartAsyncFutureOr;
 
@@ -198,6 +191,15 @@ abstract class TypeRefImpl extends TypeRef {
   bool get isDartCoreBigInt => false;
 
   @override
+  bool get isVoid => false;
+
+  @override
+  bool get isDynamic => false;
+
+  @override
+  bool get isNever => false;
+
+  @override
   bool operator ==(Object other) => identical(this, other) || other is TypeRefImpl && runtimeType == other.runtimeType;
 
   @override
@@ -207,14 +209,14 @@ abstract class TypeRefImpl extends TypeRef {
   TypeRef withNullability(bool isNullable);
 }
 
-class _UnSourcedTypeRef extends TypeRefImpl {
-  const _UnSourcedTypeRef(this.name, {required super.isNullable});
+class NonElementTypeRef extends TypeRefImpl {
+  const NonElementTypeRef(this.name, {required super.isNullable});
 
   final String name;
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || other is _UnSourcedTypeRef && runtimeType == other.runtimeType;
+      identical(this, other) || other is NonElementTypeRef && runtimeType == other.runtimeType;
 
   @override
   int get hashCode => name.hashCode;
@@ -223,9 +225,18 @@ class _UnSourcedTypeRef extends TypeRefImpl {
   String toString() => name;
 
   @override
-  _UnSourcedTypeRef withNullability(bool isNullable) {
+  NonElementTypeRef withNullability(bool isNullable) {
     return this;
   }
+
+  @override
+  bool get isVoid => name == 'void';
+
+  @override
+  bool get isDynamic => name == 'dynamic';
+
+  @override
+  bool get isNever => name == 'Never';
 }
 
 class NamedTypeRefImpl extends TypeRefImpl implements NamedTypeRef {
