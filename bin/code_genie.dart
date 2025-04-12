@@ -43,9 +43,8 @@ void main(List<String> args) async {
           print('${field.type} ${field.name} ');
           final element = resolver.elementOf(field.type);
           final type = field.type;
-          if (element is TypeParameterizedElement && type is NamedTypeRef) {
-            final initiatedType = element.instantiate(type);
-            print(initiatedType);
+          if (element is TypeAliasElement && type is NamedTypeRef) {
+            print(element.instantiate(type));
           }
 
           // final type = field.type;

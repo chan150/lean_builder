@@ -95,7 +95,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
       }
     });
     _resolveInterfaces(clazzElement, implementsClause: node.implementsClause);
-    clazzElement.thisType = NamedTypeRef(
+    clazzElement.thisType = NamedTypeRefImpl(
       clazzElement.name,
       library.identifierLocationOf(clazzElement.name, TopLevelIdentifierType.$class),
     );
@@ -191,7 +191,6 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     final typeAliasElm = TypeAliasElementImpl(name: node.name.lexeme, library: library);
     library.addElement(typeAliasElm);
     typeAliasElm.aliasedType = FunctionTypeRef(
-      node.name.lexeme,
       isNullable: false,
       parameters: funcElement.parameters,
       typeParameters: funcElement.typeParameters,
@@ -219,7 +218,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
       // }
     });
 
-    classElement.thisType = NamedTypeRef(
+    classElement.thisType = NamedTypeRefImpl(
       classElement.name,
       libraryElement.identifierLocationOf(classElement.name, TopLevelIdentifierType.$class),
       typeArguments: classElement.typeParameters,
@@ -252,7 +251,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     visitElementScoped(mixinElement, () {
       node.typeParameters?.visitChildren(this);
     });
-    mixinElement.thisType = NamedTypeRef(
+    mixinElement.thisType = NamedTypeRefImpl(
       mixinElement.name,
       libraryElement.identifierLocationOf(mixinElement.name, TopLevelIdentifierType.$mixin),
       typeArguments: mixinElement.typeParameters,
@@ -270,7 +269,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
       enumElement = EnumElementImpl(name: node.name.lexeme, library: libraryElement);
       libraryElement.addElement(enumElement);
     }
-    enumElement.thisType = NamedTypeRef(
+    enumElement.thisType = NamedTypeRefImpl(
       enumElement.name,
       libraryElement.identifierLocationOf(enumElement.name, TopLevelIdentifierType.$enum),
     );
@@ -346,20 +345,21 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
           }
         }
       }
-      return resolveNamedType(typeAnno, enclosingEle);
+      return resolveNamedTypeRef(typeAnno, enclosingEle);
     } else if (typeAnno is GenericFunctionType) {
-      return resolveFunctionType(typeAnno, FunctionElementImpl(name: 'Function', enclosingElement: enclosingEle));
+      return resolveFunctionTypeRef(typeAnno, FunctionElementImpl(name: 'Function', enclosingElement: enclosingEle));
+    } else if (typeAnno is RecordTypeAnnotation) {
+      return resolveRecordTypeRef(typeAnno, enclosingEle);
     }
     return TypeRef.invalidType;
   }
 
-  FunctionTypeRef resolveFunctionType(GenericFunctionType typeAnnotation, FunctionElement funcElement) {
+  FunctionTypeRef resolveFunctionTypeRef(GenericFunctionType typeAnnotation, FunctionElement funcElement) {
     visitElementScoped(funcElement, () {
       typeAnnotation.typeParameters?.visitChildren(this);
       typeAnnotation.parameters.visitChildren(this);
     });
     return FunctionTypeRef(
-      funcElement.name,
       returnType: resolveTypeRef(typeAnnotation.returnType, funcElement),
       typeParameters: funcElement.typeParameters,
       parameters: funcElement.parameters,
@@ -367,7 +367,23 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     );
   }
 
-  TypeRef resolveNamedType(NamedType annotation, Element enclosingEle) {
+  RecordTypeRef resolveRecordTypeRef(RecordTypeAnnotation typeAnnotation, Element enclosingEle) {
+    final positionalTypes = <RecordTypePositionalField>[];
+    for (final field in typeAnnotation.positionalFields) {
+      positionalTypes.add(RecordTypePositionalField(resolveTypeRef(field.type, enclosingEle)));
+    }
+    final namedTypes = <RecordTypeNamedField>[];
+    for (final field in [...?typeAnnotation.namedFields?.fields]) {
+      namedTypes.add(RecordTypeNamedField(field.name.lexeme, resolveTypeRef(field.type, enclosingEle)));
+    }
+    return RecordTypeRef(
+      positionalFields: positionalTypes,
+      namedFields: namedTypes,
+      isNullable: typeAnnotation.question != null,
+    );
+  }
+
+  TypeRef resolveNamedTypeRef(NamedType annotation, Element enclosingEle) {
     final typename = annotation.name2.lexeme;
 
     if (TypeRef.isNever(typename)) return TypeRef.neverType;
@@ -388,7 +404,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
       identifierLocation != null,
       'could not find identifier $annotation in ${_resolver.graph.uriForAsset(enclosingEle.library.srcId)}',
     );
-    return NamedTypeRef(
+    return NamedTypeRefImpl(
       typename,
       identifierLocation!,
       isNullable: annotation.question != null,
@@ -485,7 +501,6 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     final returnType = resolveTypeRef((node.returnType), funcElement);
     funcElement.returnType = returnType;
     funcElement.type = FunctionTypeRef(
-      funcElement.name,
       returnType: returnType,
       typeParameters: funcElement.typeParameters,
       parameters: funcElement.parameters,
@@ -714,7 +729,6 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     final returnType = resolveTypeRef((node.returnType), methodElement);
     methodElement.returnType = returnType;
     methodElement.type = FunctionTypeRef(
-      methodElement.name,
       returnType: returnType,
       typeParameters: methodElement.typeParameters,
       parameters: methodElement.parameters,
@@ -735,7 +749,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     if (clazzElement.superType != null) {
       final superConstName =
           initializers.whereType<SuperConstructorInvocation>().map((e) => e.constructorName?.name).firstOrNull;
-      final superClazz = clazzElement.superType as NamedTypeRef?;
+      final superClazz = clazzElement.superType;
       if (superClazz != null) {
         superConstructor = ConstructorElementRef(superClazz, superConstName ?? '');
       }
@@ -792,7 +806,12 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
         importPrefix: identifierRef.importPrefix,
       );
 
-      final resolvedType = NamedTypeRef(constructorName, identifierSrc!, isNullable: false, typeArguments: []);
+      final resolvedType = NamedTypeRefImpl(
+        constructorName,
+        identifierSrc!,
+        isNullable: false,
+        typeArguments: const [],
+      );
       constructorElement.returnType = resolvedType;
       constructorElement.redirectedConstructor = ConstructorElementRef(
         resolvedType,

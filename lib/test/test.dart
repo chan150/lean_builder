@@ -29,13 +29,14 @@ class Annotation {
 //   }
 // }
 
+typedef RecordType<T> = (T x, int y);
 typedef ValueChanged<T> = T? Function(T value, {T? value2});
 
 @Annotation()
 class AnnotatedClass {
-  AnnotatedClass(this.number);
+  AnnotatedClass(this.record);
 
-  final FieldType<String> number;
+  final RecordType record;
 
   // final Target target;
   // final Future futre;

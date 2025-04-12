@@ -46,9 +46,7 @@ class ElementResolver {
   }
 
   Element? elementOf(TypeRef ref) {
-    if (ref is! SourcedTypeRef) {
-      return null;
-    } else if (ref is NamedTypeRef) {
+    if (ref is NamedTypeRef) {
       final importingLib = libraryFor(ref.src.importingLibrary);
       final identifier = IdentifierRef(ref.name, importPrefix: ref.importPrefix);
       final (library, unit) = astNodeFor(identifier, importingLib);
@@ -56,7 +54,7 @@ class ElementResolver {
       unit.accept(visitor);
       return library.getElement(ref.name);
     }
-    throw Exception('Element not found for type ref: $ref');
+    return null;
   }
 
   LibraryElementImpl libraryFor(AssetSrc src) {

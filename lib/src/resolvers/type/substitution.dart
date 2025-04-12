@@ -9,10 +9,13 @@ class Substitution {
   /// Creates a substitution that maps the given type parameters to the
   /// corresponding type arguments.
   factory Substitution.fromPairs(List<TypeParameterTypeRef> typeParameters, List<TypeRef> typeArguments) {
-    assert(typeParameters.length == typeArguments.length);
     final map = <TypeParameterTypeRef, TypeRef>{};
     for (var i = 0; i < typeParameters.length; i++) {
-      map[typeParameters[i]] = typeArguments[i];
+      if (i >= typeArguments.length) {
+        map[typeParameters[i]] = TypeRef.dynamicType;
+      } else {
+        map[typeParameters[i]] = typeArguments[i];
+      }
     }
     return Substitution(map);
   }
@@ -26,13 +29,7 @@ class Substitution {
         return type;
       }
       final substitutedTypeArgs = type.typeArguments.map((typeArg) => substituteType(typeArg)).toList();
-      return NamedTypeRef(
-        type.name,
-        type.src,
-        typeArguments: substitutedTypeArgs,
-        // alias: type.alias,
-        isNullable: isNullable,
-      );
+      return NamedTypeRefImpl(type.name, type.src, typeArguments: substitutedTypeArgs, isNullable: isNullable);
     } else if (type is FunctionTypeRef) {
       final returnType = substituteType(type.returnType);
       final parameters =
@@ -43,13 +40,22 @@ class Substitution {
             return param;
           }).toList();
       return FunctionTypeRef(
-        type.name,
         returnType: returnType,
         typeParameters: type.typeParameters,
         parameters: parameters,
         isNullable: isNullable,
       );
+    } else if (type is RecordTypeRef) {
+      final positionalFields = <RecordTypePositionalField>[];
+      for (final field in type.positionalFields) {
+        positionalFields.add(RecordTypePositionalField(substituteType(field.type)));
+      }
+      final namedFields = <RecordTypeNamedField>[];
+      for (final field in type.namedFields) {
+        namedFields.add(RecordTypeNamedField(field.name, substituteType(field.type)));
+      }
+      return RecordTypeRef(positionalFields: positionalFields, namedFields: namedFields, isNullable: isNullable);
     }
-    return type;
+    return type.withNullability(isNullable);
   }
 }

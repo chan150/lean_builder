@@ -159,14 +159,14 @@ mixin TypeParameterizedElementMixin on Element implements TypeParameterizedEleme
 // }
 
 class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixin implements InterfaceElement {
-  final List<TypeRef> _mixins = [];
-  final List<TypeRef> _interfaces = [];
-  final List<TypeRef> _superConstrains = [];
+  final List<NamedTypeRef> _mixins = [];
+  final List<NamedTypeRef> _interfaces = [];
+  final List<NamedTypeRef> _superConstrains = [];
   final List<MethodElement> _methods = [];
   final List<FieldElement> _fields = [];
 
-  TypeRef? _superType;
-  TypeRef? _thisType;
+  NamedTypeRef? _superType;
+  NamedTypeRef? _thisType;
 
   InterfaceElementImpl({required this.name, required this.library});
 
@@ -185,11 +185,11 @@ class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixi
   @override
   List<TypeParameterTypeRef> get typeParameters => _typeParameters;
 
-  void addMixin(TypeRef mixin) {
+  void addMixin(NamedTypeRef mixin) {
     _mixins.add(mixin);
   }
 
-  void addInterface(TypeRef interface) {
+  void addInterface(NamedTypeRef interface) {
     _interfaces.add(interface);
   }
 
@@ -213,19 +213,19 @@ class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixi
   @override
   Element? get enclosingElement => library;
 
-  set superType(TypeRef? value) {
+  set superType(NamedTypeRef? value) {
     _superType = value;
   }
 
   @override
-  TypeRef? get superType => _superType;
+  NamedTypeRef? get superType => _superType;
 
-  set thisType(TypeRef? value) {
+  set thisType(NamedTypeRef? value) {
     _thisType = value;
   }
 
   @override
-  TypeRef get thisType => _thisType!;
+  NamedTypeRef get thisType => _thisType!;
 
   @override
   List<PropertyAccessorElement> get accessors => throw UnimplementedError();
@@ -471,7 +471,7 @@ class MixinElementImpl extends InterfaceElementImpl implements MixinElement {
   @override
   List<TypeRef> get superclassConstraints => _superConstrains;
 
-  void addSuperConstrain(TypeRef superConstrains) {
+  void addSuperConstrain(NamedTypeRef superConstrains) {
     _superConstrains.add(superConstrains);
   }
 }

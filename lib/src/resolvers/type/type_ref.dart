@@ -1,3 +1,4 @@
+import 'package:analyzer/dart/element/type.dart';
 import 'package:code_genie/src/scanner/identifier_ref.dart';
 import 'package:code_genie/src/resolvers/element/element.dart';
 import 'package:collection/collection.dart';
@@ -6,8 +7,6 @@ sealed class TypeRef {
   const TypeRef();
 
   bool get isNullable;
-
-  String get name;
 
   bool get isValid => this != invalidType;
 
@@ -64,6 +63,10 @@ sealed class TypeRef {
   /// dart:core library.
   bool get isDartCoreInt;
 
+  /// Return `true` if this type represents the type 'BigInt' defined in the
+  /// dart:core library.
+  bool get isDartCoreBigInt;
+
   /// Returns `true` if this type represents the type 'Iterable' defined in the
   /// dart:core library.
   bool get isDartCoreIterable;
@@ -108,17 +111,28 @@ sealed class TypeRef {
   /// dart:core library.
   bool get isDartCoreType;
 
+  /// Return `true` if this type represents the type 'DateTime' defined in the
+  /// dart:core library.
+  bool get isDartCoreDateTime;
+
   TypeRef withNullability(bool isNullable);
 }
 
-class TypeRefImpl extends TypeRef {
-  @override
-  final String name;
+abstract class NamedTypeRef extends TypeRef {
+  String get name;
 
+  List<TypeRef> get typeArguments;
+
+  String? get importPrefix;
+
+  IdentifierLocation get src;
+}
+
+abstract class TypeRefImpl extends TypeRef {
   @override
   final bool isNullable;
 
-  const TypeRefImpl(this.name, {required this.isNullable});
+  const TypeRefImpl({required this.isNullable});
 
   @override
   bool get isDartAsyncFuture => false;
@@ -178,23 +192,25 @@ class TypeRefImpl extends TypeRef {
   bool get isDartCoreType => false;
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) || other is TypeRefImpl && runtimeType == other.runtimeType && name == other.name;
+  bool get isDartCoreDateTime => false;
 
   @override
-  int get hashCode => name.hashCode;
+  bool get isDartCoreBigInt => false;
 
   @override
-  TypeRef withNullability(bool isNullable) {
-    if (this.isNullable == isNullable) {
-      return this;
-    }
-    return TypeRefImpl(name, isNullable: isNullable);
-  }
+  bool operator ==(Object other) => identical(this, other) || other is TypeRefImpl && runtimeType == other.runtimeType;
+
+  @override
+  int get hashCode => 0;
+
+  @override
+  TypeRef withNullability(bool isNullable);
 }
 
 class _UnSourcedTypeRef extends TypeRefImpl {
-  const _UnSourcedTypeRef(super.name, {required super.isNullable});
+  const _UnSourcedTypeRef(this.name, {required super.isNullable});
+
+  final String name;
 
   @override
   bool operator ==(Object other) =>
@@ -205,12 +221,27 @@ class _UnSourcedTypeRef extends TypeRefImpl {
 
   @override
   String toString() => name;
+
+  @override
+  _UnSourcedTypeRef withNullability(bool isNullable) {
+    return this;
+  }
 }
 
-abstract class SourcedTypeRef extends TypeRefImpl {
+class NamedTypeRefImpl extends TypeRefImpl implements NamedTypeRef {
+  @override
+  final List<TypeRef> typeArguments;
+
+  @override
+  final String? importPrefix;
+
+  @override
+  final String name;
+
+  @override
   final IdentifierLocation src;
 
-  SourcedTypeRef(super.name, this.src, {required super.isNullable});
+  NamedTypeRefImpl(this.name, this.src, {super.isNullable = false, this.typeArguments = const [], this.importPrefix});
 
   String get _srcName => src.srcUri.toString();
 
@@ -266,27 +297,22 @@ abstract class SourcedTypeRef extends TypeRefImpl {
   bool get isDartAsyncFuture => name == 'Future' && _srcName == 'dart:async/future.dart';
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is SourcedTypeRef && runtimeType == other.runtimeType && name == other.name && src.srcId == other.src.srcId;
+  bool get isDartAsyncFutureOr => name == 'FutureOr' && _srcName == 'dart:async/future.dart';
 
   @override
-  int get hashCode => name.hashCode ^ src.srcId.hashCode;
-}
+  bool get isDartAsyncStream => name == 'Stream' && _srcName == 'dart:async/stream.dart';
 
-class NamedTypeRef extends SourcedTypeRef {
-  final List<TypeRef> typeArguments;
-  final String? importPrefix;
+  @override
+  bool get isDartCoreBigInt => name == 'BigInt' && _srcName == 'dart:core/bigint.dart';
 
-  bool get hasTypeArguments => typeArguments.isNotEmpty;
-
-  NamedTypeRef(super.name, super.src, {super.isNullable = false, this.typeArguments = const [], this.importPrefix});
+  @override
+  bool get isDartCoreDateTime => name == 'DateTime' && _srcName == 'dart:core/date_time.dart';
 
   @override
   String toString() {
     final buffer = StringBuffer();
     buffer.write(name);
-    if (hasTypeArguments) {
+    if (typeArguments.isNotEmpty) {
       buffer.write('<');
       buffer.write(typeArguments.map((e) => e.toString()).join(', '));
       buffer.write('>');
@@ -298,17 +324,23 @@ class NamedTypeRef extends SourcedTypeRef {
   }
 
   @override
-  NamedTypeRef withNullability(bool isNullable) {
+  NamedTypeRefImpl withNullability(bool isNullable) {
     if (this.isNullable == isNullable) {
       return this;
     }
-    return NamedTypeRef(name, src, isNullable: isNullable, typeArguments: typeArguments, importPrefix: importPrefix);
+    return NamedTypeRefImpl(
+      name,
+      src,
+      isNullable: isNullable,
+      typeArguments: typeArguments,
+      importPrefix: importPrefix,
+    );
   }
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is NamedTypeRef &&
+      other is NamedTypeRefImpl &&
           runtimeType == other.runtimeType &&
           name == other.name &&
           src.srcId == other.src.srcId &&
@@ -323,8 +355,7 @@ class FunctionTypeRef extends TypeRefImpl {
   final List<TypeParameterTypeRef> typeParameters;
   final TypeRef returnType;
 
-  FunctionTypeRef(
-    super.name, {
+  FunctionTypeRef({
     required super.isNullable,
     required this.parameters,
     this.typeParameters = const [],
@@ -337,7 +368,6 @@ class FunctionTypeRef extends TypeRefImpl {
       return this;
     }
     return FunctionTypeRef(
-      name,
       isNullable: isNullable,
       parameters: parameters,
       typeParameters: typeParameters,
@@ -360,7 +390,7 @@ class FunctionTypeRef extends TypeRefImpl {
       buffer.write(typeParameters.toString());
       buffer.write('>');
     }
-    buffer.write(name);
+    buffer.write('Function');
     if (parameters.isNotEmpty) {
       buffer.write('(');
       if (requiredPositionalParams.isNotEmpty) {
@@ -395,23 +425,20 @@ class FunctionTypeRef extends TypeRefImpl {
       identical(this, other) ||
       other is FunctionTypeRef &&
           runtimeType == other.runtimeType &&
-          name == other.name &&
           const ListEquality().equals(parameters, other.parameters) &&
           const ListEquality().equals(typeParameters, other.typeParameters) &&
           returnType == other.returnType;
 
   @override
   int get hashCode =>
-      name.hashCode ^
-      const ListEquality().hash(parameters) ^
-      const ListEquality().hash(typeParameters) ^
-      returnType.hashCode;
+      const ListEquality().hash(parameters) ^ const ListEquality().hash(typeParameters) ^ returnType.hashCode;
 }
 
 class TypeParameterTypeRef extends TypeRefImpl {
   final TypeRef bound;
+  final String name;
 
-  TypeParameterTypeRef(super.name, {required this.bound, super.isNullable = false});
+  TypeParameterTypeRef(this.name, {required this.bound, super.isNullable = false});
 
   @override
   TypeParameterTypeRef withNullability(bool isNullable) {
@@ -444,18 +471,69 @@ class TypeParameterTypeRef extends TypeRefImpl {
   int get hashCode => bound.hashCode;
 }
 
-// class RecordTypeRef extends TypeRef {
-//   NodeList<RecordTypeAnnotationNamedField>? namedFields;
-//   NodeList<RecordTypeAnnotationPositionalField> positionalFields;
-//
-//   RecordTypeRef(super.name, {required super.isNullable, required this.positionalFields, this.namedFields});
-//
-//   factory RecordTypeRef.from(RecordTypeAnnotation recordType) {
-//     return RecordTypeRef(
-//       'Record',
-//       isNullable: recordType.question != null,
-//       positionalFields: recordType.positionalFields,
-//       namedFields: recordType.namedFields?.fields,
-//     );
-//   }
-// }
+class RecordTypeRef extends TypeRefImpl {
+  List<RecordTypeNamedField> namedFields;
+  List<RecordTypePositionalField> positionalFields;
+
+  RecordTypeRef({required this.positionalFields, required this.namedFields, required super.isNullable});
+
+  @override
+  String toString() {
+    final buffer = StringBuffer();
+    buffer.write('(');
+    if (positionalFields.isNotEmpty) {
+      buffer.write(positionalFields.mapIndexed((i, e) => '${e.type} ${r'$'}${i + 1}').join(', '));
+    }
+    if (namedFields.isNotEmpty) {
+      if (positionalFields.isNotEmpty) {
+        buffer.write(', ');
+      }
+      buffer.write('{');
+      buffer.write(namedFields.map((e) => '${e.type} ${e.name}').join(', '));
+      buffer.write('}');
+    }
+    buffer.write(')');
+    if (isNullable) {
+      buffer.write('?');
+    }
+    return buffer.toString();
+  }
+
+  @override
+  RecordTypeRef withNullability(bool isNullable) {
+    if (this.isNullable == isNullable) {
+      return this;
+    }
+    return RecordTypeRef(positionalFields: positionalFields, namedFields: namedFields, isNullable: isNullable);
+  }
+}
+
+abstract class RecordTypeField {
+  /// The type of the field.
+  TypeRef get type;
+
+  const RecordTypeField();
+}
+
+/// A named field in a [RecordType].
+///
+/// Clients may not extend, implement or mix-in this class.
+class RecordTypeNamedField implements RecordTypeField {
+  /// The name of the field.
+  final String name;
+
+  @override
+  final TypeRef type;
+
+  RecordTypeNamedField(this.name, this.type);
+}
+
+/// A positional field in a [RecordType].
+///
+/// Clients may not extend, implement or mix-in this class.
+class RecordTypePositionalField implements RecordTypeField {
+  @override
+  final TypeRef type;
+
+  const RecordTypePositionalField(this.type);
+}
