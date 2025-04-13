@@ -31,7 +31,10 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
 
   @override
   final CompilationUnit compilationUnit;
+
+  @override
   final ElementResolver resolver;
+
   final List<Element> _resolvedElements = [];
 
   bool _didResolveDirectives = false;

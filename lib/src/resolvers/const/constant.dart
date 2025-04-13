@@ -1,4 +1,3 @@
-import 'package:code_genie/src/resolvers/type/type.dart';
 import 'package:code_genie/src/resolvers/type/type_ref.dart';
 
 abstract class Constant<T> {

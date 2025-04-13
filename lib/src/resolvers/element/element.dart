@@ -1,6 +1,3 @@
-import 'dart:async';
-
-import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:code_genie/src/resolvers/const/constant.dart';
 import 'package:code_genie/src/resolvers/element_resolver.dart';
@@ -81,6 +78,8 @@ abstract class LibraryElement extends Element {
   CompilationUnit get compilationUnit;
 
   List<ClassElementImpl> get classes;
+
+  ElementResolver get resolver;
 
   List<MixinElementImpl> get mixins;
 

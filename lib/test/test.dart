@@ -1,14 +1,18 @@
 import 'package:code_genie/test/test2.dart';
 
-class Annotation {
-  // final String? str;
-  // final String str2 = 'Hello';
-  //
+class Genix$ {
+  final String? str;
+  final String? str2;
+
   // const Annotation(this.number, {this.str});
-  const Annotation();
+  const Genix$(this.str, {this.str2 = 'Hello'});
+  const Genix$.named(this.str) : str2 = null;
 }
 
-//
+const genix$ = Genix$.named('Hello');
+
+const varConst = 'Hello';
+
 // @Annotation()
 // class Widgets extends StatelessWidget {
 //   const Widgets({super.key});
@@ -28,11 +32,15 @@ class Annotation {
 //     return throw UnimplementedError();
 //   }
 // }
+// @annotation
+const constArg = 'Hello';
 
-@Annotation()
+@varConst
+@genix$
+@Genix$('Argument', str2: constArg)
 class AnnotatedClass {
-  AnnotatedClass();
-
+  AnnotatedClass(this.fieldType);
+  final FieldType fieldType;
   // final Target target;
   // final Future futre;
   // List<Set<String>> list = [];

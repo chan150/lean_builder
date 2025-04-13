@@ -119,6 +119,9 @@ abstract class NamedTypeRef extends TypeRef {
   String? get importPrefix;
 
   IdentifierLocation get src;
+
+  /// then identifier that points to declaration of this type
+  String get identifier;
 }
 
 abstract class TypeRefImpl extends TypeRef {
@@ -240,6 +243,9 @@ class NonElementTypeRef extends TypeRefImpl {
 }
 
 class NamedTypeRefImpl extends TypeRefImpl implements NamedTypeRef {
+  @override
+  String get identifier => '$name@${src.srcId}';
+
   @override
   final List<TypeRef> typeArguments;
 

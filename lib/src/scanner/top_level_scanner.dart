@@ -3,10 +3,10 @@ import 'dart:math';
 // ignore: implementation_imports
 import 'package:_fe_analyzer_shared/src/scanner/scanner.dart' as fasta;
 import 'package:analyzer/dart/ast/token.dart';
+import 'package:code_genie/src/resolvers/file_asset.dart';
 import 'package:code_genie/src/resolvers/package_file_resolver.dart';
 import 'package:code_genie/src/scanner/scan_results.dart';
 
-import '../resolvers/file_asset.dart';
 import 'directive_statement.dart';
 
 class TopLevelScanner {
@@ -104,13 +104,6 @@ class TopLevelScanner {
 
         token = nextToken;
       }
-
-      if (asset.uri.toString().contains(
-        '/Users/milad/Dev/sdk/flutter/bin/cache/dart-sdk/lib/html/dartium/nativewrappers.dart',
-      )) {
-        print('Scanning file: ${asset.uri}');
-      }
-
       results.updateAssetInfo(asset, content: bytes, hasAnnotation: hasTopLevelAnnotation, libraryName: libraryName);
     } catch (e) {
       print('Error scanning file: ${asset.path}');
@@ -192,35 +185,35 @@ class TopLevelScanner {
 
   (Token?, DirectiveStatement?) _tryParseDirective(TokenType keyword, Token next, AssetSrc enclosingAsset) {
     bool isPartOf = keyword == Keyword.PART && next.type == Keyword.OF;
-    String uriString = '';
+    String stringUri = '';
 
     Token? current = next.next;
 
     if (isPartOf) {
       // could be pointing to a library directive which can have chained String Tokens
       if (current?.type == TokenType.STRING) {
-        uriString = current!.lexeme;
+        stringUri = current!.lexeme;
       } else {
         while (current != null && !current.isEof && current.type != TokenType.SEMICOLON) {
-          uriString += current.lexeme;
+          stringUri += current.lexeme;
           current = current.next;
         }
-        if (uriString.isNotEmpty) {
-          results.addLibraryPartOf(uriString, enclosingAsset);
+        if (stringUri.isNotEmpty) {
+          results.addLibraryPartOf(stringUri, enclosingAsset);
         }
         return (current, null);
       }
     } else {
-      uriString = next.lexeme;
+      stringUri = next.lexeme;
     }
 
-    if (uriString.length < 3) {
+    if (stringUri.length < 3) {
       return (_skipUntil(next, TokenType.SEMICOLON), null);
     }
 
     // remove quotes
-    uriString = uriString.substring(1, uriString.length - 1);
-    final uri = Uri.parse(uriString);
+    stringUri = stringUri.substring(1, stringUri.length - 1);
+    final uri = Uri.parse(stringUri);
 
     // skip private package imports
     if (uri.scheme == 'package' && uri.path.isNotEmpty && uri.path[0] == '_') {
@@ -232,9 +225,13 @@ class TopLevelScanner {
     final show = <String>[];
     final hide = <String>[];
     String? prefix;
+    var deferred = false;
     var showMode = true;
     for (current; current != null && !current.isEof; current = current.next) {
       if (current.type == TokenType.AS) {
+        if (current.previous?.type == Keyword.DEFERRED) {
+          deferred = true;
+        }
         current = current.next;
         prefix = current?.lexeme;
         if (current?.next == null) break;
@@ -260,7 +257,15 @@ class TopLevelScanner {
       _ => throw UnimplementedError('Unknown directive type: $keyword'),
     };
 
-    final directive = DirectiveStatement(type: type, asset: asset, show: show, hide: hide, prefix: prefix);
+    final directive = DirectiveStatement(
+      type: type,
+      stringUri: stringUri,
+      asset: asset,
+      show: show,
+      hide: hide,
+      prefix: prefix,
+      deferred: deferred,
+    );
     return (current, directive);
   }
 

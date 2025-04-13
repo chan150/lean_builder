@@ -1,5 +1,3 @@
-import 'package:analyzer/dart/ast/token.dart';
-
 import '../resolvers/file_asset.dart';
 
 class DirectiveStatement {
@@ -15,18 +13,17 @@ class DirectiveStatement {
   final List<String> show;
   final List<String> hide;
   final String? prefix;
-
+  final bool deferred;
+  final String stringUri;
   DirectiveStatement({
     required this.type,
     required this.asset,
+    required this.stringUri,
     this.show = const [],
     this.hide = const [],
     this.prefix,
+    this.deferred = false,
   });
-
-  bool shows(String identifier) => show.contains(identifier);
-
-  bool hides(String identifier) => hide.contains(identifier);
 
   @override
   String toString() {

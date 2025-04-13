@@ -7,30 +7,49 @@ import 'package:xxh3/xxh3.dart';
 
 import 'directive_statement.dart';
 
+class GraphIndex {
+  const GraphIndex._();
+
+  // asset
+  static const assetUri = 0;
+  static const assetDigest = 1;
+  static const assetAnnotationFlag = 2;
+  static const assetLibraryName = 3;
+
+  // identifier
+  static const identifierName = 0;
+  static const identifierSrc = 1;
+  static const identifierType = 2;
+
+  // directive
+  static const directiveType = 0;
+  static const directiveSrc = 1;
+  static const directiveStringUri = 2;
+  static const directiveShow = 3;
+  static const directiveHide = 4;
+  static const directivePrefix = 5;
+  static const directiveDeferred = 6;
+}
+
 abstract class ScanResults {
-  // [src, content-hash, has-annotation, library-name?]
-  Map<String, List<dynamic>> get assets;
+  Map<String, List<dynamic> /*uri, digest, hasTLAnnotation,library-name?*/> get assets;
 
-  // [identifier, srcHash]
-  List<List<dynamic>> get identifiers;
+  List<List<dynamic> /*name, src, type*/> get identifiers;
 
-  // All kinds of directives inside the file
-  // export, import, part, part of
-  // [exporting file, [type, uri, show, hide, prefix]]
-  Map<String, List<List<dynamic>>> get directives;
+  Map<String, List<List<dynamic> /*type, src, stringUri, show, hide, prefix?, deferred?*/>> get directives;
 
-  // [exporting file, [exported file, show, hide]]
-  List<List<dynamic>> exportsOf(String fileId, {bool includeParts = true});
+  List<List<dynamic> /*type, src, stringUri, show, hide*/> exportsOf(String fileId, {bool includeParts = true});
 
-  // [exporting file, [exported file, show, hide]]
-  List<List<dynamic>> partsOf(String fileId);
+  List<List<dynamic> /*type, src, stringUri*/> partsOf(String fileId);
 
-  List<dynamic>? partOfOf(String fileId);
+  List<dynamic>? /*type, src, stringUri*/ partOfOf(String fileId);
+
+  List<List<dynamic> /*type, src, stringUri, show, hide ,prefix? ,deferred?*/> importsOf(
+    String fileId, {
+    bool includeParts = true,
+  });
 
   String getParentSrc(String fileId);
-
-  // [importing file, [imported file, show, hide, prefix]]
-  List<List<dynamic>> importsOf(String fileId, {bool includeParts = true});
 
   // Set of visited assets
   Set<String> get visitedAssets;
@@ -71,9 +90,9 @@ class AssetsScanResults extends ScanResults {
     if (fileDirectives == null) return [];
     return List.of(
       fileDirectives.where((e) {
-        if (e[0] == DirectiveStatement.export) {
+        if (e[GraphIndex.directiveType] == DirectiveStatement.export) {
           return true;
-        } else if (includeParts && e[0] == DirectiveStatement.part) {
+        } else if (includeParts && e[GraphIndex.directiveType] == DirectiveStatement.part) {
           return true;
         }
         return false;
@@ -85,7 +104,7 @@ class AssetsScanResults extends ScanResults {
   List<List<dynamic>> partsOf(String fileId) {
     final fileDirectives = directives[fileId];
     if (fileDirectives == null) return const [];
-    return List.of(fileDirectives.where((e) => e[0] == DirectiveStatement.part));
+    return List.of(fileDirectives.where((e) => e[GraphIndex.directiveType] == DirectiveStatement.part));
   }
 
   @override
@@ -93,7 +112,11 @@ class AssetsScanResults extends ScanResults {
     final fileDirectives = directives[fileId];
     if (fileDirectives == null) return null;
     return fileDirectives
-        .where((e) => e[0] == DirectiveStatement.partOf || e[0] == DirectiveStatement.partOfLibrary)
+        .where(
+          (e) =>
+              e[GraphIndex.directiveType] == DirectiveStatement.partOf ||
+              e[GraphIndex.directiveType] == DirectiveStatement.partOfLibrary,
+        )
         .firstOrNull;
   }
 
@@ -103,9 +126,9 @@ class AssetsScanResults extends ScanResults {
     if (fileDirectives == null) return const [];
     return List.of(
       fileDirectives.where((e) {
-        if (e[0] == DirectiveStatement.import) {
+        if (e[GraphIndex.directiveType] == DirectiveStatement.import) {
           return true;
-        } else if (includeParts && e[0] == DirectiveStatement.part) {
+        } else if (includeParts && e[GraphIndex.directiveType] == DirectiveStatement.part) {
           return true;
         }
         return false;
@@ -126,11 +149,11 @@ class AssetsScanResults extends ScanResults {
   @override
   void merge(ScanResults results) {
     for (final asset in results.assets.entries) {
-      if (assets[asset.key]?[1] == null) {
+      if (assets[asset.key]?[GraphIndex.assetDigest] == null) {
         assets[asset.key] = asset.value;
       }
     }
-
+    // [type, src, stringUri, show, hide, prefix?, deferred?]]
     for (final directive in results.directives.entries) {
       if (!directives.containsKey(directive.key)) {
         directives[directive.key] = directive.value;
@@ -141,14 +164,16 @@ class AssetsScanResults extends ScanResults {
           bool isDuplicate = false;
           for (final exDir in allDirections) {
             final hasNameCombinator =
-                (newDir[0] == DirectiveStatement.export || newDir[0] == DirectiveStatement.import);
+                (newDir[GraphIndex.directiveType] == DirectiveStatement.export ||
+                    newDir[GraphIndex.directiveType] == DirectiveStatement.import);
 
-            if (newDir[0] == exDir[0] &&
-                newDir[1] == exDir[1] &&
+            if (newDir[GraphIndex.directiveType] == exDir[GraphIndex.directiveType] &&
+                newDir[GraphIndex.directiveSrc] == exDir[GraphIndex.directiveSrc] &&
                 (!hasNameCombinator ||
-                    (_listEquals(newDir[2], exDir[2]) &&
-                        _listEquals(newDir[3], exDir[3]) &&
-                        newDir.elementAtOrNull(4) == exDir.elementAtOrNull(4)))) {
+                    (_listEquals(newDir[GraphIndex.directiveShow], exDir[GraphIndex.directiveShow]) &&
+                        _listEquals(newDir[GraphIndex.directiveHide], exDir[GraphIndex.directiveHide]) &&
+                        newDir.elementAtOrNull(GraphIndex.directivePrefix) ==
+                            exDir.elementAtOrNull(GraphIndex.directivePrefix)))) {
               isDuplicate = true;
               break;
             }
@@ -178,23 +203,23 @@ class AssetsScanResults extends ScanResults {
   @override
   void addDirective(AssetSrc src, DirectiveStatement statement) {
     assert(assets.containsKey(src.id));
-    final directiveHash = addAsset(statement.asset, isVisited: false);
+    final directiveSrcId = addAsset(statement.asset, isVisited: false);
     final srcDirectives = directives[src.id] ?? [];
     if (srcDirectives.isNotEmpty) {
       for (final directive in srcDirectives) {
-        final directiveType = directive.elementAtOrNull(0);
+        final directiveType = directive[GraphIndex.directiveType];
 
         /// return early if the directive is already present
         if (directiveType == DirectiveStatement.part &&
             statement.type == DirectiveStatement.partOf &&
-            directive[1] == statement.asset.id) {
+            directive[GraphIndex.directiveSrc] == statement.asset.id) {
           return;
         }
 
-        final shows = directive.elementAtOrNull(2);
-        final hides = directive.elementAtOrNull(3);
-        final prefix = directive.elementAtOrNull(4);
-        if (directive[1] == directiveHash &&
+        final shows = directive[GraphIndex.directiveShow];
+        final hides = directive[GraphIndex.directiveHide];
+        final prefix = directive.elementAtOrNull(GraphIndex.directivePrefix);
+        if (directive[GraphIndex.directiveSrc] == directiveSrcId &&
             directiveType == statement.type &&
             prefix == statement.prefix &&
             _listEquals(shows, statement.show) &&
@@ -205,10 +230,12 @@ class AssetsScanResults extends ScanResults {
     }
     srcDirectives.add([
       statement.type,
-      directiveHash,
+      directiveSrcId,
+      statement.stringUri,
       statement.show.isEmpty ? null : statement.show,
       statement.hide.isEmpty ? null : statement.hide,
       if (statement.prefix != null) statement.prefix,
+      if (statement.deferred) 1,
     ]);
     directives[src.id] = srcDirectives;
   }
@@ -224,9 +251,9 @@ class AssetsScanResults extends ScanResults {
     }
   }
 
-  List<dynamic>? lookupIdentifier(String identifier, String srcHash) {
+  List<dynamic>? lookupIdentifier(String identifier, String src) {
     for (final entry in identifiers) {
-      if (entry[0] == identifier && entry[1] == srcHash) {
+      if (entry[GraphIndex.identifierName] == identifier && entry[GraphIndex.identifierSrc] == src) {
         return entry;
       }
     }
@@ -237,13 +264,13 @@ class AssetsScanResults extends ScanResults {
   void updateAssetInfo(AssetSrc asset, {required Uint8List content, bool hasAnnotation = false, String? libraryName}) {
     assert(assets.containsKey(asset.id), 'Asset not found: $asset');
     final assetArr = assets[asset.id]!;
-    assetArr[1] = xxh3String(content);
-    assetArr[2] = hasAnnotation ? 1 : 0;
+    assetArr[GraphIndex.assetDigest] = xxh3String(content);
+    assetArr[GraphIndex.assetAnnotationFlag] = hasAnnotation ? 1 : 0;
     if (libraryName != null) {
       if (assetArr.length < 4) {
         assetArr.add(libraryName);
       } else {
-        assetArr[3] = libraryName;
+        assetArr[GraphIndex.assetLibraryName] = libraryName;
       }
     }
   }
@@ -254,12 +281,12 @@ class AssetsScanResults extends ScanResults {
     visitedAssets.remove(id);
     // remove all directives that reference this asset
     directives.removeWhere((key, value) {
-      value.removeWhere((element) => element[1] == id);
+      value.removeWhere((element) => element[GraphIndex.directiveSrc] == id);
       return value.isEmpty;
     });
     directives.remove(id);
     // remove all identifiers that reference this asset
-    identifiers.removeWhere((element) => element[1] == id);
+    identifiers.removeWhere((element) => element[GraphIndex.identifierSrc] == id);
   }
 
   Map<String, dynamic> toJson() {
@@ -293,7 +320,7 @@ class AssetsScanResults extends ScanResults {
     final prefixes = <String>{};
     String targetSrc = getParentSrc(id);
     for (final import in importsOf(targetSrc, includeParts: false)) {
-      final prefix = import.elementAtOrNull(4);
+      final prefix = import.elementAtOrNull(GraphIndex.directivePrefix);
       if (prefix != null) {
         prefixes.add(prefix);
       }
@@ -307,22 +334,23 @@ class AssetsScanResults extends ScanResults {
   }
 
   @override
-  void addLibraryPartOf(String uriString, AssetSrc asset) {
+  void addLibraryPartOf(String stringUri, AssetSrc asset) {
     final fileDirectives = [...?directives[asset.id]];
     if (fileDirectives.isEmpty) {
       directives[asset.id] = [
-        [DirectiveStatement.partOfLibrary, uriString],
+        [DirectiveStatement.partOfLibrary, '', stringUri],
       ];
     } else {
       // avoid duplicate entries
       for (final directive in fileDirectives) {
-        if (directive[0] == DirectiveStatement.partOfLibrary && directive[1] == uriString) {
+        if (directive[GraphIndex.directiveType] == DirectiveStatement.partOfLibrary &&
+            directive[GraphIndex.directiveStringUri] == stringUri) {
           return;
         }
       }
       directives[asset.id] = [
         ...fileDirectives,
-        [DirectiveStatement.partOfLibrary, uriString],
+        [DirectiveStatement.partOfLibrary, '', stringUri],
       ];
     }
   }
@@ -331,11 +359,13 @@ class AssetsScanResults extends ScanResults {
   String getParentSrc(String fileId) {
     final partOf = partOfOf(fileId);
     if (partOf == null) return fileId;
-    if (partOf[0] == DirectiveStatement.partOf) {
-      return partOf[1];
-    } else if (partOf[0] == DirectiveStatement.partOfLibrary) {
+    final type = partOf[GraphIndex.directiveType];
+    if (type == DirectiveStatement.partOf) {
+      return partOf[GraphIndex.directiveSrc];
+    } else if (type == DirectiveStatement.partOfLibrary) {
       for (final asset in assets.entries) {
-        if (asset.value.length > 3 && asset.value[3] == partOf[1]) {
+        if (asset.value.length > 3 &&
+            asset.value[GraphIndex.assetLibraryName] == partOf[GraphIndex.directiveStringUri]) {
           return asset.key;
         }
       }

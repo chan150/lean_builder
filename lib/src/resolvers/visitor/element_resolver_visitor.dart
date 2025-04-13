@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:code_genie/src/resolvers/const/const_evaluator.dart';
@@ -15,64 +13,6 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
 
   ElementResolverVisitor(this._resolver, LibraryElement rootLibrary) {
     pushElement(rootLibrary);
-  }
-
-  @override
-  void visitImportDirective(ImportDirective node) {
-    final libraryElement = currentElementAs<LibraryElementImpl>();
-    final combinators = <NamespaceCombinator>[];
-    for (final combinator in node.combinators) {
-      if (combinator is ShowCombinator) {
-        final showNames = List<String>.unmodifiable(combinator.shownNames.map((e) => e.name));
-        combinators.add(ShowElementCombinator(showNames));
-      } else if (combinator is HideCombinator) {
-        final hideNames = List<String>.unmodifiable(combinator.hiddenNames.map((e) => e.name));
-        combinators.add(HideElementCombinator(hideNames));
-      }
-    }
-    final importElement = ImportElementImpl(
-      uri: Uri.parse(node.uri.stringValue ?? ''),
-      library: libraryElement,
-      combinators: combinators,
-      isDeferred: node.deferredKeyword != null,
-      prefix: node.prefix?.name,
-    );
-    libraryElement.addElement(importElement);
-  }
-
-  @override
-  void visitExportDirective(ExportDirective node) {
-    final libraryElement = currentElementAs<LibraryElementImpl>();
-    final combinators = <NamespaceCombinator>[];
-    for (final combinator in node.combinators) {
-      if (combinator is ShowCombinator) {
-        final showNames = List<String>.unmodifiable(combinator.shownNames.map((e) => e.name));
-        combinators.add(ShowElementCombinator(showNames));
-      } else if (combinator is HideCombinator) {
-        final hideNames = List<String>.unmodifiable(combinator.hiddenNames.map((e) => e.name));
-        combinators.add(HideElementCombinator(hideNames));
-      }
-    }
-    final exportElement = ExportElementImpl(
-      uri: Uri.parse(node.uri.stringValue ?? ''),
-      library: libraryElement,
-      combinators: combinators,
-    );
-    libraryElement.addElement(exportElement);
-  }
-
-  @override
-  void visitPartDirective(PartDirective node) {
-    final libraryElement = currentElementAs<LibraryElementImpl>();
-    final partElement = PartElementImpl(uri: Uri.parse(node.uri.stringValue ?? ''), library: libraryElement);
-    libraryElement.addElement(partElement);
-  }
-
-  @override
-  void visitPartOfDirective(PartOfDirective node) {
-    final libraryElement = currentElementAs<LibraryElementImpl>();
-    final partOfElement = PartOfElementImpl(uri: Uri.parse(node.uri?.stringValue ?? ''), library: libraryElement);
-    libraryElement.addElement(partOfElement);
   }
 
   @override
@@ -217,9 +157,6 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
         constructor.accept(this);
       }
     });
-    if (classElement.name == 'ProxyWidget') {
-      print(classElement);
-    }
     _resolveInterfaces(classElement, withClause: node.withClause, implementsClause: node.implementsClause);
   }
 
@@ -355,19 +292,18 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
       typeArgs.add(resolveTypeRef(typeArg, enclosingEle));
     }
 
-    final importPrefix = annotation.name2;
+    final importPrefix = annotation.importPrefix;
     final identifierLocation = _resolver.getIdentifierLocation(
       typename,
       enclosingEle.library.src,
-      importPrefix: importPrefix.lexeme,
+      importPrefix: importPrefix?.name.lexeme,
     );
-    assert(
-      identifierLocation != null,
-      'could not find identifier $annotation in ${enclosingEle.library.src.shortPath}',
-    );
+    if (identifierLocation == null) {
+      throw Exception('Could not find identifier $typename in ${enclosingEle.library.src.shortPath}');
+    }
     return NamedTypeRefImpl(
       typename,
-      identifierLocation!,
+      identifierLocation,
       isNullable: annotation.question != null,
       typeArguments: typeArgs,
     );
@@ -406,33 +342,43 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
 
   @override
   void visitAnnotation(Annotation node) {
-    return;
+    print(node.runtimeType);
     final (lib, targetNode) = _resolver.astNodeFor(IdentifierRef.from(node.name), currentLibrary());
     pushElement(lib);
-    // final constantEvaluator = ConstantEvaluator(_resolver, lib, this);
-    // if (targetNode is ClassDeclaration) {
-    //   visitClassDeclaration(targetNode);
-    //   final clazz = lib.getClass(targetNode.name.lexeme);
-    //   Map<String, Constant> argumentValues = {};
-    //   if (node.arguments != null) {
-    //     // Handle positional arguments
-    //     for (var i = 0; i < node.arguments!.arguments.length; i++) {
-    //       final arg = node.arguments!.arguments[i];
-    //       if (arg is NamedExpression) {
-    //         // Handle named arguments
-    //         final name = arg.name.label.name;
-    //         final value = constantEvaluator.evaluate(arg.expression);
-    //         argumentValues[name] = value;
-    //       } else {
-    //         // Handle positional arguments - need to map to parameter names
-    //         final value = constantEvaluator.evaluate(arg);
-    //         // Use parameter index as temporary key for positional args
-    //         argumentValues['$i'] = value;
-    //       }
-    //     }
-    //   }
-    //   // print(argumentValues);
-    // }
+
+    final constantEvaluator = ConstantEvaluator(_resolver, lib, this);
+    if (targetNode is ClassDeclaration) {
+      final invocation = targetNode.members.whereType<ConstructorDeclaration>().firstWhere(
+        (e) => e.name?.lexeme == node.constructorName?.name,
+        orElse: () => throw Exception('Could not find constructor'),
+      );
+      print(invocation);
+      visitClassDeclaration(targetNode);
+      final clazz = lib.getClass(targetNode.name.lexeme);
+      Map<String, Constant> argumentValues = {};
+      if (node.arguments != null) {
+        // Handle positional arguments
+        for (var i = 0; i < node.arguments!.arguments.length; i++) {
+          final arg = node.arguments!.arguments[i];
+          if (arg is NamedExpression) {
+            // Handle named arguments
+            final name = arg.name.label.name;
+            final value = constantEvaluator.evaluate(arg.expression);
+            argumentValues[name] = value;
+          } else {
+            // Handle positional arguments - need to map to parameter names
+            final value = constantEvaluator.evaluate(arg);
+            // Use parameter index as temporary key for positional args
+            argumentValues['$i'] = value;
+          }
+        }
+      }
+      print(argumentValues);
+    } else if (targetNode is TopLevelVariableDeclaration) {
+      final variable = targetNode.variables.variables.firstWhere((e) => e.name.lexeme == node.name.name);
+      final initializer = variable.initializer;
+      print(constantEvaluator.evaluate(initializer!));
+    }
 
     popElement();
 
@@ -442,9 +388,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
   @override
   void visitFunctionDeclaration(FunctionDeclaration node) {
     final libraryElement = currentLibrary();
-    if (libraryElement.getFunction(node.name.lexeme) != null) {
-      return;
-    }
+    if (libraryElement.hasElement(node.name.lexeme)) return;
     final body = node.functionExpression.body;
     final funcElement = FunctionElementImpl(
       name: node.name.lexeme,
@@ -599,9 +543,6 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
       });
     }
     constructorEle.addParameter(parameterElement);
-    print('$superType $name');
-
-    // final parameterElement = _buildParameter(node, constructorEle, isSuperFormal: true, type: superParam.type);
   }
 
   ParameterElementImpl _buildParameter(
@@ -768,12 +709,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
         importPrefix: identifierRef.importPrefix,
       );
 
-      final resolvedType = NamedTypeRefImpl(
-        constructorName,
-        identifierSrc!,
-        isNullable: false,
-        typeArguments: const [],
-      );
+      final resolvedType = NamedTypeRefImpl(identifierRef.name, identifierSrc!);
       constructorElement.returnType = resolvedType;
       constructorElement.redirectedConstructor = ConstructorElementRef(
         resolvedType,

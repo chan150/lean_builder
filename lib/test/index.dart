@@ -1,1 +1,1 @@
-export 'test2.dart' show Target;
+export 'test2.dart' show FieldType;

@@ -10,6 +10,7 @@ import 'package:code_genie/src/scanner/directive_statement.dart';
 import 'package:code_genie/src/scanner/identifier_ref.dart';
 import 'package:code_genie/src/scanner/scan_results.dart';
 import 'package:collection/collection.dart';
+import 'package:synchronized/synchronized.dart';
 
 typedef ResolvePredicate<T> = bool Function(T member);
 
@@ -19,6 +20,8 @@ class ElementResolver {
   final PackageFileResolver fileResolver;
   final Map<String, LibraryElementImpl> _libraryCache = {};
   final Map<String, (LibraryElementImpl, AstNode)> _parsedUnitCache = {};
+  final Map<String, Lock> _elementResolveLocks = {};
+  final Map<String, Element?> _resolvedTypeRefs = {};
 
   ElementResolver(this.graph, this.fileResolver, this.parser);
 
@@ -32,6 +35,11 @@ class ElementResolver {
       }
     }
     return rootLibrary;
+  }
+
+  LibraryElement libraryForDirective(DirectiveElement directive) {
+    final assetSrc = fileResolver.buildAssetUri(directive.uri);
+    return libraryFor(assetSrc);
   }
 
   IdentifierLocation? getIdentifierLocation(
@@ -48,14 +56,25 @@ class ElementResolver {
     );
   }
 
-  Element? elementOf(TypeRef ref) {
+  Future<Element?> elementOf(TypeRef ref) async {
     if (ref is NamedTypeRef) {
-      final importingLib = libraryFor(ref.src.importingLibrary);
-      final identifier = IdentifierRef(ref.name, importPrefix: ref.importPrefix);
-      final (library, unit) = astNodeFor(identifier, importingLib);
-      final visitor = ElementResolverVisitor(this, library);
-      unit.accept(visitor);
-      return library.getElement(ref.name);
+      if (_resolvedTypeRefs.containsKey(ref.identifier)) {
+        return _resolvedTypeRefs[ref.identifier];
+      }
+      final lock = _elementResolveLocks.putIfAbsent(ref.identifier, () => Lock());
+      return await lock.synchronized(() async {
+        final importingLib = libraryFor(ref.src.importingLibrary);
+        final identifier = IdentifierRef(ref.name, importPrefix: ref.importPrefix);
+        final (library, unit) = astNodeFor(identifier, importingLib);
+        final visitor = ElementResolverVisitor(this, library);
+        unit.accept(visitor);
+        final element = library.getElement(ref.name);
+        if (element != null) {
+          _resolvedTypeRefs[ref.identifier] = element;
+          _elementResolveLocks.remove(ref.identifier);
+        }
+        return element;
+      });
     }
     return null;
   }
@@ -152,36 +171,62 @@ class ElementResolver {
     final directives = graph.directives[library.src.id];
     if (directives == null) return;
 
+    final libraryDir = graph.assets[library.src.id]?[3];
+    if (libraryDir != null) {}
+
     for (final directive in directives) {
-      if (directive[0] == DirectiveStatement.import) {
-        final element = ImportElementImpl(
-          uri: uriForAsset(directive[1]),
+      final type = directive[GraphIndex.directiveType] as int;
+
+      if (type == DirectiveStatement.import) {
+        final element = ImportElement(
           library: library,
-          prefix: directive.elementAtOrNull(4),
-          combinators: [
-            if (directive[2] != null) ShowElementCombinator(directive[2]),
-            if (directive[3] != null) HideElementCombinator(directive[3]),
-          ],
+          uri: uriForAsset(directive[GraphIndex.directiveSrc]),
+          srcId: directive[GraphIndex.directiveSrc],
+          stringUri: directive[GraphIndex.directiveStringUri],
+          shownNames: directive[GraphIndex.directiveShow],
+          hiddenNames: directive[GraphIndex.directiveHide],
+          prefix: directive.elementAtOrNull(GraphIndex.directivePrefix),
+          isDeferred: directive.elementAtOrNull(GraphIndex.directiveDeferred) == 1,
         );
         library.addElement(element);
-      } else if (directive[0] == DirectiveStatement.export) {
-        final element = ExportElementImpl(
-          uri: uriForAsset(directive[1]),
+      } else if (type == DirectiveStatement.export) {
+        final element = ExportElement(
           library: library,
-          combinators: [
-            if (directive[2] != null) ShowElementCombinator(directive[2]),
-            if (directive[3] != null) HideElementCombinator(directive[3]),
-          ],
+          uri: uriForAsset(directive[GraphIndex.directiveSrc]),
+          srcId: directive[GraphIndex.directiveSrc],
+          stringUri: directive[GraphIndex.directiveStringUri],
+          shownNames: directive[GraphIndex.directiveShow],
+          hiddenNames: directive[GraphIndex.directiveHide],
         );
         library.addElement(element);
-      } else if (directive[0] == DirectiveStatement.part) {
-        final element = PartElementImpl(uri: uriForAsset(directive[1]), library: library);
+      } else if (type == DirectiveStatement.part) {
+        final element = PartElement(
+          uri: uriForAsset(directive[GraphIndex.directiveSrc]),
+          srcId: directive[GraphIndex.directiveSrc],
+          stringUri: directive[GraphIndex.directiveStringUri],
+          library: library,
+        );
         library.addElement(element);
-      } else if (directive[0] == DirectiveStatement.partOf) {
-        final element = PartOfElementImpl(uri: uriForAsset(directive[1]), library: library);
+      } else if (type == DirectiveStatement.partOf) {
+        final element = PartOfElement(
+          uri: uriForAsset(directive[GraphIndex.directiveSrc]),
+          library: library,
+          srcId: directive[GraphIndex.directiveSrc],
+          stringUri: directive[GraphIndex.directiveStringUri],
+        );
         library.addElement(element);
-      } else if (directive[0] == DirectiveStatement.partOfLibrary) {
-        final element = PartOfElementImpl(uri: uriForAsset(directive[1]), library: library);
+      } else if (type == DirectiveStatement.partOfLibrary) {
+        final thisSrc = library.src.id;
+        final partOf = graph.partOfOf(thisSrc);
+        assert(partOf != null && partOf[GraphIndex.directiveType] == DirectiveStatement.partOfLibrary);
+        final actualSrc = partOf![GraphIndex.directiveSrc];
+        final element = PartOfElement(
+          referencesLibraryDirective: true,
+          uri: uriForAsset(actualSrc),
+          library: library,
+          srcId: directive[GraphIndex.directiveSrc],
+          stringUri: directive[GraphIndex.directiveStringUri],
+        );
         library.addElement(element);
       }
     }

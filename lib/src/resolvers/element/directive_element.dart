@@ -1,117 +1,94 @@
 part of 'element.dart';
 
 abstract class DirectiveElement extends Element {
+  String get stringUri;
+
+  String get srcId;
+
   Uri get uri;
+
+  LibraryElement get referencedLibrary;
 }
 
-abstract class NamespaceCombinator {}
+class DirectiveElementImpl extends ElementImpl implements DirectiveElement {
+  @override
+  final String stringUri;
 
-class ShowElementCombinator implements NamespaceCombinator {
-  final List<String> shownNames;
+  @override
+  final String srcId;
 
-  ShowElementCombinator(this.shownNames);
+  @override
+  final Uri uri;
+
+  @override
+  final LibraryElement library;
+
+  DirectiveElementImpl({required this.library, required this.uri, required this.srcId, required this.stringUri});
+
+  @override
+  Element? get enclosingElement => library;
+
+  @override
+  String get name => stringUri;
+
+  LibraryElement? _referencedLibrary;
+
+  @override
+  LibraryElement get referencedLibrary {
+    if (_referencedLibrary != null) {
+      return _referencedLibrary!;
+    }
+    _referencedLibrary = library.resolver.libraryForDirective(this);
+    return _referencedLibrary!;
+  }
 }
 
-class HideElementCombinator implements NamespaceCombinator {
-  final List<String> hiddenNames;
-
-  HideElementCombinator(this.hiddenNames);
-}
-
-abstract class ImportElement extends DirectiveElement {
-  List<NamespaceCombinator> get combinators;
-
-  bool get isDeferred;
-
-  String? get prefix;
-}
-
-abstract class ExportElement extends DirectiveElement {
-  List<NamespaceCombinator> get combinators;
-}
-
-abstract class PartElement extends DirectiveElement {}
-
-abstract class PartOfElement extends DirectiveElement {}
-
-class ImportElementImpl extends ElementImpl implements ImportElement {
-  ImportElementImpl({
-    required this.uri,
-    required this.library,
-    required this.combinators,
+class ImportElement extends DirectiveElementImpl {
+  ImportElement({
+    required super.library,
+    required super.uri,
+    required super.srcId,
+    required super.stringUri,
+    this.shownNames,
+    this.hiddenNames,
     this.isDeferred = false,
     this.prefix,
   });
 
-  @override
-  final Uri uri;
+  final List<String>? shownNames;
+  final List<String>? hiddenNames;
 
-  @override
-  final LibraryElement library;
-
-  @override
-  final List<NamespaceCombinator> combinators;
-
-  @override
   final bool isDeferred;
 
-  @override
   final String? prefix;
-
-  @override
-  Element? get enclosingElement => library;
-
-  @override
-  String get name => uri.toString();
 }
 
-class ExportElementImpl extends ElementImpl implements ExportElement {
-  ExportElementImpl({required this.uri, required this.library, required this.combinators});
+class ExportElement extends DirectiveElementImpl {
+  ExportElement({
+    required super.library,
+    required super.uri,
+    required super.srcId,
+    required super.stringUri,
+    this.shownNames,
+    this.hiddenNames,
+  });
 
-  @override
-  final Uri uri;
-
-  @override
-  final LibraryElement library;
-
-  @override
-  final List<NamespaceCombinator> combinators;
-
-  @override
-  Element? get enclosingElement => library;
-
-  @override
-  String get name => uri.toString();
+  final List<String>? shownNames;
+  final List<String>? hiddenNames;
 }
 
-class PartElementImpl extends ElementImpl implements PartElement {
-  PartElementImpl({required this.uri, required this.library});
-
-  @override
-  final Uri uri;
-
-  @override
-  final LibraryElement library;
-
-  @override
-  Element? get enclosingElement => library;
-
-  @override
-  String get name => uri.toString();
+class PartElement extends DirectiveElementImpl {
+  PartElement({required super.library, required super.uri, required super.srcId, required super.stringUri});
 }
 
-class PartOfElementImpl extends ElementImpl implements PartOfElement {
-  PartOfElementImpl({required this.uri, required this.library});
+class PartOfElement extends DirectiveElementImpl {
+  PartOfElement({
+    required super.library,
+    required super.uri,
+    required super.srcId,
+    required super.stringUri,
+    this.referencesLibraryDirective = false,
+  });
 
-  @override
-  final Uri uri;
-
-  @override
-  final LibraryElement library;
-
-  @override
-  Element? get enclosingElement => library;
-
-  @override
-  String get name => uri.toString();
+  final bool referencesLibraryDirective;
 }

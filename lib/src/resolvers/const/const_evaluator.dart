@@ -9,7 +9,6 @@ import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:code_genie/src/resolvers/element/element.dart';
 import 'package:code_genie/src/resolvers/element_resolver.dart';
-import 'package:code_genie/src/resolvers/type/type_ref.dart';
 import 'package:code_genie/src/resolvers/visitor/element_resolver_visitor.dart';
 
 import 'constant.dart';
@@ -267,6 +266,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> {
 
   @override
   Constant? visitPropertyAccess(PropertyAccess node) {
+    print('PropertyAccess: ${node.propertyName}');
     final target = node.realTarget;
     if (target is PrefixedIdentifier) {
       return _getConstantValue(
@@ -340,12 +340,12 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> {
 
   @override
   Constant? visitSimpleIdentifier(SimpleIdentifier node) {
-    if (node.parent is VariableDeclaration) {
-      // this coming from initializer of a variable
-      return _getConstantValue(IdentifierRef(node.name), _library);
-    }
-    final enclosingNode = node.thisOrAncestorOfType<NamedCompilationUnitMember>();
-    return _getConstantValue(IdentifierRef(node.name, prefix: enclosingNode?.name.lexeme), _library);
+    // if (node.parent is VariableDeclaration) {
+    // this coming from initializer of a variable
+    return _getConstantValue(IdentifierRef(node.name), _library);
+    // }
+    // final enclosingNode = node.thisOrAncestorOfType<NamedCompilationUnitMember>();
+    // return _getConstantValue(IdentifierRef(node.name, prefix: enclosingNode?.name.lexeme), _library);
   }
 
   @override
