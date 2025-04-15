@@ -1,60 +1,31 @@
+import 'package:code_genie/test/test2.dart' as test2;
 import 'package:code_genie/test/test2.dart';
-
-class SuperX {
-  const SuperX({this.superStr = 'superStr'});
-
-  final String superStr;
-}
 
 typedef TypedType = void Function(int x, bool y);
 
-class Genix$ extends SuperX {
+class Genix$ extends test2.SuperX {
   final Type type;
   final String? str2;
-  final String Function(int x, bool y)? func;
 
-  const Genix$(this.type, {super.superStr = 'SuperStr2', this.func}) : str2 = 'str2';
+  const Genix$(this.type, {super.superStr = 'SuperStr2'}) : str2 = 'str2';
 
-  const Genix$.named(this.type, this.func) : str2 = null;
+  const Genix$.named(this.type) : str2 = null;
 
-  // static const Genix$ named2 = Genix$('Hello', str2: 'Hello', superStr: 'Hello');
+  static const test2.SuperX named2 = test2.SuperX(superStr: 'SuperStr2');
 }
 
-const varConst = 'Hello';
+const genix$ = Genix$(String, superStr: 'SuperV5ar');
+const genixNamed = Genix$.named(String);
+const String constArg = 'Hello';
 
-// const genix$ = Genix$.named('Hello', null);
-
-// @Annotation()
-// class Widgets extends StatelessWidget {
-//   const Widgets({super.key});
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return throw UnimplementedError();
-//   }
-// }
-//
-// @Annotation()
-// class Widgets2 extends StatelessWidget {
-//   const Widgets2({super.key});
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return throw UnimplementedError();
-//   }
-// }
-// @annotation
-const constArg = 'Hello';
-
-String doStuff(int x, bool y) {
-  return 'Hello';
-}
-
-@Genix$(TypedType, func: doStuff)
+@genix$
+@Genix$(String)
+@Genix$.named2
+@genixNamed
 class AnnotatedClass {
-  AnnotatedClass(this.fieldType);
+  const AnnotatedClass(this.fieldType);
 
-  final FieldType fieldType;
+  final test2.FieldType fieldType;
 
   // final Target target;
   // final Future futre;
@@ -81,9 +52,9 @@ class AnnotatedClass {
 
   void method2([String x = 'default']) {}
 
-  // factory AnnotatedClass.redirected() = RedirectedClass.red;
-  //
-  // factory AnnotatedClass.redirected2() = AnnotatedClass;
+  factory AnnotatedClass.redirected() = RedirectedClass;
+  factory AnnotatedClass.redirected2() = RedirectedClass.red;
+  factory AnnotatedClass.redirected3() = test2.RedirectedClass.named;
 }
 
 // class FieldType extends SuperClass {

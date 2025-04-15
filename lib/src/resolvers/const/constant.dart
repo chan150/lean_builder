@@ -3,14 +3,14 @@ import 'package:code_genie/src/resolvers/const/const_evaluator.dart';
 import 'package:code_genie/src/resolvers/type/type_ref.dart';
 import 'package:code_genie/src/scanner/identifier_ref.dart';
 
-abstract class Constant {
+sealed class Constant {
   const Constant();
 
-  static const Constant invalid = _InvalidConstValue();
+  static const Constant invalid = InvalidConst();
 }
 
-class _InvalidConstValue extends Constant {
-  const _InvalidConstValue();
+class InvalidConst extends Constant {
+  const InvalidConst();
 
   @override
   String toString() => 'INVALID_CONST';
@@ -145,6 +145,8 @@ abstract class ConstObject extends ConstValue<Null> {
 
   Constant? get(String key) => props[key];
 
+  ConstTypeRef? getTypeRef(String key) => props[key] as ConstTypeRef?;
+
   ConstString? getString(String key);
 
   ConstInt? getInt(String key);
@@ -163,7 +165,7 @@ abstract class ConstObject extends ConstValue<Null> {
 
   ConstSet? getSet(String key);
 
-  ConstFunctionReference getFunctionReference(String key);
+  ConstFunctionReference? getFunctionReference(String key);
 }
 
 class ConstObjectImpl extends ConstObject {
@@ -181,42 +183,45 @@ class ConstObjectImpl extends ConstObject {
   String toString() => '{${props.entries.map((e) => '${e.key}: ${e.value}').join(', ')}}';
 
   @override
-  ConstString? getString(String key) => props[key] as ConstString?;
+  ConstString? getString(String key) => _getTyped<ConstString>(key);
 
   @override
-  ConstInt? getInt(String key) => props[key] as ConstInt?;
+  ConstInt? getInt(String key) => _getTyped<ConstInt>(key);
 
   @override
-  ConstDouble? getDouble(String key) => props[key] as ConstDouble?;
+  ConstDouble? getDouble(String key) => _getTyped<ConstDouble>(key);
 
   @override
-  ConstNum? getNum(String key) => props[key] as ConstNum?;
+  ConstNum? getNum(String key) => _getTyped<ConstNum>(key);
 
   @override
-  ConstBool? getBool(String key) => props[key] as ConstBool?;
+  ConstBool? getBool(String key) => _getTyped<ConstBool>(key);
 
   @override
-  ConstObject? getObject(String key) => props[key] as ConstObject?;
+  ConstObject? getObject(String key) => _getTyped<ConstObject>(key);
 
   @override
-  ConstList? getList(String key) => props[key] as ConstList?;
+  ConstList? getList(String key) => _getTyped<ConstList>(key);
 
   @override
-  ConstMap? getMap(String key) => props[key] as ConstMap?;
+  ConstMap? getMap(String key) => _getTyped<ConstMap>(key);
 
   @override
-  ConstSet? getSet(String key) => props[key] as ConstSet?;
+  ConstSet? getSet(String key) => _getTyped<ConstSet>(key);
 
   @override
-  ConstFunctionReference getFunctionReference(String key) {
+  ConstFunctionReference? getFunctionReference(String key) => _getTyped<ConstFunctionReference>(key);
+
+  T? _getTyped<T extends Constant>(String key) {
     final value = props[key];
-    if (value is ConstFunctionReference) {
+    if (value is T) {
       return value;
     }
-    throw Exception('Value for $key is not a function reference');
+    throw Exception('Value for $key is not of type $T');
   }
 
   ConstObjectImpl mergeArgs(ArgumentList args, ConstantEvaluator evaluator) {
+    final props = Map.of(this.props);
     for (var i = 0; i < args.arguments.length; i++) {
       final arg = args.arguments[i];
       if (arg is NamedExpression) {
@@ -229,6 +234,6 @@ class ConstObjectImpl extends ConstObject {
         }
       }
     }
-    return this;
+    return ConstObjectImpl(props, _positionalNames, type);
   }
 }

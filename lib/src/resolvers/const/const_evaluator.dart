@@ -32,21 +32,35 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
   }
 
   Constant? evaluate(AstNode node) {
-    return node.accept(this);
+    final reqId = "${_library.src.id}:${node.hashCode}";
+    if (_resolver.evaluatedConstants.containsKey(reqId)) {
+      return _resolver.evaluatedConstants[reqId];
+    }
+    final constant = node.accept(this);
+    if (constant != null && !identical(constant, Constant.invalid)) {
+      _resolver.evaluatedConstants[reqId] = constant;
+    }
+    return constant;
   }
 
   @override
   Constant? visitConstructorDeclaration(ConstructorDeclaration node) {
+    print('ConstructorDeclaration: ${node.hashCode}');
     // redirect constant evaluation to the redirected constructor
+
     final redirectConstructor = node.redirectedConstructor;
     if (redirectConstructor != null) {
-      final identifierRef = _resolver.identifierToRedirectClass(redirectConstructor, currentLibrary());
-      final (redirectLib, redirectClass as ClassDeclaration, _) = _resolver.astNodeFor(identifierRef, _library);
+      final redType = redirectConstructor.type;
+      final identifierRef = _resolver.resolveIdentifier(_library, [
+        if (redType.importPrefix != null) redType.importPrefix!.name.lexeme,
+        redType.name2.lexeme,
+      ]);
+      final (redirectLib, redirectConstroctor, _) = _resolver.astNodeFor(identifierRef, _library);
+      if (redirectConstroctor is! ConstructorDeclaration) {
+        throw Exception('Expected ConstructorDeclaration, but got ${redirectConstroctor.runtimeType}');
+      }
       return visitElementScoped(redirectLib, () {
-        final constructors = redirectClass.members.whereType<ConstructorDeclaration>();
-        final redirectConstructorDeclaration =
-            constructors.where((c) => c.name?.lexeme == redirectConstructor.name?.name).single;
-        return visitConstructorDeclaration(redirectConstructorDeclaration);
+        return evaluate(redirectConstroctor);
       });
     }
 
@@ -64,7 +78,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
       visitElementScoped(superLib, () {
         final constructors = superNode.members.whereType<ConstructorDeclaration>();
         final superConstructor = constructors.where((c) => c.name?.lexeme == superConstName).single;
-        superConstObj = visitConstructorDeclaration(superConstructor) as ConstObjectImpl?;
+        superConstObj = evaluate(superConstructor) as ConstObjectImpl?;
       });
     }
     final fields = classDeclaration!.members.whereType<FieldDeclaration>();
@@ -76,13 +90,13 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
       if (initializer is ConstructorFieldInitializer) {
         values[initializer.fieldName.name] = initializer.expression.accept(this);
       } else if (initializer is SuperConstructorInvocation) {
-        superConstObj?.mergeArgs(initializer.argumentList, this);
+        superConstObj = superConstObj?.mergeArgs(initializer.argumentList, this);
       }
     }
     if (superConstObj != null) {
       values.addAll(superConstObj!.props);
     }
-    for (final field in fields) {
+    for (final field in fields.where((f) => !f.isStatic)) {
       for (final variable in field.fields.variables) {
         if (variable.initializer != null) {
           values[variable.name.lexeme] = variable.initializer!.accept(this);
@@ -307,56 +321,29 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
 
   @override
   Constant? visitMethodInvocation(MethodInvocation node) {
-    print('MethodInvocation: ${node.methodName}');
+    final target = node.target;
+    final parts = [
+      if (target is SimpleIdentifier) target.name,
+      if (target is PrefixedIdentifier) ...[target.prefix.name, target.identifier.name],
+      node.methodName.name,
+    ];
+    if (parts.length < 3) {
+      parts.add('');
+    }
+    final identifierRef = _resolver.resolveIdentifier(_library, parts);
+    final (lib, constructorNode, loc) = _resolver.astNodeFor(identifierRef, _library);
 
-    //
-    // Map<String, Constant> argumentValues = {};
-    // if (node.arguments != null) {
-    //   // Handle positional arguments
-    //   for (var i = 0; i < node.arguments!.arguments.length; i++) {
-    //     final arg = node.arguments!.arguments[i];
-    //     if (arg is NamedExpression) {
-    //       // Handle named arguments
-    //       final name = arg.name.label.name;
-    //       final value = constantEvaluator.evaluate(arg.expression);
-    //       argumentValues[name] = value;
-    //     } else {
-    //       // Handle positional arguments - need to map to parameter names
-    //       final value = constantEvaluator.evaluate(arg);
-    //       // Use parameter index as temporary key for positional args
-    //       argumentValues['$i'] = value;
-    //     }
-    //   }
-    // }
+    if (constructorNode is! ConstructorDeclaration) {
+      throw Exception('Expected ConstructorDeclaration, but got ${constructorNode.runtimeType}');
+    }
+    final constant = visitElementScoped(lib, () {
+      return evaluate(constructorNode);
+    });
 
+    if (constant is ConstObjectImpl) {
+      return constant.mergeArgs(node.argumentList, this);
+    }
     return Constant.invalid;
-    // final element = _elementResolverVisitor.resolveTopLevelElement(IdentifierRef.from(node.methodName), _library);
-    //
-    // if (element is! InterfaceElement) return Constant.invalid;
-    // for (final field in element.fields) {
-    //   print('${field.name} ${field.constantValue}');
-    // }
-    //
-    // Map<String, Constant> argumentValues = {};
-    // final argumentList = node.argumentList.arguments;
-    // if (argumentList.isNotEmpty) {
-    //   for (var i = 0; i < argumentList.length; i++) {
-    //     final arg = argumentList[i];
-    //     if (arg is NamedExpression) {
-    //       final name = arg.name.label.name;
-    //       final value = arg.expression.accept(this);
-    //       if (value != null) {
-    //         argumentValues[name] = value;
-    //       }
-    //     } else {
-    //       final value = arg.accept(this);
-    //       if (value != null) {
-    //         argumentValues['$i'] = value;
-    //       }
-    //     }
-    //   }
-    // }
-    // print(argumentValues);
   }
 
   @override

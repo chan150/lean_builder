@@ -344,15 +344,18 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
   @override
   void visitAnnotation(Annotation node) {
     final currentElement = currentElementAs<ElementImpl>();
-    final identifier = IdentifierRef.from(node.name);
-    final (lib, targetNode, loc) = _resolver.astNodeFor(identifier, currentLibrary());
+    final name = node.name;
+    final identifier = _resolver.resolveIdentifier(currentElement.library, [
+      if (name is SimpleIdentifier) name.name,
+      if (name is PrefixedIdentifier) ...[name.prefix.name, name.identifier.name],
+    ]);
+    final (lib, targetNode, loc) = _resolver.astNodeFor(identifier, currentElement.library);
     final constantEvaluator = ConstantEvaluator(_resolver, lib, this);
-    final name = node.name.name;
     if (targetNode is ClassDeclaration || targetNode is ConstructorDeclaration) {
       final classDeclaration = targetNode.thisOrAncestorOfType<ClassDeclaration>()!;
       final className = classDeclaration.name.lexeme;
       final elem = ElementAnnotationImpl(
-        name: name,
+        name: name.name,
         type: NamedTypeRefImpl(className, loc),
         constantValueCompute: () {
           final ConstructorDeclaration constructor;
@@ -371,18 +374,47 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
           return obj;
         },
       );
-      final constant = elem.constant;
-      if (constant is ConstObject) {
-        final funcRef = constant.getFunctionReference('func');
+      currentElement.addMetadata(elem);
+      print(elem.constant);
+    } else if (targetNode is TopLevelVariableDeclaration || targetNode is FieldDeclaration) {
+      final VariableDeclarationList varList;
+      if (targetNode is TopLevelVariableDeclaration) {
+        varList = targetNode.variables;
+      } else {
+        varList = (targetNode as FieldDeclaration).fields;
       }
 
+      final variable = varList.variables.firstWhere((e) => e.name.lexeme == identifier.name);
+      TypeRef typeRef = TypeRef.invalidType;
+      final initializer = variable.initializer;
+      if (varList.type != null) {
+        typeRef = resolveTypeRef(varList.type!, currentElement);
+      } else if (initializer is MethodInvocation) {
+        final target = initializer.target;
+        final parts = [
+          if (target is SimpleIdentifier) ...[
+            target.name,
+            initializer.methodName.name,
+          ] else if (target is PrefixedIdentifier) ...[
+            target.prefix.name,
+            target.identifier.name,
+          ] else if (target == null)
+            initializer.methodName.name,
+        ];
+        final identifier = _resolver.resolveIdentifier(lib, parts);
+        final (_, _, loc) = _resolver.astNodeFor(identifier, lib);
+        typeRef = NamedTypeRefImpl(identifier.topLevelTarget, loc);
+      }
+      final elem = ElementAnnotationImpl(
+        name: identifier.name,
+        type: typeRef,
+        constantValueCompute: () {
+          return constantEvaluator.evaluate(variable.initializer!);
+        },
+      );
       currentElement.addMetadata(elem);
-    } else if (targetNode is TopLevelVariableDeclaration) {
-      final variable = targetNode.variables.variables.firstWhere((e) => e.name.lexeme == identifier.name);
-      final constant = constantEvaluator.evaluate(variable.initializer!);
-    } else if (targetNode is FieldDeclaration) {
-      final variable = targetNode.fields.variables.firstWhere((e) => e.name.lexeme == identifier.name);
-      final constant = constantEvaluator.evaluate(variable.initializer!);
+      print(elem.type);
+      print(elem.constant);
     }
   }
 
@@ -690,19 +722,20 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
 
     final redirectedConstructor = node.redirectedConstructor;
     if (redirectedConstructor != null) {
-      final identifierRef = _resolver.identifierToRedirectClass(redirectedConstructor, currentLibrary());
-      final identifierSrc = _resolver.graph.getIdentifierLocation(
-        identifierRef.name,
+      final redType = redirectedConstructor.type;
+      final identifierRef = _resolver.resolveIdentifier(clazzElement.library, [
+        if (redType.importPrefix != null) redType.importPrefix!.name.lexeme,
+        redType.name2.lexeme,
+      ]);
+      final identifierLocation = _resolver.getIdentifierLocation(
+        identifierRef.topLevelTarget,
         constructorElement.library.src,
         importPrefix: identifierRef.importPrefix,
       );
 
-      final resolvedType = NamedTypeRefImpl(identifierRef.name, identifierSrc!);
+      final resolvedType = NamedTypeRefImpl(identifierRef.name, identifierLocation!);
       constructorElement.returnType = resolvedType;
-      constructorElement.redirectedConstructor = ConstructorElementRef(
-        resolvedType,
-        redirectedConstructor.name?.name ?? '',
-      );
+      constructorElement.redirectedConstructor = ConstructorElementRef(resolvedType, identifierRef.name);
     }
   }
 

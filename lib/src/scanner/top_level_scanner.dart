@@ -21,20 +21,22 @@ class TopLevelScanner {
       final bytes = asset.readAsBytesSync();
       results.addAsset(asset);
 
-      var token = fasta.scan(bytes).tokens;
+      Token? token = fasta.scan(bytes).tokens;
       String? libraryName;
       bool hasTopLevelAnnotation = false;
 
-      while (!token.isEof && token.next != null) {
+      while (token != null && !token.isEof && token.next != null) {
         token = _skipCurlyBrackets(token);
-
         if (token.isEof) break;
         Token nextToken = token.next!;
         if (token.type == TokenType.AT) {
           hasTopLevelAnnotation = true;
-          if (nextToken.next != null) {
-            token = _skipParenthesis(nextToken.next!);
+          token = nextToken.next;
+          // could be import-prefixed
+          if (token?.type == TokenType.PERIOD) {
+            token = token?.next;
           }
+          token = _skipParenthesis(token?.next);
           continue;
         } else if (token.isTopLevelKeyword) {
           if (nextToken.isTopLevelKeyword) {
@@ -135,20 +137,20 @@ class TopLevelScanner {
     current = _skipParenthesis(current);
 
     bool funcFound = false;
-    final next = current.next;
-    if (current.type == Keyword.FUNCTION) {
-      current = current.next!;
+    Token? next = current?.next;
+    if (current?.type == Keyword.FUNCTION) {
+      current = current?.next;
     } else if (next != null && _skipLTGT(next).type == TokenType.OPEN_PAREN) {
       funcFound = true;
-      if (_isValidName(current.lexeme)) {
-        results.addDeclaration(current.lexeme, asset, TopLevelIdentifierType.$function);
+      if (_isValidName(current?.lexeme)) {
+        results.addDeclaration(current!.lexeme, asset, TopLevelIdentifierType.$function);
       }
     } else if (next != null && next.type == TokenType.LT) {
       return _skipLTGT(next);
     }
 
     if (!funcFound) {
-      return current.next;
+      return current?.next;
     }
 
     while (current != null &&
@@ -275,14 +277,14 @@ class TopLevelScanner {
     while (token != null && token.type != TokenType.EOF) {
       token = _skipLTGT(token);
       token = _skipParenthesis(token);
-      if (scopeTracker == 0 && (token.isIdentifier || token.type == TokenType.EQ)) {
-        identifiers.add(token);
+      if (scopeTracker == 0 && (token != null && token.isIdentifier || token?.type == TokenType.EQ)) {
+        identifiers.add(token!);
       }
-      if (token.type == TokenType.SEMICOLON) {
-        token = token.next;
+      if (token?.type == TokenType.SEMICOLON) {
+        token = token?.next;
         break;
       }
-      token = token.next;
+      token = token?.next;
     }
 
     final eqIndex = identifiers.indexWhere((e) => e.type == TokenType.EQ);
@@ -361,7 +363,10 @@ class TopLevelScanner {
     return current ?? token;
   }
 
-  Token _skipParenthesis(Token token) {
+  Token? _skipParenthesis(Token? token) {
+    if (token == null) {
+      return null;
+    }
     if (token.type != TokenType.OPEN_PAREN) {
       return token;
     }

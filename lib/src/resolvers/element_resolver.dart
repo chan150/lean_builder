@@ -12,6 +12,8 @@ import 'package:code_genie/src/scanner/scan_results.dart';
 import 'package:collection/collection.dart';
 import 'package:synchronized/synchronized.dart';
 
+import 'const/constant.dart';
+
 typedef ResolvePredicate<T> = bool Function(T member);
 
 class ElementResolver {
@@ -22,6 +24,7 @@ class ElementResolver {
   final Map<String, (LibraryElementImpl, AstNode, IdentifierLocation)> _parsedUnitCache = {};
   final Map<String, Lock> _elementResolveLocks = {};
   final Map<String, Element?> _resolvedTypeRefs = {};
+  final Map<String, Constant> evaluatedConstants = {};
 
   ElementResolver(this.graph, this.fileResolver, this.parser);
 
@@ -151,7 +154,7 @@ class ElementResolver {
             return _parsedUnitCache[unitId] = (library, member, loc);
           }
         } else if (member is ConstructorDeclaration) {
-          if (member.name?.lexeme == targetIdentifier) {
+          if ((member.name?.lexeme ?? '') == targetIdentifier) {
             return _parsedUnitCache[unitId] = (library, member, loc);
           }
         } else if (member is MethodDeclaration) {
@@ -294,18 +297,19 @@ class ElementResolver {
     }
   }
 
-  IdentifierRef identifierToRedirectClass(ConstructorName constructor, LibraryElementImpl library) {
-    final type = constructor.type;
-    final prefix = type.importPrefix?.name.lexeme;
-    if (prefix == null) {
-      return IdentifierRef(type.name2.lexeme);
+  IdentifierRef resolveIdentifier(LibraryElement library, List<String> parts) {
+    assert(parts.isNotEmpty, 'Identifier parts cannot be empty');
+    if (parts.length == 1) {
+      return IdentifierRef(parts.first);
     } else {
+      final prefix = parts[0];
       final importPrefixes = graph.importPrefixesOf(library.src.id);
       final isImportPrefix = importPrefixes.contains(prefix);
       if (isImportPrefix) {
-        return IdentifierRef(type.name2.lexeme, importPrefix: prefix);
+        final namedUnit = parts.length == 3 ? parts[1] : null;
+        return IdentifierRef(parts.last, prefix: namedUnit, importPrefix: prefix);
       } else {
-        return IdentifierRef(prefix);
+        return IdentifierRef(parts.last, prefix: parts[0]);
       }
     }
   }
