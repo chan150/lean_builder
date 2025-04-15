@@ -1,7 +1,7 @@
-import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:analyzer/dart/ast/ast.dart';
 import 'package:code_genie/src/resolvers/element/element.dart';
 
-mixin ElementStack on UnifyingAstVisitor<void> {
+mixin ElementStack<E> on AstVisitor<E> {
   final List<Element> _elementStack = [];
 
   Element get _currentElement => _elementStack.last;
@@ -31,13 +31,14 @@ mixin ElementStack on UnifyingAstVisitor<void> {
     return null;
   }
 
-  void visitElementScoped(Element element, void Function() callback) {
+  R? visitElementScoped<R>(Element element, R? Function() callback) {
     assert(_elementStack.isNotEmpty, 'Element stack is empty');
     if (element == _currentElement) {
-      callback();
+      return callback();
     }
     pushElement(element);
-    callback();
+    final result = callback();
     popElement();
+    return result;
   }
 }

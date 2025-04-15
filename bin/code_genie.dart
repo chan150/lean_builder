@@ -66,7 +66,7 @@ void main(List<String> args) async {
       // count++;
 
       final library = resolver.resolveLibrary(assetFile);
-
+      continue;
       for (final clazz in library.classes) {
         print('Class: ${clazz.name} --------------------- *** ');
         print(clazz.metadata);

@@ -19,7 +19,7 @@ class ElementResolver {
   final SrcParser parser;
   final PackageFileResolver fileResolver;
   final Map<String, LibraryElementImpl> _libraryCache = {};
-  final Map<String, (LibraryElementImpl, AstNode)> _parsedUnitCache = {};
+  final Map<String, (LibraryElementImpl, AstNode, IdentifierLocation)> _parsedUnitCache = {};
   final Map<String, Lock> _elementResolveLocks = {};
   final Map<String, Element?> _resolvedTypeRefs = {};
 
@@ -61,11 +61,15 @@ class ElementResolver {
       if (_resolvedTypeRefs.containsKey(ref.identifier)) {
         return _resolvedTypeRefs[ref.identifier];
       }
+
+      final importingLibrary = ref.src.importingLibrary;
+      if (importingLibrary == null) return null;
+
       final lock = _elementResolveLocks.putIfAbsent(ref.identifier, () => Lock());
       return await lock.synchronized(() async {
-        final importingLib = libraryFor(ref.src.importingLibrary);
+        final importingLib = libraryFor(importingLibrary);
         final identifier = IdentifierRef(ref.name, importPrefix: ref.importPrefix);
-        final (library, unit) = astNodeFor(identifier, importingLib);
+        final (library, unit, _) = astNodeFor(identifier, importingLib);
         final visitor = ElementResolverVisitor(this, library);
         unit.accept(visitor);
         final element = library.getElement(ref.name);
@@ -86,15 +90,18 @@ class ElementResolver {
     });
   }
 
-  (LibraryElementImpl, AstNode) astNodeFor(IdentifierRef identifier, LibraryElement enclosingLibrary) {
+  (LibraryElementImpl, AstNode, IdentifierLocation loc) astNodeFor(
+    IdentifierRef identifier,
+    LibraryElement enclosingLibrary,
+  ) {
     final enclosingAsset = enclosingLibrary.src;
     final unitId = '${enclosingAsset.id}#${identifier.toString()}';
     if (_parsedUnitCache.containsKey(unitId)) {
       return _parsedUnitCache[unitId]!;
     }
 
-    final identifierSrc =
-        identifier.src ??
+    final loc =
+        identifier.location ??
         getIdentifierLocation(
           identifier.topLevelTarget,
           enclosingAsset,
@@ -102,65 +109,65 @@ class ElementResolver {
           importPrefix: identifier.importPrefix,
         );
 
-    assert(identifierSrc != null, 'Identifier $identifier not found in ${enclosingAsset.uri}');
-    final srcUri = uriForAsset(identifierSrc!.srcId);
+    assert(loc != null, 'Identifier $identifier not found in ${enclosingAsset.uri}');
+    final srcUri = uriForAsset(loc!.srcId);
     final assetFile = fileResolver.buildAssetUri(srcUri, relativeTo: enclosingAsset);
 
     final library = libraryFor(assetFile);
     final compilationUnit = library.compilationUnit;
 
-    if (identifierSrc.type == TopLevelIdentifierType.$variable) {
+    if (loc.type == TopLevelIdentifierType.$variable) {
       final unit = compilationUnit.declarations.whereType<TopLevelVariableDeclaration>().firstWhere(
-        (e) => e.variables.variables.any((v) => v.name.lexeme == identifierSrc.identifier),
-        orElse: () => throw Exception('Identifier  ${identifierSrc.identifier} not found in $srcUri'),
+        (e) => e.variables.variables.any((v) => v.name.lexeme == loc.identifier),
+        orElse: () => throw Exception('Identifier  ${loc.identifier} not found in $srcUri'),
       );
-      return _parsedUnitCache[unitId] = (library, unit);
-    } else if (identifierSrc.type == TopLevelIdentifierType.$function) {
+      return _parsedUnitCache[unitId] = (library, unit, loc);
+    } else if (loc.type == TopLevelIdentifierType.$function) {
       final unit = compilationUnit.declarations.whereType<FunctionDeclaration>().firstWhere(
-        (e) => e.name.lexeme == identifierSrc.identifier,
-        orElse: () => throw Exception('Identifier  ${identifierSrc.identifier} not found in $srcUri'),
+        (e) => e.name.lexeme == loc.identifier,
+        orElse: () => throw Exception('Identifier  ${loc.identifier} not found in $srcUri'),
       );
-      return _parsedUnitCache[unitId] = (library, unit);
-    } else if (identifierSrc.type == TopLevelIdentifierType.$typeAlias) {
+      return _parsedUnitCache[unitId] = (library, unit, loc);
+    } else if (loc.type == TopLevelIdentifierType.$typeAlias) {
       final unit = compilationUnit.declarations.whereType<TypeAlias>().firstWhere(
-        (e) => e.name.lexeme == identifierSrc.identifier,
-        orElse: () => throw Exception('Identifier  ${identifierSrc.identifier} not found in $srcUri'),
+        (e) => e.name.lexeme == loc.identifier,
+        orElse: () => throw Exception('Identifier  ${loc.identifier} not found in $srcUri'),
       );
-      return _parsedUnitCache[unitId] = (library, unit);
+      return _parsedUnitCache[unitId] = (library, unit, loc);
     }
 
     final unit = compilationUnit.declarations.whereType<NamedCompilationUnitMember>().firstWhereOrNull(
-      (e) => e.name.lexeme == identifierSrc.identifier,
+      (e) => e.name.lexeme == loc.identifier,
     );
 
     if (unit == null) {
-      throw Exception('Identifier  ${identifierSrc.identifier} not found in $srcUri');
+      throw Exception('Identifier  ${loc.identifier} not found in $srcUri');
     } else if (identifier.isPrefixed) {
       final targetIdentifier = identifier.name;
 
       for (final member in unit.childEntities) {
         if (member is FieldDeclaration) {
           if (member.fields.variables.any((v) => v.name.lexeme == targetIdentifier)) {
-            return _parsedUnitCache[unitId] = (library, member);
+            return _parsedUnitCache[unitId] = (library, member, loc);
           }
         } else if (member is ConstructorDeclaration) {
           if (member.name?.lexeme == targetIdentifier) {
-            return _parsedUnitCache[unitId] = (library, member);
+            return _parsedUnitCache[unitId] = (library, member, loc);
           }
         } else if (member is MethodDeclaration) {
           if (member.name.lexeme == targetIdentifier) {
-            return _parsedUnitCache[unitId] = (library, member);
+            return _parsedUnitCache[unitId] = (library, member, loc);
           }
         } else if (member is EnumConstantDeclaration) {
           if (member.name.lexeme == targetIdentifier) {
-            return _parsedUnitCache[unitId] = (library, member);
+            return _parsedUnitCache[unitId] = (library, member, loc);
           }
         }
       }
       throw Exception('Identifier $targetIdentifier (${identifier.toString()}) not found in $srcUri');
     }
 
-    return _parsedUnitCache[unitId] = (library, unit);
+    return _parsedUnitCache[unitId] = (library, unit, loc);
   }
 
   Uri uriForAsset(String id) {
@@ -286,6 +293,22 @@ class ElementResolver {
       classDeclaration.accept(visitor);
     }
   }
+
+  IdentifierRef identifierToRedirectClass(ConstructorName constructor, LibraryElementImpl library) {
+    final type = constructor.type;
+    final prefix = type.importPrefix?.name.lexeme;
+    if (prefix == null) {
+      return IdentifierRef(type.name2.lexeme);
+    } else {
+      final importPrefixes = graph.importPrefixesOf(library.src.id);
+      final isImportPrefix = importPrefixes.contains(prefix);
+      if (isImportPrefix) {
+        return IdentifierRef(type.name2.lexeme, importPrefix: prefix);
+      } else {
+        return IdentifierRef(prefix);
+      }
+    }
+  }
 }
 
 extension IterableFilterExt<E> on Iterable<E> {
@@ -299,9 +322,9 @@ class IdentifierRef {
   final String name;
   final String? prefix;
   final String? importPrefix;
-  final IdentifierLocation? src;
+  final IdentifierLocation? location;
 
-  IdentifierRef(this.name, {this.prefix, this.importPrefix, this.src});
+  IdentifierRef(this.name, {this.prefix, this.importPrefix, this.location});
 
   bool get isPrefixed => prefix != null;
 
@@ -313,6 +336,10 @@ class IdentifierRef {
     } else {
       return IdentifierRef(identifier.name, importPrefix: importPrefix);
     }
+  }
+
+  factory IdentifierRef.fromType(NamedType type) {
+    return IdentifierRef(type.name2.lexeme, importPrefix: type.importPrefix?.name.lexeme);
   }
 
   @override

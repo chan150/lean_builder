@@ -73,7 +73,7 @@ abstract class InterfaceElement extends InstanceElement with TypeParameterizedEl
 abstract class LibraryElement extends Element {
   AssetSrc get src;
 
-  IdentifierLocation buildIdentifierLocation(String identifier, TopLevelIdentifierType type);
+  IdentifierLocation buildLocation(String identifier, TopLevelIdentifierType type);
 
   CompilationUnit get compilationUnit;
 
@@ -121,6 +121,8 @@ abstract class VariableElement extends Element {
   TypeRef get type;
 
   Constant? get constantValue;
+
+  Expression? get initializer;
 }
 
 abstract class TopLevelVariableElement extends VariableElement {

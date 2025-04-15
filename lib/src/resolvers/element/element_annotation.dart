@@ -2,7 +2,10 @@ part of 'element.dart';
 
 abstract class ElementAnnotation {
   String get name;
-  Element get annotationElement;
+
+  Constant get constant;
+
+  TypeRef get type;
 }
 
 class ElementAnnotationImpl implements ElementAnnotation {
@@ -10,7 +13,15 @@ class ElementAnnotationImpl implements ElementAnnotation {
   final String name;
 
   @override
-  final Element annotationElement;
+  Constant get constant => _constValue ??= _constantValueCompute() ?? Constant.invalid;
 
-  ElementAnnotationImpl(this.name, this.annotationElement);
+  Constant? _constValue;
+
+  final ConstantValueCompute _constantValueCompute;
+
+  @override
+  final TypeRef type;
+
+  ElementAnnotationImpl({required this.name, required this.type, required ConstantValueCompute constantValueCompute})
+    : _constantValueCompute = constantValueCompute;
 }

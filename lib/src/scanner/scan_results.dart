@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/token.dart';
 import 'package:code_genie/src/resolvers/file_asset.dart';
 import 'package:collection/collection.dart';
@@ -423,6 +424,24 @@ enum TopLevelIdentifierType {
         return $typeAlias;
       default:
         throw ArgumentError('Invalid value: $type');
+    }
+  }
+
+  static TopLevelIdentifierType fromDeclaration(NamedCompilationUnitMember node) {
+    if (node is ClassDeclaration) {
+      return $class;
+    } else if (node is MixinDeclaration) {
+      return $mixin;
+    } else if (node is ExtensionDeclaration) {
+      return $extension;
+    } else if (node is EnumDeclaration) {
+      return $enum;
+    } else if (node is TypeAlias) {
+      return $typeAlias;
+    } else if (node is FunctionDeclaration) {
+      return $function;
+    } else {
+      throw ArgumentError('Invalid value: $node');
     }
   }
 

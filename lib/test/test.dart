@@ -1,17 +1,28 @@
 import 'package:code_genie/test/test2.dart';
 
-class Genix$ {
-  final String? str;
-  final String? str2;
+class SuperX {
+  const SuperX({this.superStr = 'superStr'});
 
-  // const Annotation(this.number, {this.str});
-  const Genix$(this.str, {this.str2 = 'Hello'});
-  const Genix$.named(this.str) : str2 = null;
+  final String superStr;
 }
 
-const genix$ = Genix$.named('Hello');
+typedef TypedType = void Function(int x, bool y);
+
+class Genix$ extends SuperX {
+  final Type type;
+  final String? str2;
+  final String Function(int x, bool y)? func;
+
+  const Genix$(this.type, {super.superStr = 'SuperStr2', this.func}) : str2 = 'str2';
+
+  const Genix$.named(this.type, this.func) : str2 = null;
+
+  // static const Genix$ named2 = Genix$('Hello', str2: 'Hello', superStr: 'Hello');
+}
 
 const varConst = 'Hello';
+
+// const genix$ = Genix$.named('Hello', null);
 
 // @Annotation()
 // class Widgets extends StatelessWidget {
@@ -35,12 +46,16 @@ const varConst = 'Hello';
 // @annotation
 const constArg = 'Hello';
 
-@varConst
-@genix$
-@Genix$('Argument', str2: constArg)
+String doStuff(int x, bool y) {
+  return 'Hello';
+}
+
+@Genix$(TypedType, func: doStuff)
 class AnnotatedClass {
   AnnotatedClass(this.fieldType);
+
   final FieldType fieldType;
+
   // final Target target;
   // final Future futre;
   // List<Set<String>> list = [];

@@ -8,7 +8,8 @@ class IdentifierLocation {
     required this.providerId,
     required this.type,
     required this.srcUri,
-    required this.importingLibrary,
+    this.importingLibrary,
+    this.importPrefix,
   });
 
   final String identifier;
@@ -16,7 +17,9 @@ class IdentifierLocation {
   final Uri srcUri;
   final String providerId;
   final TopLevelIdentifierType type;
-  final AssetSrc importingLibrary;
+  final AssetSrc? importingLibrary;
+  final String? importPrefix;
+
   @override
   String toString() {
     return 'IdentifierLocation{identifier: $identifier, srcId: $srcId, providerId: $providerId}';
@@ -29,6 +32,7 @@ class IdentifierLocation {
     return other is IdentifierLocation &&
         other.identifier == identifier &&
         other.providerId == providerId &&
+        other.importPrefix == importPrefix &&
         other.srcId == srcId &&
         type == other.type &&
         other.srcUri == srcUri;
@@ -41,6 +45,7 @@ class IdentifierLocation {
         type.hashCode ^
         srcUri.hashCode ^
         providerId.hashCode ^
+        importPrefix.hashCode ^
         importingLibrary.hashCode;
   }
 }

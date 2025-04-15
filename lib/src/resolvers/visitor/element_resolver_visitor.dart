@@ -38,7 +38,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
 
     clazzElement.thisType = NamedTypeRefImpl(
       clazzElement.name,
-      library.buildIdentifierLocation(clazzElement.name, TopLevelIdentifierType.$class),
+      library.buildLocation(clazzElement.name, TopLevelIdentifierType.$class),
     );
     visitElementScoped(clazzElement, () {
       for (final constructor in node.members.whereType<ConstructorDeclaration>()) {
@@ -148,7 +148,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
 
     classElement.thisType = NamedTypeRefImpl(
       classElement.name,
-      library.buildIdentifierLocation(classElement.name, TopLevelIdentifierType.$class),
+      library.buildLocation(classElement.name, TopLevelIdentifierType.$class),
       typeArguments: classElement.typeParameters,
     );
     _resolveSuperType(classElement, node.extendsClause?.superclass);
@@ -173,7 +173,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     });
     mixinElement.thisType = NamedTypeRefImpl(
       mixinElement.name,
-      libraryElement.buildIdentifierLocation(mixinElement.name, TopLevelIdentifierType.$mixin),
+      libraryElement.buildLocation(mixinElement.name, TopLevelIdentifierType.$mixin),
       typeArguments: mixinElement.typeParameters,
     );
     _resolveInterfaces(mixinElement, implementsClause: node.implementsClause, onClause: node.onClause);
@@ -189,7 +189,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
 
     enumElement.thisType = NamedTypeRefImpl(
       enumElement.name,
-      library.buildIdentifierLocation(enumElement.name, TopLevelIdentifierType.$enum),
+      library.buildLocation(enumElement.name, TopLevelIdentifierType.$enum),
     );
     for (final constant in node.constants) {
       final constantName = constant.name.lexeme;
@@ -332,6 +332,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
         type: fieldType,
       );
       if (variable.initializer != null) {
+        fieldEle.initializer = variable.initializer;
         fieldEle.setConstantComputeValue(() {
           return constEvaluator.evaluate(variable.initializer!);
         });
@@ -342,47 +343,47 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
 
   @override
   void visitAnnotation(Annotation node) {
-    print(node.runtimeType);
-    final (lib, targetNode) = _resolver.astNodeFor(IdentifierRef.from(node.name), currentLibrary());
-    pushElement(lib);
-
+    final currentElement = currentElementAs<ElementImpl>();
+    final identifier = IdentifierRef.from(node.name);
+    final (lib, targetNode, loc) = _resolver.astNodeFor(identifier, currentLibrary());
     final constantEvaluator = ConstantEvaluator(_resolver, lib, this);
-    if (targetNode is ClassDeclaration) {
-      final invocation = targetNode.members.whereType<ConstructorDeclaration>().firstWhere(
-        (e) => e.name?.lexeme == node.constructorName?.name,
-        orElse: () => throw Exception('Could not find constructor'),
-      );
-      print(invocation);
-      visitClassDeclaration(targetNode);
-      final clazz = lib.getClass(targetNode.name.lexeme);
-      Map<String, Constant> argumentValues = {};
-      if (node.arguments != null) {
-        // Handle positional arguments
-        for (var i = 0; i < node.arguments!.arguments.length; i++) {
-          final arg = node.arguments!.arguments[i];
-          if (arg is NamedExpression) {
-            // Handle named arguments
-            final name = arg.name.label.name;
-            final value = constantEvaluator.evaluate(arg.expression);
-            argumentValues[name] = value;
+    final name = node.name.name;
+    if (targetNode is ClassDeclaration || targetNode is ConstructorDeclaration) {
+      final classDeclaration = targetNode.thisOrAncestorOfType<ClassDeclaration>()!;
+      final className = classDeclaration.name.lexeme;
+      final elem = ElementAnnotationImpl(
+        name: name,
+        type: NamedTypeRefImpl(className, loc),
+        constantValueCompute: () {
+          final ConstructorDeclaration constructor;
+          if (targetNode is ConstructorDeclaration) {
+            constructor = targetNode;
           } else {
-            // Handle positional arguments - need to map to parameter names
-            final value = constantEvaluator.evaluate(arg);
-            // Use parameter index as temporary key for positional args
-            argumentValues['$i'] = value;
+            constructor = classDeclaration.members.whereType<ConstructorDeclaration>().firstWhere(
+              (e) => e.name?.lexeme == node.constructorName?.name,
+              orElse: () => throw Exception('Could not find constructor'),
+            );
           }
-        }
+          final obj = constantEvaluator.evaluate(constructor) as ConstObjectImpl?;
+          if (node.arguments != null) {
+            return obj?.mergeArgs(node.arguments!, constantEvaluator);
+          }
+          return obj;
+        },
+      );
+      final constant = elem.constant;
+      if (constant is ConstObject) {
+        final funcRef = constant.getFunctionReference('func');
       }
-      print(argumentValues);
+
+      currentElement.addMetadata(elem);
     } else if (targetNode is TopLevelVariableDeclaration) {
-      final variable = targetNode.variables.variables.firstWhere((e) => e.name.lexeme == node.name.name);
-      final initializer = variable.initializer;
-      print(constantEvaluator.evaluate(initializer!));
+      final variable = targetNode.variables.variables.firstWhere((e) => e.name.lexeme == identifier.name);
+      final constant = constantEvaluator.evaluate(variable.initializer!);
+    } else if (targetNode is FieldDeclaration) {
+      final variable = targetNode.fields.variables.firstWhere((e) => e.name.lexeme == identifier.name);
+      final constant = constantEvaluator.evaluate(variable.initializer!);
     }
-
-    popElement();
-
-    // final constValue = constVisitor.evaluate(node);
   }
 
   @override
@@ -431,6 +432,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     final executableElement = currentElementAs<ExecutableElementImpl>();
     final param = executableElement.getParameter(node.name?.lexeme ?? '') as ParameterElementImpl?;
     if (param != null && node.defaultValue != null) {
+      param.initializer = node.defaultValue;
       param.setConstantComputeValue(() {
         final constEvaluator = ConstantEvaluator(_resolver, executableElement.library, this);
         return constEvaluator.evaluate(node.defaultValue!);
@@ -459,7 +461,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     required String constructorName,
     required SuperFormalParameter superParam,
   }) {
-    final (lib, clazzNode as ClassDeclaration) = _resolver.astNodeFor(ref, library);
+    final (lib, clazzNode as ClassDeclaration, _) = _resolver.astNodeFor(ref, library);
 
     final constructorNode = clazzNode.members.whereType<ConstructorDeclaration>().firstWhere(
       (e) => (e.name?.lexeme ?? '') == constructorName,
@@ -529,7 +531,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     final superConstRef = constructorEle.superConstructor!;
 
     final (superType, initializer) = _resolveSuperParam(
-      ref: IdentifierRef(superConstRef.classType.name, src: superConstRef.classType.src),
+      ref: IdentifierRef(superConstRef.classType.name, location: superConstRef.classType.src),
       library: library,
       constructorName: superConstRef.name,
       superParam: node,
@@ -688,21 +690,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
 
     final redirectedConstructor = node.redirectedConstructor;
     if (redirectedConstructor != null) {
-      final IdentifierRef identifierRef;
-      final type = redirectedConstructor.type;
-      final prefix = type.importPrefix?.name.lexeme;
-      if (prefix == null) {
-        identifierRef = IdentifierRef(type.name2.lexeme);
-      } else {
-        final importPrefixes = _resolver.graph.importPrefixesOf(currentLibrary().src.id);
-        final isImportPrefix = importPrefixes.contains(prefix);
-        if (isImportPrefix) {
-          identifierRef = IdentifierRef(type.name2.lexeme, importPrefix: prefix);
-        } else {
-          identifierRef = IdentifierRef(prefix);
-        }
-      }
-
+      final identifierRef = _resolver.identifierToRedirectClass(redirectedConstructor, currentLibrary());
       final identifierSrc = _resolver.graph.getIdentifierLocation(
         identifierRef.name,
         constructorElement.library.src,

@@ -1,5 +1,7 @@
 part of 'element.dart';
 
+typedef ConstantValueCompute = Constant? Function();
+
 abstract class ElementImpl implements Element {
   @override
   String toString() => name;
@@ -177,14 +179,13 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   int get hashCode => src.id.hashCode;
 
   @override
-  IdentifierLocation buildIdentifierLocation(String identifier, TopLevelIdentifierType type) {
+  IdentifierLocation buildLocation(String identifier, TopLevelIdentifierType type) {
     return IdentifierLocation(
       identifier: identifier,
       srcId: src.id,
       srcUri: resolver.uriForAsset(src.id),
       providerId: src.id,
       type: type,
-      importingLibrary: src,
     );
   }
 
@@ -367,18 +368,26 @@ abstract class VariableElementImpl extends ElementImpl implements VariableElemen
   final bool isLate;
   @override
   final bool isStatic;
-
   @override
   final String name;
 
-  Constant? Function()? computeConstantValue;
+  @override
+  Expression? get initializer => _initializer;
 
-  void setConstantComputeValue(Constant? Function()? computeConstantValue) {
-    this.computeConstantValue = computeConstantValue;
+  Expression? _initializer;
+
+  set initializer(Expression? initializer) {
+    _initializer = initializer;
+  }
+
+  ConstantValueCompute? constantValueCompute;
+
+  void setConstantComputeValue(ConstantValueCompute? constantValueCompute) {
+    this.constantValueCompute = constantValueCompute;
   }
 
   @override
-  Constant? get constantValue => _constantValue ??= computeConstantValue?.call();
+  Constant? get constantValue => _constantValue ??= constantValueCompute?.call();
 
   Constant? _constantValue;
 
@@ -470,7 +479,7 @@ class ParameterElementImpl extends VariableElementImpl implements ParameterEleme
   String? get defaultValueCode => constantValue?.toString();
 
   @override
-  bool get hasDefaultValue => computeConstantValue != null;
+  bool get hasDefaultValue => constantValueCompute != null;
 
   @override
   final bool isCovariant;

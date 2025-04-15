@@ -81,6 +81,7 @@ class AssetsGraph extends AssetsScanResults {
         providerId: providerId ?? srcEntry.key,
         type: TopLevelIdentifierType.fromValue(srcEntry.value),
         importingLibrary: importingSrc,
+        importPrefix: importPrefix,
       );
     }
 
