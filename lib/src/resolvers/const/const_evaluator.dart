@@ -7,12 +7,12 @@ import 'dart:collection';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
-import 'package:code_genie/src/resolvers/element/element.dart';
-import 'package:code_genie/src/resolvers/element_resolver.dart';
-import 'package:code_genie/src/resolvers/type/type_ref.dart';
-import 'package:code_genie/src/resolvers/visitor/element_resolver_visitor.dart';
-import 'package:code_genie/src/resolvers/visitor/element_stack.dart';
-import 'package:code_genie/src/scanner/scan_results.dart';
+import 'package:lean_builder/src/resolvers/element/element.dart';
+import 'package:lean_builder/src/resolvers/element_resolver.dart';
+import 'package:lean_builder/src/resolvers/type/type_ref.dart';
+import 'package:lean_builder/src/resolvers/visitor/element_resolver_visitor.dart';
+import 'package:lean_builder/src/resolvers/visitor/element_stack.dart';
+import 'package:lean_builder/src/scanner/scan_results.dart';
 import 'package:collection/collection.dart';
 
 import 'constant.dart';
@@ -45,9 +45,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
 
   @override
   Constant? visitConstructorDeclaration(ConstructorDeclaration node) {
-    print('ConstructorDeclaration: ${node.hashCode}');
     // redirect constant evaluation to the redirected constructor
-
     final redirectConstructor = node.redirectedConstructor;
     if (redirectConstructor != null) {
       final redType = redirectConstructor.type;
@@ -71,7 +69,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
     if (superClass != null) {
       final superConstInvocations = initializers.whereType<SuperConstructorInvocation>();
       final superConstName = superConstInvocations.firstOrNull?.constructorName?.name;
-      final (superLib, superNode as ClassDeclaration, _) = _resolver.astNodeFor(
+      final (superLib, superNode as ClassDeclaration, loc) = _resolver.astNodeFor(
         IdentifierRef.fromType(superClass),
         _library,
       );
@@ -265,18 +263,6 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
     }
     // TODO This doesn't handle numeric conversions.
     return visitExpression(node);
-  }
-
-  @override
-  Constant? visitInstanceCreationExpression(InstanceCreationExpression node) {
-    print('InstanceCreationExpression: ${node.constructorName}');
-    return Constant.invalid;
-  }
-
-  @override
-  Constant? visitTypeLiteral(TypeLiteral node) {
-    print('TypeLiteral: ${node.type}');
-    return null;
   }
 
   @override
@@ -515,10 +501,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
         throw Exception('Function ${node.name.lexeme} not found in ${lib.src.uri}');
       }
     } else if (node is NamedCompilationUnitMember) {
-      final type = NamedTypeRefImpl(
-        node.name.lexeme,
-        lib.buildLocation(node.name.lexeme, TopLevelIdentifierType.fromDeclaration(node)),
-      );
+      final type = NamedTypeRefImpl(node.name.lexeme, loc);
       return ConstTypeRef(type);
     } else if (node is MethodDeclaration) {
       assert(node.isStatic, 'Methods reference in const context should be static');

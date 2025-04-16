@@ -1,8 +1,8 @@
-import 'package:code_genie/src/resolvers/file_asset.dart';
-import 'package:code_genie/src/scanner/scan_results.dart';
+import 'package:lean_builder/src/resolvers/file_asset.dart';
+import 'package:lean_builder/src/scanner/scan_results.dart';
 
-class IdentifierLocation {
-  IdentifierLocation({
+class DeclarationRef {
+  DeclarationRef({
     required this.identifier,
     required this.srcId,
     required this.providerId,
@@ -29,7 +29,7 @@ class IdentifierLocation {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
 
-    return other is IdentifierLocation &&
+    return other is DeclarationRef &&
         other.identifier == identifier &&
         other.providerId == providerId &&
         other.importPrefix == importPrefix &&

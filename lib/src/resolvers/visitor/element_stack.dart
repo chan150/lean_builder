@@ -1,5 +1,5 @@
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:code_genie/src/resolvers/element/element.dart';
+import 'package:lean_builder/src/resolvers/element/element.dart';
 
 mixin ElementStack<E> on AstVisitor<E> {
   final List<Element> _elementStack = [];

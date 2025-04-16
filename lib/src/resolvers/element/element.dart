@@ -1,11 +1,11 @@
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:code_genie/src/resolvers/const/constant.dart';
-import 'package:code_genie/src/resolvers/element_resolver.dart';
-import 'package:code_genie/src/resolvers/file_asset.dart';
-import 'package:code_genie/src/resolvers/type/substitution.dart';
-import 'package:code_genie/src/resolvers/type/type_ref.dart';
-import 'package:code_genie/src/scanner/identifier_ref.dart';
-import 'package:code_genie/src/scanner/scan_results.dart';
+import 'package:lean_builder/src/resolvers/const/constant.dart';
+import 'package:lean_builder/src/resolvers/element_resolver.dart';
+import 'package:lean_builder/src/resolvers/file_asset.dart';
+import 'package:lean_builder/src/resolvers/type/substitution.dart';
+import 'package:lean_builder/src/resolvers/type/type_ref.dart';
+import 'package:lean_builder/src/scanner/identifier_ref.dart';
+import 'package:lean_builder/src/scanner/scan_results.dart';
 import 'package:collection/collection.dart';
 
 part 'element_annotation.dart';
@@ -73,7 +73,7 @@ abstract class InterfaceElement extends InstanceElement with TypeParameterizedEl
 abstract class LibraryElement extends Element {
   AssetSrc get src;
 
-  IdentifierLocation buildLocation(String identifier, TopLevelIdentifierType type);
+  DeclarationRef buildLocation(String identifier, TopLevelIdentifierType type);
 
   CompilationUnit get compilationUnit;
 

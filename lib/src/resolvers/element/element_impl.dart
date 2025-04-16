@@ -37,7 +37,7 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   @override
   final ElementResolver resolver;
 
-  final List<Element> _resolvedElements = [];
+  final List<Element> resolvedElements = [];
 
   bool _didResolveDirectives = false;
 
@@ -52,7 +52,7 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   bool _didResolveAllFunctions = false;
 
   void addElement(Element element) {
-    _resolvedElements.add(element);
+    resolvedElements.add(element);
   }
 
   @override
@@ -68,7 +68,7 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   LibraryElement get library => this;
 
   List<E> _elementsOfType<E extends Element>() {
-    return List<E>.unmodifiable(_resolvedElements.whereType<E>());
+    return List<E>.unmodifiable(resolvedElements.whereType<E>());
   }
 
   @override
@@ -117,7 +117,7 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   }
 
   bool hasElement(String name) {
-    return _resolvedElements.any((e) => e.name == name);
+    return resolvedElements.any((e) => e.name == name);
   }
 
   @override
@@ -131,7 +131,7 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
 
   @override
   Element? getElement(String name) {
-    return _resolvedElements.firstWhereOrNull((e) => e.name == name);
+    return resolvedElements.firstWhereOrNull((e) => e.name == name);
   }
 
   @override
@@ -179,8 +179,8 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   int get hashCode => src.id.hashCode;
 
   @override
-  IdentifierLocation buildLocation(String identifier, TopLevelIdentifierType type) {
-    return IdentifierLocation(
+  DeclarationRef buildLocation(String identifier, TopLevelIdentifierType type) {
+    return DeclarationRef(
       identifier: identifier,
       srcId: src.id,
       srcUri: resolver.uriForAsset(src.id),

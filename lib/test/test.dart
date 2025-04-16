@@ -1,5 +1,5 @@
-import 'package:code_genie/test/test2.dart' as test2;
-import 'package:code_genie/test/test2.dart';
+import 'package:lean_builder/test/test2.dart' as test2;
+import 'package:lean_builder/test/test2.dart';
 
 typedef TypedType = void Function(int x, bool y);
 
@@ -18,10 +18,10 @@ const genix$ = Genix$(String, superStr: 'SuperV5ar');
 const genixNamed = Genix$.named(String);
 const String constArg = 'Hello';
 
+@test2.SuperX()
 @genix$
-@Genix$(String)
-@Genix$.named2
-@genixNamed
+@Genix$(String, superStr: 'SuperStr2')
+@Genix$.named(String)
 class AnnotatedClass {
   const AnnotatedClass(this.fieldType);
 

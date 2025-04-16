@@ -1,12 +1,12 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
-import 'package:code_genie/src/resolvers/const/const_evaluator.dart';
-import 'package:code_genie/src/resolvers/const/constant.dart';
-import 'package:code_genie/src/resolvers/element/element.dart';
-import 'package:code_genie/src/resolvers/element_resolver.dart';
-import 'package:code_genie/src/resolvers/type/type_ref.dart';
-import 'package:code_genie/src/resolvers/visitor/element_stack.dart';
-import 'package:code_genie/src/scanner/scan_results.dart';
+import 'package:lean_builder/src/resolvers/const/const_evaluator.dart';
+import 'package:lean_builder/src/resolvers/const/constant.dart';
+import 'package:lean_builder/src/resolvers/element/element.dart';
+import 'package:lean_builder/src/resolvers/element_resolver.dart';
+import 'package:lean_builder/src/resolvers/type/type_ref.dart';
+import 'package:lean_builder/src/resolvers/visitor/element_stack.dart';
+import 'package:lean_builder/src/scanner/scan_results.dart';
 
 class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack {
   final ElementResolver _resolver;
@@ -293,7 +293,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
     }
 
     final importPrefix = annotation.importPrefix;
-    final identifierLocation = _resolver.getIdentifierLocation(
+    final identifierLocation = _resolver.getDeclarationRef(
       typename,
       enclosingEle.library.src,
       importPrefix: importPrefix?.name.lexeme,
@@ -375,7 +375,6 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
         },
       );
       currentElement.addMetadata(elem);
-      print(elem.constant);
     } else if (targetNode is TopLevelVariableDeclaration || targetNode is FieldDeclaration) {
       final VariableDeclarationList varList;
       if (targetNode is TopLevelVariableDeclaration) {
@@ -413,8 +412,6 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
         },
       );
       currentElement.addMetadata(elem);
-      print(elem.type);
-      print(elem.constant);
     }
   }
 
@@ -727,7 +724,7 @@ class ElementResolverVisitor extends UnifyingAstVisitor<void> with ElementStack 
         if (redType.importPrefix != null) redType.importPrefix!.name.lexeme,
         redType.name2.lexeme,
       ]);
-      final identifierLocation = _resolver.getIdentifierLocation(
+      final identifierLocation = _resolver.getDeclarationRef(
         identifierRef.topLevelTarget,
         constructorElement.library.src,
         importPrefix: identifierRef.importPrefix,

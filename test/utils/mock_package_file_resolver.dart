@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:code_genie/src/resolvers/file_asset.dart';
-import 'package:code_genie/src/resolvers/package_file_resolver.dart';
+import 'package:lean_builder/src/resolvers/file_asset.dart';
+import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 
 class MockPackageFileResolver implements PackageFileResolver {
   final Map<String, String> packageToPath;

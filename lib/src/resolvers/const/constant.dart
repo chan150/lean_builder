@@ -1,7 +1,7 @@
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:code_genie/src/resolvers/const/const_evaluator.dart';
-import 'package:code_genie/src/resolvers/type/type_ref.dart';
-import 'package:code_genie/src/scanner/identifier_ref.dart';
+import 'package:lean_builder/src/resolvers/const/const_evaluator.dart';
+import 'package:lean_builder/src/resolvers/type/type_ref.dart';
+import 'package:lean_builder/src/scanner/identifier_ref.dart';
 
 sealed class Constant {
   const Constant();
@@ -84,7 +84,7 @@ class ConstEnumValue extends ConstValue<String> {
 abstract class ConstFunctionReference extends Constant {
   String get name;
 
-  IdentifierLocation get src;
+  DeclarationRef get src;
 
   FunctionTypeRef get type;
 
@@ -98,7 +98,7 @@ class ConstFunctionReferenceImpl extends ConstFunctionReference {
   final String name;
 
   @override
-  final IdentifierLocation src;
+  final DeclarationRef src;
 
   ConstFunctionReferenceImpl(this.name, this.type, this.src);
 

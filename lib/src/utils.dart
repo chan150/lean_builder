@@ -10,32 +10,7 @@ import 'package:analyzer/dart/element/type.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
-/// Returns a non-null name for the provided [type].
-///
-/// In newer versions of the Dart analyzer, a `typedef` does not keep the
-/// existing `name`, because it is used an alias:
-/// ```
-/// // Used to return `VoidFunc` for name, is now `null`.
-/// typedef VoidFunc = void Function();
-/// ```
-///
-/// This function will return `'VoidFunc'`, unlike [DartType.type.name].
-String typeNameOf(DartType type) {
-  final aliasElement = type.alias?.element;
-  if (aliasElement != null) {
-    return aliasElement.name;
-  }
-  if (type is DynamicType) {
-    return 'dynamic';
-  }
-  if (type is InterfaceType) {
-    return type.element.name;
-  }
-  if (type is TypeParameterType) {
-    return type.element.name;
-  }
-  throw UnimplementedError('(${type.runtimeType}) $type');
-}
+
 
 bool hasExpectedPartDirective(CompilationUnit unit, String part) =>
     unit.directives.whereType<PartDirective>().any((e) => e.uri.stringValue == part);

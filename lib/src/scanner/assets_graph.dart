@@ -1,22 +1,22 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:code_genie/src/resolvers/file_asset.dart';
-import 'package:code_genie/src/scanner/directive_statement.dart';
-import 'package:code_genie/src/scanner/scan_results.dart';
+import 'package:lean_builder/src/resolvers/file_asset.dart';
+import 'package:lean_builder/src/scanner/directive_statement.dart';
+import 'package:lean_builder/src/scanner/scan_results.dart';
 import 'package:collection/collection.dart';
 import 'package:xxh3/xxh3.dart';
 
 import 'identifier_ref.dart';
 
 class AssetsGraph extends AssetsScanResults {
-  static final cacheFile = File('.dart_tool/build/assets_graph.json');
+  static final cacheFile = File('.dart_tool/lean_build/assets_graph.json');
 
   AssetsGraph(this.packagesHash) : loadedFromCache = false;
 
   AssetsGraph._fromCache(this.packagesHash) : loadedFromCache = true;
 
-  final _coreImportId = xxh3String(Uint8List.fromList('dart:core/core.dart'.codeUnits));
+  late final _coreImportId = xxh3String(Uint8List.fromList('dart:core/core.dart'.codeUnits));
   late final _coreImport = [DirectiveStatement.import, _coreImportId, '', null, null];
 
   factory AssetsGraph.init(String packagesHash) {
@@ -67,14 +67,9 @@ class AssetsGraph extends AssetsScanResults {
     return assets;
   }
 
-  IdentifierLocation? getIdentifierLocation(
-    String identifier,
-    AssetSrc importingSrc, {
-    bool requireProvider = true,
-    String? importPrefix,
-  }) {
-    IdentifierLocation buildRef(MapEntry<String, int> srcEntry, {String? providerId}) {
-      return IdentifierLocation(
+  DeclarationRef? getDeclarationRef(String identifier, AssetSrc importingSrc, {String? importPrefix}) {
+    DeclarationRef buildRef(MapEntry<String, int> srcEntry, {String? providerId}) {
+      return DeclarationRef(
         identifier: identifier,
         srcId: srcEntry.key,
         srcUri: uriForAsset(srcEntry.key),
@@ -91,11 +86,6 @@ class AssetsGraph extends AssetsScanResults {
           .map((e) => MapEntry(e[GraphIndex.identifierSrc], e[GraphIndex.identifierType])),
     );
 
-    // if [requireProvider] is false, we only care about the identifier src, not the provider
-    if (!requireProvider && possibleSrcs.length == 1) {
-      return buildRef(possibleSrcs.entries.first);
-    }
-
     // First check if the identifier is declared directly in this file
     for (final entry in possibleSrcs.entries) {
       if (entry.key == importingSrc.id) {
@@ -111,10 +101,11 @@ class AssetsGraph extends AssetsScanResults {
       final prefix = importEntry.elementAtOrNull(GraphIndex.directivePrefix) as String?;
       if (importPrefix != null && importPrefix != prefix) continue;
 
+      // Skip if the identifier is hidden
       final hides = importEntry[GraphIndex.directiveHide] as List<dynamic>? ?? const [];
       if (hides.contains(identifier)) continue;
 
-      // Skip if the identifier is hidden or not shown
+      // Skip if the identifier is not shown
       final shows = importEntry[GraphIndex.directiveShow] as List<dynamic>? ?? const [];
       if (shows.isNotEmpty && !shows.contains(identifier)) continue;
 
@@ -213,11 +204,11 @@ class AssetsGraph extends AssetsScanResults {
 }
 
 class ScannedAsset {
-  ScannedAsset(this.id, this.uri, this.contentHash, this.hasAnnotation);
+  ScannedAsset(this.id, this.uri, this.digest, this.hasAnnotation);
 
   final Uri uri;
   final String id;
-  final String? contentHash;
+  final String? digest;
   final bool hasAnnotation;
 
   @override

@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/token.dart';
-import 'package:code_genie/src/resolvers/file_asset.dart';
+import 'package:lean_builder/src/resolvers/file_asset.dart';
 import 'package:collection/collection.dart';
 import 'package:xxh3/xxh3.dart';
 

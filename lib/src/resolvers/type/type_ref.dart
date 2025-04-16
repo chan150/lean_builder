@@ -1,6 +1,6 @@
 import 'package:analyzer/dart/element/type.dart';
-import 'package:code_genie/src/scanner/identifier_ref.dart';
-import 'package:code_genie/src/resolvers/element/element.dart';
+import 'package:lean_builder/src/scanner/identifier_ref.dart';
+import 'package:lean_builder/src/resolvers/element/element.dart';
 import 'package:collection/collection.dart';
 
 sealed class TypeRef {
@@ -118,7 +118,7 @@ abstract class NamedTypeRef extends TypeRef {
 
   String? get importPrefix;
 
-  IdentifierLocation get src;
+  DeclarationRef get src;
 
   /// then identifier that points to declaration of this type
   String get identifier;
@@ -256,7 +256,7 @@ class NamedTypeRefImpl extends TypeRefImpl implements NamedTypeRef {
   final String name;
 
   @override
-  final IdentifierLocation src;
+  final DeclarationRef src;
 
   NamedTypeRefImpl(this.name, this.src, {super.isNullable = false, this.typeArguments = const [], this.importPrefix});
 

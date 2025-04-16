@@ -1,14 +1,14 @@
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:code_genie/src/resolvers/element/element.dart';
-import 'package:code_genie/src/resolvers/file_asset.dart';
-import 'package:code_genie/src/resolvers/package_file_resolver.dart';
-import 'package:code_genie/src/resolvers/parsed_units_cache.dart';
-import 'package:code_genie/src/resolvers/type/type_ref.dart';
-import 'package:code_genie/src/resolvers/visitor/element_resolver_visitor.dart';
-import 'package:code_genie/src/scanner/assets_graph.dart';
-import 'package:code_genie/src/scanner/directive_statement.dart';
-import 'package:code_genie/src/scanner/identifier_ref.dart';
-import 'package:code_genie/src/scanner/scan_results.dart';
+import 'package:lean_builder/src/resolvers/element/element.dart';
+import 'package:lean_builder/src/resolvers/file_asset.dart';
+import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
+import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
+import 'package:lean_builder/src/resolvers/type/type_ref.dart';
+import 'package:lean_builder/src/resolvers/visitor/element_resolver_visitor.dart';
+import 'package:lean_builder/src/scanner/assets_graph.dart';
+import 'package:lean_builder/src/scanner/directive_statement.dart';
+import 'package:lean_builder/src/scanner/identifier_ref.dart';
+import 'package:lean_builder/src/scanner/scan_results.dart';
 import 'package:collection/collection.dart';
 import 'package:synchronized/synchronized.dart';
 
@@ -21,7 +21,7 @@ class ElementResolver {
   final SrcParser parser;
   final PackageFileResolver fileResolver;
   final Map<String, LibraryElementImpl> _libraryCache = {};
-  final Map<String, (LibraryElementImpl, AstNode, IdentifierLocation)> _parsedUnitCache = {};
+  final Map<String, (LibraryElementImpl, AstNode, DeclarationRef)> _parsedUnitCache = {};
   final Map<String, Lock> _elementResolveLocks = {};
   final Map<String, Element?> _resolvedTypeRefs = {};
   final Map<String, Constant> evaluatedConstants = {};
@@ -45,18 +45,8 @@ class ElementResolver {
     return libraryFor(assetSrc);
   }
 
-  IdentifierLocation? getIdentifierLocation(
-    String identifier,
-    AssetSrc importingSrc, {
-    bool requireProvider = true,
-    String? importPrefix,
-  }) {
-    return graph.getIdentifierLocation(
-      identifier,
-      importingSrc,
-      requireProvider: requireProvider,
-      importPrefix: importPrefix,
-    );
+  DeclarationRef? getDeclarationRef(String identifier, AssetSrc importingSrc, {String? importPrefix}) {
+    return graph.getDeclarationRef(identifier, importingSrc, importPrefix: importPrefix);
   }
 
   Future<Element?> elementOf(TypeRef ref) async {
@@ -93,7 +83,7 @@ class ElementResolver {
     });
   }
 
-  (LibraryElementImpl, AstNode, IdentifierLocation loc) astNodeFor(
+  (LibraryElementImpl, AstNode, DeclarationRef loc) astNodeFor(
     IdentifierRef identifier,
     LibraryElement enclosingLibrary,
   ) {
@@ -105,12 +95,7 @@ class ElementResolver {
 
     final loc =
         identifier.location ??
-        getIdentifierLocation(
-          identifier.topLevelTarget,
-          enclosingAsset,
-          requireProvider: true,
-          importPrefix: identifier.importPrefix,
-        );
+        getDeclarationRef(identifier.topLevelTarget, enclosingAsset, importPrefix: identifier.importPrefix);
 
     assert(loc != null, 'Identifier $identifier not found in ${enclosingAsset.uri}');
     final srcUri = uriForAsset(loc!.srcId);
@@ -326,7 +311,7 @@ class IdentifierRef {
   final String name;
   final String? prefix;
   final String? importPrefix;
-  final IdentifierLocation? location;
+  final DeclarationRef? location;
 
   IdentifierRef(this.name, {this.prefix, this.importPrefix, this.location});
 

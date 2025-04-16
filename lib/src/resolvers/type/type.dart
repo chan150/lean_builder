@@ -1,5 +1,5 @@
-// import 'package:code_genie/src/resolvers/element/element.dart';
-// import 'package:code_genie/src/resolvers/type/type_ref.dart';
+// import 'package:lean_builder/src/resolvers/element/element.dart';
+// import 'package:lean_builder/src/resolvers/type/type_ref.dart';
 //
 // abstract class DartType {
 //   String get name;

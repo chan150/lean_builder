@@ -1,10 +1,10 @@
 // import 'package:analyzer/dart/ast/ast.dart';
 // import 'package:analyzer/dart/element/element.dart';
-// import 'package:code_genie/src/resolvers/file_asset.dart';
-// import 'package:code_genie/src/resolvers/package_file_resolver.dart';
-// import 'package:code_genie/src/resolvers/parsed_units_cache.dart';
-// import 'package:code_genie/src/resolvers/type/type.dart';
-// import 'package:code_genie/src/scanner/assets_graph.dart';
+// import 'package:lean_builder/src/resolvers/file_asset.dart';
+// import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
+// import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
+// import 'package:lean_builder/src/resolvers/type/type.dart';
+// import 'package:lean_builder/src/scanner/assets_graph.dart';
 //
 // class TypeResolver {
 //   final SrcParser parser;

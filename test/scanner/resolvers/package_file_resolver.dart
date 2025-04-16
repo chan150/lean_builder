@@ -1,4 +1,4 @@
-import 'package:code_genie/src/resolvers/package_file_resolver.dart';
+import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -21,7 +21,7 @@ void main() {
   });
 
   test('PackageFileResolver should resolve package for package uri', () {
-    final uri = Uri.parse('package:code_genie/src/resolvers/package_file_resolver.dart');
+    final uri = Uri.parse('package:lean_builder/src/resolvers/package_file_resolver.dart');
     final package = fileResolver.packageFor(uri);
     expect(package, 'code_genie');
   });
@@ -43,7 +43,7 @@ void main() {
   });
 
   test('PackageFileResolver should resolve uri for package', () {
-    final uri = fileResolver.resolveFileUri(Uri.parse('package:code_genie/src/resolvers/package_file_resolver.dart'));
+    final uri = fileResolver.resolveFileUri(Uri.parse('package:lean_builder/src/resolvers/package_file_resolver.dart'));
     expect(uri, Uri.parse('file:///root/code_genie-1.0.0/lib/src/resolvers/package_file_resolver.dart'));
   });
 
@@ -85,7 +85,7 @@ void main() {
   test('PackageFileResolver should resolve short uri', () {
     final uri = Uri.parse('file:///root/code_genie-1.0.0/lib/src/resolvers/package_file_resolver.dart');
     final shortUri = fileResolver.toShortUri(uri);
-    expect(shortUri, Uri.parse('package:code_genie/src/resolvers/package_file_resolver.dart'));
+    expect(shortUri, Uri.parse('package:lean_builder/src/resolvers/package_file_resolver.dart'));
   });
 
   // test to shortPath asset

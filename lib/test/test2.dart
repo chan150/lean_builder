@@ -1,4 +1,4 @@
-import 'package:code_genie/test/test.dart';
+import 'package:lean_builder/test/test.dart';
 
 class FieldType<T> {
   final List<T>? value;

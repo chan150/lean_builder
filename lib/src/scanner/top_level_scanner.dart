@@ -3,9 +3,9 @@ import 'dart:math';
 // ignore: implementation_imports
 import 'package:_fe_analyzer_shared/src/scanner/scanner.dart' as fasta;
 import 'package:analyzer/dart/ast/token.dart';
-import 'package:code_genie/src/resolvers/file_asset.dart';
-import 'package:code_genie/src/resolvers/package_file_resolver.dart';
-import 'package:code_genie/src/scanner/scan_results.dart';
+import 'package:lean_builder/src/resolvers/file_asset.dart';
+import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
+import 'package:lean_builder/src/scanner/scan_results.dart';
 
 import 'directive_statement.dart';
 

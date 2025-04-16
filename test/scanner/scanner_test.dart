@@ -1,7 +1,7 @@
-import 'package:code_genie/src/scanner/assets_graph.dart';
-import 'package:code_genie/src/scanner/directive_statement.dart';
-import 'package:code_genie/src/scanner/scan_results.dart';
-import 'package:code_genie/src/scanner/top_level_scanner.dart';
+import 'package:lean_builder/src/scanner/assets_graph.dart';
+import 'package:lean_builder/src/scanner/directive_statement.dart';
+import 'package:lean_builder/src/scanner/scan_results.dart';
+import 'package:lean_builder/src/scanner/top_level_scanner.dart';
 import 'package:test/expect.dart';
 import 'package:test/scaffolding.dart';
 

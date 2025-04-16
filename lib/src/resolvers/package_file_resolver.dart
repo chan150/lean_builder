@@ -185,9 +185,14 @@ class PackageFileResolverImpl implements PackageFileResolver {
     final absoluteUri = resolveFileUri(uri, relativeTo: relativeTo?.uri);
     final shortUri = toShortUri(absoluteUri);
 
-    final hash = xxh3String(Uint8List.fromList(shortUri.toString().codeUnits));
-    final asset = AssetSrc(File.fromUri(absoluteUri), shortUri, hash);
-    return _assetCache[reqId] = asset;
+    try {
+      final hash = xxh3String(Uint8List.fromList(shortUri.toString().codeUnits));
+      final asset = AssetSrc(File.fromUri(absoluteUri), shortUri, hash);
+      return _assetCache[reqId] = asset;
+    } catch (e) {
+      print(e);
+      rethrow;
+    }
   }
 
   @override

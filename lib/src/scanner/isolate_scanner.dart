@@ -3,13 +3,13 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
-import 'package:code_genie/src/resolvers/assets_reader.dart';
-import 'package:code_genie/src/resolvers/file_asset.dart';
-import 'package:code_genie/src/resolvers/package_file_resolver.dart';
-import 'package:code_genie/src/scanner/assets_graph.dart';
-import 'package:code_genie/src/scanner/scan_results.dart';
-import 'package:code_genie/src/scanner/top_level_scanner.dart';
-import 'package:code_genie/src/utils.dart';
+import 'package:lean_builder/src/resolvers/assets_reader.dart';
+import 'package:lean_builder/src/resolvers/file_asset.dart';
+import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
+import 'package:lean_builder/src/scanner/assets_graph.dart';
+import 'package:lean_builder/src/scanner/scan_results.dart';
+import 'package:lean_builder/src/scanner/top_level_scanner.dart';
+import 'package:lean_builder/src/utils.dart';
 import 'package:xxh3/xxh3.dart';
 
 class ScanningTask {
@@ -147,7 +147,7 @@ class IsolateTLScanner {
       }
       final content = asset.readAsBytesSync();
       final currentHash = xxh3String(content);
-      if (currentHash != entry.contentHash) {
+      if (currentHash != entry.digest) {
         assetsGraph.removeAsset(asset.id);
         scanner.scanFile(asset);
       }
