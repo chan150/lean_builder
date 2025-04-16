@@ -49,8 +49,8 @@ class TopLevelScanner {
             case Keyword.LIBRARY:
               final (nextT, name) = _tryParseLibraryDirective(nextToken);
               libraryName = name;
-              token = nextT ?? nextToken;
-              continue;
+              nextToken = nextT ?? nextToken;
+              break;
             case Keyword.IMPORT:
             case Keyword.EXPORT:
             case Keyword.PART:
@@ -59,25 +59,25 @@ class TopLevelScanner {
               if (direcitve != null) {
                 results.addDirective(asset, direcitve);
               }
-              continue;
+              break;
             case Keyword.TYPEDEF:
               nextToken = parseTypeDef(nextToken, asset) ?? nextToken;
-              continue;
+              break;
             case Keyword.CLASS:
               results.addDeclaration(nextLexeme, asset, TopLevelIdentifierType.$class);
-              token = _skipUntilAny(token, {TokenType.OPEN_CURLY_BRACKET, TokenType.SEMICOLON});
-              continue;
+              nextToken = _skipUntilAny(token, {TokenType.OPEN_CURLY_BRACKET, TokenType.SEMICOLON});
+              break;
             case Keyword.MIXIN:
               if (nextToken.type == Keyword.CLASS) {
-                token = nextToken;
-                continue;
+                break;
               }
               results.addDeclaration(nextLexeme, asset, TopLevelIdentifierType.$mixin);
-              token = _skipUntil(token, TokenType.OPEN_CURLY_BRACKET);
-              continue;
+              nextToken = _skipUntil(token, TokenType.OPEN_CURLY_BRACKET);
+              break;
             case Keyword.ENUM:
               results.addDeclaration(nextLexeme, asset, TopLevelIdentifierType.fromKeyword(type));
-              continue;
+              nextToken = _skipUntil(token, TokenType.OPEN_CURLY_BRACKET);
+              break;
             case Keyword.EXTENSION:
               String extName = nextLexeme;
               if (nextLexeme == 'type') {
@@ -92,7 +92,7 @@ class TopLevelScanner {
               results.addDeclaration(extName, asset, TopLevelIdentifierType.$extension);
 
               nextToken = _skipUntil(nextToken, TokenType.OPEN_CURLY_BRACKET);
-              continue;
+              break;
           }
         } else if ({Keyword.CONST, Keyword.FINAL, Keyword.VAR, Keyword.LATE}.contains(token.type) &&
             nextToken.isIdentifier) {

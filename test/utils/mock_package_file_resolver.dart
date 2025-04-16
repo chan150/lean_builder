@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:lean_builder/src/resolvers/file_asset.dart';
 import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
+import 'package:xxh3/xxh3.dart';
 
 class MockPackageFileResolver implements PackageFileResolver {
   final Map<String, String> packageToPath;
@@ -35,7 +37,7 @@ class MockPackageFileResolver implements PackageFileResolver {
 
   @override
   AssetSrc buildAssetUri(Uri uri, {AssetSrc? relativeTo}) {
-    return AssetSrc(File.fromUri(uri), uri, 'mock-test-hash');
+    return AssetSrc(File.fromUri(uri), uri, xxh3String(Uint8List.fromList(uri.toString().codeUnits)));
   }
 
   @override

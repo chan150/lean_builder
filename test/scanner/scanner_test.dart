@@ -262,7 +262,7 @@ main() {
   });
 
   test('Should parse simple import', () {
-    final file = StringSrc("import 'path.dart';");
+    final file = StringSrc("import 'path.dart';", uri: 'path.dart');
     scanner.scanFile(file);
     final imports = assetsGraph.importsOf(file.id);
     expect(imports.length, 1);
@@ -271,7 +271,7 @@ main() {
   });
 
   test('Should parse simple import with alias', () {
-    final file = StringSrc("import 'path.dart' as i;");
+    final file = StringSrc("import 'path.dart' as i;", uri: 'path.dart');
     scanner.scanFile(file);
     final imports = assetsGraph.importsOf(file.id);
     expect(imports.length, 1);
@@ -279,7 +279,7 @@ main() {
   });
 
   test('Should parse simple deferred import', () {
-    final file = StringSrc("import 'path.dart' deferred as i;");
+    final file = StringSrc("import 'path.dart' deferred as i;", uri: 'path.dart');
     scanner.scanFile(file);
     final imports = assetsGraph.importsOf(file.id);
     expect(imports.length, 1);
@@ -287,7 +287,7 @@ main() {
   });
 
   test('Should parse simple import with show', () {
-    final file = StringSrc("import 'path.dart' show A, B;");
+    final file = StringSrc("import 'path.dart' show A, B;", uri: 'path.dart');
     scanner.scanFile(file);
     final imports = assetsGraph.importsOf(file.id);
     expect(imports.length, 1);
@@ -301,7 +301,7 @@ main() {
   });
 
   test('Should parse simple import with hide', () {
-    final file = StringSrc("import 'path.dart' hide A, B;");
+    final file = StringSrc("import 'path.dart' hide A, B;", uri: 'path.dart');
     scanner.scanFile(file);
     final imports = assetsGraph.importsOf(file.id);
     expect(imports.first, [
@@ -314,7 +314,7 @@ main() {
   });
 
   test('Should parse simple import with show and hide', () {
-    final file = StringSrc("import 'path.dart' show A, B hide C, D;");
+    final file = StringSrc("import 'path.dart' show A, B hide C, D;", uri: 'path.dart');
     scanner.scanFile(file);
     final imports = assetsGraph.importsOf(file.id);
     expect(imports.length, 1);
@@ -328,14 +328,14 @@ main() {
   });
 
   test('Should parse simple export', () {
-    final file = StringSrc("export 'path.dart';");
+    final file = StringSrc("export 'path.dart';", uri: 'path.dart');
     scanner.scanFile(file);
     final exports = assetsGraph.exportsOf(file.id);
     expect(exports.first, [DirectiveStatement.export, file.id, 'path.dart', null, null]);
   });
 
   test('Should parse simple export with show', () {
-    final file = StringSrc("export 'path.dart' show A, B;");
+    final file = StringSrc("export 'path.dart' show A, B;", uri: 'path.dart');
     scanner.scanFile(file);
     final exports = assetsGraph.exportsOf(file.id);
     expect(exports.first, [
@@ -348,7 +348,7 @@ main() {
   });
 
   test('Should parse simple export with hide', () {
-    final file = StringSrc("export 'path.dart' hide A, B;");
+    final file = StringSrc("export 'path.dart' hide A, B;", uri: 'path.dart');
     scanner.scanFile(file);
     final exports = assetsGraph.exportsOf(file.id);
     expect(exports.first, [
@@ -361,7 +361,7 @@ main() {
   });
 
   test('Should parse simple export with show and hide', () {
-    final file = StringSrc("export 'path.dart' show A, B hide C, D;");
+    final file = StringSrc("export 'path.dart' show A, B hide C, D;", uri: 'path.dart');
     scanner.scanFile(file);
     final exports = assetsGraph.exportsOf(file.id);
     expect(exports.first, [
@@ -374,7 +374,7 @@ main() {
   });
 
   test('Should parse simple part', () {
-    final file = StringSrc("part 'path.dart';");
+    final file = StringSrc("part 'path.dart';", uri: 'path.dart');
     scanner.scanFile(file);
     final imports = assetsGraph.importsOf(file.id);
     final exports = assetsGraph.exportsOf(file.id);
