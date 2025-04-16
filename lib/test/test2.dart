@@ -1,5 +1,7 @@
 import 'package:lean_builder/test/test.dart';
 
+const constVar = 'Hello';
+
 class FieldType<T> {
   final List<T>? value;
   const FieldType(this.value);

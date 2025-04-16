@@ -39,6 +39,12 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
 
   final List<Element> resolvedElements = [];
 
+  NamedCompilationUnitMember? getNamedUnitMember(String name) {
+    return compilationUnit.declarations.whereType<NamedCompilationUnitMember>().firstWhereOrNull(
+      (e) => e.name.lexeme == name,
+    );
+  }
+
   bool _didResolveDirectives = false;
 
   bool _didResolveAllTypeAliases = false;
@@ -179,7 +185,7 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   int get hashCode => src.id.hashCode;
 
   @override
-  DeclarationRef buildLocation(String identifier, TopLevelIdentifierType type) {
+  DeclarationRef buildDeclarationRef(String identifier, TopLevelIdentifierType type) {
     return DeclarationRef(
       identifier: identifier,
       srcId: src.id,
@@ -219,11 +225,16 @@ mixin TypeParameterizedElementMixin on Element implements TypeParameterizedEleme
   }
 }
 
+class ExtensionTypeImpl extends InterfaceElementImpl {
+  ExtensionTypeImpl({required super.name, required super.library});
+}
+
 class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixin implements InterfaceElement {
   final List<NamedTypeRef> _mixins = [];
   final List<NamedTypeRef> _interfaces = [];
   final List<NamedTypeRef> _superConstrains = [];
   final List<MethodElement> _methods = [];
+  final List<ConstructorElement> _constructors = [];
 
   bool _didResolveMethods = false;
   final List<FieldElement> _fields = [];
@@ -243,6 +254,42 @@ class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixi
       _didResolveMethods = true;
     }
     return _methods;
+  }
+
+  @override
+  bool hasField(String name) {
+    return _fields.any((e) => e.name == name);
+  }
+
+  @override
+  bool hasMethod(String name) {
+    if (_didResolveMethods) {
+      return _methods.any((e) => e.name == name);
+    }
+    final interfaceDec = library.getNamedUnitMember(name)!;
+    for (final method in interfaceDec.childEntities.whereType<MethodDeclaration>()) {
+      if (method.name.lexeme == name) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @override
+  List<ConstructorElement> get constructors => _constructors;
+
+  void addConstructor(ConstructorElement constructor) {
+    _constructors.add(constructor);
+  }
+
+  @override
+  ConstructorElement? getConstructor(String name) {
+    return _constructors.firstWhereOrNull((e) => e.name == name);
+  }
+
+  @override
+  ConstructorElement? get unnamedConstructor {
+    return _constructors.firstWhereOrNull((e) => e.name.isEmpty);
   }
 
   @override
@@ -339,6 +386,11 @@ class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixi
     var substitution = Substitution.fromPairs(typeParameters, typeRef.typeArguments);
     return substitution.substituteType(thisType, isNullable: typeRef.isNullable);
   }
+
+  @override
+  bool hasConstructor(String name) {
+    return constructors.any((e) => e.name == name);
+  }
 }
 
 abstract class VariableElementImpl extends ElementImpl implements VariableElement {
@@ -370,6 +422,9 @@ abstract class VariableElementImpl extends ElementImpl implements VariableElemen
   final bool isStatic;
   @override
   final String name;
+
+  @override
+  bool get hasInitializer => _initializer != null;
 
   @override
   Expression? get initializer => _initializer;
@@ -449,6 +504,12 @@ class FieldElementImpl extends VariableElementImpl implements ClassMemberElement
 
   @override
   final TypeRef type;
+
+  @override
+  bool get isPrivate => Identifier.isPrivateName(name);
+
+  @override
+  bool get isPublic => !isPrivate;
 }
 
 class ParameterElementImpl extends VariableElementImpl implements ParameterElement, VariableElement {
@@ -544,23 +605,6 @@ class ClassElementImpl extends InterfaceElementImpl implements ClassElement {
     required this.isMixinClass,
     required this.isSealed,
   });
-
-  @override
-  List<ConstructorElement> get constructors => _constructors;
-
-  final List<ConstructorElement> _constructors = [];
-
-  void addConstructor(ConstructorElement constructor) {
-    _constructors.add(constructor);
-  }
-
-  @override
-  ConstructorElement? getConstructor(String name) {
-    return _constructors.firstWhereOrNull((e) => e.name == name);
-  }
-
-  @override
-  ConstructorElement? get unnamedConstructor => _constructors.firstWhereOrNull((e) => e.name.isEmpty);
 
   @override
   final bool isAbstract;

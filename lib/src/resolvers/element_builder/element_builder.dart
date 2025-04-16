@@ -19,31 +19,24 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
   void visitExtensionTypeDeclaration(ExtensionTypeDeclaration node) {
     final library = currentLibrary();
     if (library.hasElement(node.name.lexeme)) return;
-    final clazzElement = InterfaceElementImpl(name: node.name.lexeme, library: library);
-    library.addElement(clazzElement);
-    visitElementScoped(clazzElement, () {
+    final extensionType = ExtensionTypeImpl(name: node.name.lexeme, library: library);
+
+    library.addElement(extensionType);
+
+    visitElementScoped(extensionType, () {
       node.typeParameters?.visitChildren(this);
       node.metadata.accept(this);
-
-      for (final field in node.members.whereType<FieldDeclaration>()) {
-        field.accept(this);
-      }
-      for (final method in node.members.whereType<MethodDeclaration>()) {
-        method.accept(this);
+      for (final member in node.members) {
+        if (member is! MethodDeclaration) {
+          member.accept(this);
+        }
       }
     });
-
-    _resolveInterfaceTypeRefs(clazzElement, implementsClause: node.implementsClause);
-
-    clazzElement.thisType = NamedTypeRefImpl(
-      clazzElement.name,
-      library.buildLocation(clazzElement.name, TopLevelIdentifierType.$class),
+    _resolveInterfaceTypeRefs(extensionType, implementsClause: node.implementsClause);
+    extensionType.thisType = NamedTypeRefImpl(
+      extensionType.name,
+      library.buildDeclarationRef(extensionType.name, TopLevelIdentifierType.$class),
     );
-    visitElementScoped(clazzElement, () {
-      for (final constructor in node.members.whereType<ConstructorDeclaration>()) {
-        constructor.accept(this);
-      }
-    });
   }
 
   @override
@@ -61,7 +54,10 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       isFinal: node.finalKeyword != null,
       isMixinApplication: true,
     );
-    visitElementScoped(clazzElement, () => node.typeParameters?.visitChildren(this));
+    visitElementScoped(clazzElement, () {
+      node.typeParameters?.visitChildren(this);
+      node.metadata.accept(this);
+    });
     _resolveSuperTypeRef(clazzElement, node.superclass);
     _resolveInterfaceTypeRefs(clazzElement, withClause: node.withClause, implementsClause: node.implementsClause);
     library.addElement(clazzElement);
@@ -113,6 +109,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     library.addElement(typeAliasElm);
     visitElementScoped(typeAliasElm, () {
       node.typeParameters?.visitChildren(this);
+      node.metadata.accept(this);
     });
     final targetType = node.functionType != null ? node.functionType! : node.type;
     final type = resolveTypeRef((targetType), typeAliasElm);
@@ -127,6 +124,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     visitElementScoped(funcElement, () {
       node.typeParameters?.visitChildren(this);
       node.parameters.visitChildren(this);
+      node.metadata.accept(this);
     });
     final typeAliasElm = TypeAliasElementImpl(name: node.name.lexeme, library: library);
     library.addElement(typeAliasElm);
@@ -166,7 +164,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
 
     classElement.thisType = NamedTypeRefImpl(
       classElement.name,
-      library.buildLocation(classElement.name, TopLevelIdentifierType.$class),
+      library.buildDeclarationRef(classElement.name, TopLevelIdentifierType.$class),
       typeArguments: classElement.typeParameters,
     );
     _resolveSuperTypeRef(classElement, node.extendsClause?.superclass);
@@ -192,10 +190,11 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
 
     visitElementScoped(mixinElement, () {
       node.typeParameters?.visitChildren(this);
+      node.metadata.accept(this);
     });
     mixinElement.thisType = NamedTypeRefImpl(
       mixinElement.name,
-      libraryElement.buildLocation(mixinElement.name, TopLevelIdentifierType.$mixin),
+      libraryElement.buildDeclarationRef(mixinElement.name, TopLevelIdentifierType.$mixin),
       typeArguments: mixinElement.typeParameters,
     );
     _resolveInterfaceTypeRefs(mixinElement, implementsClause: node.implementsClause, onClause: node.onClause);
@@ -211,32 +210,55 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
 
     enumElement.thisType = NamedTypeRefImpl(
       enumElement.name,
-      library.buildLocation(enumElement.name, TopLevelIdentifierType.$enum),
+      library.buildDeclarationRef(enumElement.name, TopLevelIdentifierType.$enum),
     );
 
     visitElementScoped(enumElement, () {
       node.typeParameters?.visitChildren(this);
       node.metadata.accept(this);
+      node.constants.accept(this);
+      for (final member in node.members) {
+        if (member is! MethodDeclaration) {
+          member.accept(this);
+        }
+      }
     });
-    _resolveInterfaceTypeRefs(enumElement);
-    for (final constant in node.constants) {
-      final constantName = constant.name.lexeme;
-      final fieldEle = FieldElementImpl(
-        isStatic: true,
-        name: constantName,
-        isAbstract: false,
-        isCovariant: false,
-        isEnumConstant: true,
-        enclosingElement: enumElement,
-        hasImplicitType: false,
-        isConst: true,
-        isFinal: true,
-        isLate: false,
-        isExternal: false,
-        type: enumElement.thisType,
-      );
-      enumElement.addField(fieldEle);
+    _resolveInterfaceTypeRefs(enumElement, implementsClause: node.implementsClause, withClause: node.withClause);
+  }
+
+  @override
+  void visitEnumConstantDeclaration(EnumConstantDeclaration node) {
+    final enumElement = currentElementAs<EnumElementImpl>();
+    final fieldEle = FieldElementImpl(
+      name: node.name.lexeme,
+      isStatic: true,
+      isAbstract: false,
+      isCovariant: false,
+      isEnumConstant: true,
+      enclosingElement: enumElement,
+      hasImplicitType: false,
+      isConst: true,
+      isFinal: true,
+      isLate: false,
+      isExternal: false,
+      type: enumElement.thisType,
+    );
+    visitElementScoped(fieldEle, () => node.metadata.accept(this));
+    final args = node.arguments;
+    if (args != null) {
+      fieldEle.setConstantComputeValue(() {
+        final constEvaluator = ConstantEvaluator(_resolver, enumElement.library, this);
+        final enumNode = node.thisOrAncestorOfType<EnumDeclaration>()!;
+        final constructorName = args.constructorSelector?.name;
+        final constructor = enumNode.members.whereType<ConstructorDeclaration>().firstWhere(
+          (e) => e.name?.lexeme == constructorName?.name,
+          orElse: () => throw Exception('Could not find constructor'),
+        );
+        final constantObj = constEvaluator.evaluate(constructor) as ConstObjectImpl?;
+        return constantObj?.mergeArgs(args.argumentList, constEvaluator);
+      });
     }
+    enumElement.addField(fieldEle);
   }
 
   @override
@@ -333,7 +355,11 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
   void visitFieldDeclaration(FieldDeclaration node) {
     final interfaceElement = currentElementAs<InterfaceElementImpl>();
     final fieldType = resolveTypeRef(node.fields.type, interfaceElement);
-    final constEvaluator = ConstantEvaluator(_resolver, interfaceElement.library, this);
+
+    final metadata = visitWithHolder(interfaceElement.library, (holder) {
+      node.metadata.accept(this);
+      holder.metadata;
+    });
 
     // Process each variable in the field declaration
     for (final variable in node.fields.variables) {
@@ -351,13 +377,15 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
         isLate: node.fields.isLate,
         type: fieldType,
       );
-      if (variable.initializer != null) {
-        fieldEle.initializer = variable.initializer;
+      fieldEle.initializer = variable.initializer;
+      if (fieldEle.hasInitializer && fieldEle.isConst) {
         fieldEle.setConstantComputeValue(() {
+          final constEvaluator = ConstantEvaluator(_resolver, interfaceElement.library, this);
           return constEvaluator.evaluate(variable.initializer!);
         });
       }
       interfaceElement.addField(fieldEle);
+      fieldEle.metadata.addAll(metadata);
     }
   }
 
@@ -453,6 +481,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     visitElementScoped(funcElement, () {
       node.functionExpression.typeParameters?.visitChildren(this);
       node.functionExpression.parameters?.visitChildren(this);
+      node.metadata.accept(this);
     });
     final returnType = resolveTypeRef((node.returnType), funcElement);
     funcElement.returnType = returnType;
@@ -496,8 +525,8 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     if (constructorEle.getParameter(name) != null) {
       return;
     }
-    final clazzElem = constructorEle.enclosingElement as ClassElementImpl;
-    final fields = clazzElem.fields;
+    final interfaceElement = constructorEle.enclosingElement as InterfaceElementImpl;
+    final fields = interfaceElement.fields;
     final thisType =
         fields.firstWhere((e) => e.name == name, orElse: () => throw Exception('Could not link this type')).type;
     final parameterElement = _buildParameter(node, constructorEle, type: thisType);
@@ -628,6 +657,9 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       isSuperFormal: isSuperFormal,
     );
     parameterElement.type = type ?? TypeRef.neverType;
+    visitElementScoped(parameterElement, () {
+      node.metadata.accept(this);
+    });
     return parameterElement;
   }
 
@@ -652,6 +684,9 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
           return constantEvaluator.evaluate(variable.initializer!);
         });
       }
+      visitElementScoped(topLevelVar, () {
+        node.metadata.accept(this);
+      });
       library.addElement(topLevelVar);
     }
   }
@@ -659,9 +694,6 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
   @override
   void visitMethodDeclaration(MethodDeclaration node) {
     final interfaceElement = currentElementAs<InterfaceElementImpl>();
-    if (interfaceElement.getMethod(node.name.lexeme) != null) {
-      return;
-    }
     final methodElement = MethodElementImpl(
       isStatic: node.isStatic,
       name: node.name.lexeme,
@@ -678,6 +710,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     visitElementScoped(methodElement, () {
       node.typeParameters?.visitChildren(this);
       node.parameters?.visitChildren(this);
+      node.metadata.accept(this);
     });
     final returnType = resolveTypeRef((node.returnType), methodElement);
     methodElement.returnType = returnType;
@@ -691,19 +724,17 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
 
   @override
   void visitConstructorDeclaration(ConstructorDeclaration node) {
-    final clazzElement = currentElementAs<ClassElementImpl>();
+    final interfaceElement = currentElementAs<InterfaceElementImpl>();
     final constructorName = node.name?.lexeme ?? '';
-
-    if (clazzElement.getConstructor(constructorName) != null) {
-      return;
-    }
+    if (interfaceElement.hasConstructor(constructorName)) return;
 
     final initializers = node.initializers;
     ConstructorElementRef? superConstructor;
-    if (clazzElement.superType != null) {
-      final superConstName =
-          initializers.whereType<SuperConstructorInvocation>().map((e) => e.constructorName?.name).firstOrNull;
-      final superClazz = clazzElement.superType;
+
+    if (interfaceElement.superType != null) {
+      final invocations = initializers.whereType<SuperConstructorInvocation>();
+      final superConstName = invocations.map((e) => e.constructorName?.name).firstOrNull;
+      final superClazz = interfaceElement.superType;
       if (superClazz != null) {
         superConstructor = ConstructorElementRef(superClazz, superConstName ?? '');
       }
@@ -711,53 +742,39 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
 
     final constructorElement = ConstructorElementImpl(
       name: constructorName,
-      enclosingElement: clazzElement,
+      enclosingElement: interfaceElement,
       isConst: node.constKeyword != null,
       isFactory: node.factoryKeyword != null,
       isDefaultConstructor: false,
       isGenerative: node.body.isGenerator,
       superConstructor: superConstructor,
     );
-    clazzElement.addConstructor(constructorElement);
 
-    constructorElement.returnType = clazzElement.thisType;
+    interfaceElement.addConstructor(constructorElement);
+    constructorElement.returnType = interfaceElement.thisType;
 
     visitElementScoped(constructorElement, () {
       node.parameters.visitChildren(this);
+      node.metadata.accept(this);
     });
-
-    // for (final initializer in initializers) {
-    //   if (initializer is ConstructorFieldInitializer) {
-    //     final field = clazzElement.getField(initializer.fieldName.name) as FieldElementImpl?;
-    //     if (field != null) {
-    //       field.setConstantComputeValue(() {
-    //         return _evaluateConstant(initializer.expression, clazzElement.library);
-    //       });
-    //     }
-    //   }
-    // }
 
     final redirectedConstructor = node.redirectedConstructor;
     if (redirectedConstructor != null) {
       final redType = redirectedConstructor.type;
-      final identifierRef = _resolver.resolveIdentifier(clazzElement.library, [
+      final identifierRef = _resolver.resolveIdentifier(interfaceElement.library, [
         if (redType.importPrefix != null) redType.importPrefix!.name.lexeme,
         redType.name2.lexeme,
       ]);
-      final identifierLocation = _resolver.getDeclarationRef(
+
+      final declarationRef = _resolver.getDeclarationRef(
         identifierRef.topLevelTarget,
         constructorElement.library.src,
         importPrefix: identifierRef.importPrefix,
       );
 
-      final resolvedType = NamedTypeRefImpl(identifierRef.name, identifierLocation!);
+      final resolvedType = NamedTypeRefImpl(identifierRef.name, declarationRef!);
       constructorElement.returnType = resolvedType;
       constructorElement.redirectedConstructor = ConstructorElementRef(resolvedType, identifierRef.name);
     }
-  }
-
-  Constant? _evaluateConstant(Expression expression, LibraryElement library) {
-    final constEvaluator = ConstantEvaluator(_resolver, library, this);
-    return constEvaluator.evaluate(expression);
   }
 }

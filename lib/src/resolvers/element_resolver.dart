@@ -228,8 +228,9 @@ class ElementResolver {
 
   void resolveMethods(InterfaceElement elem, {ResolvePredicate<MethodDeclaration>? predicate}) {
     final elementBuilder = ElementBuilder(this, elem.library);
-    final declaration = elem.library.compilationUnit.declarations.whereType<NamedCompilationUnitMember>();
-    final interfaceElemDeclaration = declaration.firstWhere(
+    final declarations = elem.library.compilationUnit.declarations;
+    final namedUnit = declarations.whereType<NamedCompilationUnitMember>();
+    final interfaceElemDeclaration = namedUnit.firstWhere(
       (d) => d.name.lexeme == elem.name,
       orElse: () => throw Exception('Could not find element declaration named ${elem.name}'),
     );

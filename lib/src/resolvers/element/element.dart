@@ -35,6 +35,7 @@ abstract class Element {
 
 abstract class TypeParameterizedElement extends Element {
   List<TypeParameterTypeRef> get typeParameters;
+
   TypeRef instantiate(NamedTypeRef typeRef);
 }
 
@@ -65,15 +66,27 @@ abstract class InterfaceElement extends InstanceElement with TypeParameterizedEl
 
   List<TypeRef> get interfaces;
 
-  MethodElement? getMethod(String name) => methods.firstWhereOrNull((e) => e.name == name);
+  List<ConstructorElement> get constructors;
 
-  FieldElement? getField(String name) => fields.firstWhereOrNull((e) => e.name == name);
+  ConstructorElement? getConstructor(String name);
+
+  ConstructorElement? get unnamedConstructor;
+
+  MethodElement? getMethod(String name);
+
+  FieldElement? getField(String name);
+
+  bool hasMethod(String name);
+
+  bool hasField(String name);
+
+  bool hasConstructor(String name);
 }
 
 abstract class LibraryElement extends Element {
   AssetSrc get src;
 
-  DeclarationRef buildLocation(String identifier, TopLevelIdentifierType type);
+  DeclarationRef buildDeclarationRef(String identifier, TopLevelIdentifierType type);
 
   CompilationUnit get compilationUnit;
 
@@ -115,6 +128,8 @@ abstract class VariableElement extends Element {
 
   bool get isStatic;
 
+  bool get hasInitializer;
+
   @override
   String get name;
 
@@ -141,6 +156,10 @@ abstract class FieldElement extends ClassMemberElement implements VariableElemen
   bool get isEnumConstant;
 
   bool get isExternal;
+
+  bool get isPrivate;
+
+  bool get isPublic;
 }
 
 abstract class ParameterElement extends VariableElement {
@@ -179,12 +198,6 @@ abstract class ParameterElement extends VariableElement {
 }
 
 abstract class ClassElement extends InterfaceElement {
-  List<ConstructorElement> get constructors;
-
-  ConstructorElement? getConstructor(String name);
-
-  ConstructorElement? get unnamedConstructor;
-
   /// Whether the class is abstract. A class is abstract if it has an
   /// explicit `abstract` modifier. Note, that this definition of
   /// <i>abstract</i> is different from <i>has unimplemented members</i>.

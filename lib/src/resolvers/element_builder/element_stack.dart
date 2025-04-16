@@ -1,5 +1,6 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:lean_builder/src/resolvers/element/element.dart';
+import 'package:lean_builder/src/resolvers/type/type_ref.dart';
 
 mixin ElementStack<E> on AstVisitor<E> {
   final List<Element> _elementStack = [];
@@ -40,5 +41,32 @@ mixin ElementStack<E> on AstVisitor<E> {
     final result = callback();
     popElement();
     return result;
+  }
+
+  R? visitWithHolder<R>(LibraryElement library, R Function(ElementImpl element) callback) {
+    assert(_elementStack.isNotEmpty, 'Element stack is empty');
+    final holder = _HolderElement(library);
+    pushElement(holder);
+    final result = callback(holder);
+    popElement();
+    return result;
+  }
+}
+
+class _HolderElement extends ElementImpl with TypeParameterizedElementMixin {
+  _HolderElement(this.library);
+
+  @override
+  Null get enclosingElement => null;
+
+  @override
+  final LibraryElement library;
+
+  @override
+  String get name => '';
+
+  @override
+  TypeRef instantiate(NamedTypeRef typeRef) {
+    throw UnimplementedError();
   }
 }

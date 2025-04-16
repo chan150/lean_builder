@@ -7,6 +7,7 @@ import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
 import 'package:lean_builder/src/scanner/assets_graph.dart';
 import 'package:lean_builder/src/scanner/isolate_scanner.dart';
+import 'package:lean_builder/src/utils.dart';
 
 void main(List<String> args) async {
   final stopWatch = Stopwatch()..start();
@@ -15,7 +16,7 @@ void main(List<String> args) async {
   //   AssetsGraph.cacheFile.deleteSync(recursive: true);
   // }
 
-  final rootPackageName = 'gen_benchmark';
+  // final rootPackageName = 'gen_benchmark';
 
   final fileResolver = PackageFileResolver.forCurrentRoot(rootPackageName);
   final assetsGraph = AssetsGraph.init(fileResolver.packagesHash);

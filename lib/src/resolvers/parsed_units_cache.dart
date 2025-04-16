@@ -15,7 +15,7 @@ class SrcParser {
     if (_cache.containsKey(key)) {
       return _cache[key]!;
     }
-    final unit = parseString(content: content()).unit;
+    final unit = parseString(content: content(), throwIfDiagnostics: false).unit;
     _cache[key] = unit;
     return unit;
   }

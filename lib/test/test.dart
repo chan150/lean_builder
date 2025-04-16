@@ -20,10 +20,31 @@ const genix$ = Genix$(String, superStr: 'SuperV5ar');
 const genixNamed = Genix$.named(String);
 const String constArg = 'Hello';
 
-@test2.SuperX()
-@genix$
-@Genix$(String, superStr: 'SuperStr2')
-@Genix$.named(String)
+@Genix$(String)
+enum ColorEnumWithArgs {
+  red(constVar),
+  green('green'),
+  blue.named('blue', 200);
+
+  final String value;
+
+  final int shade;
+
+  const ColorEnumWithArgs(this.value, [this.shade = 100]);
+
+  const ColorEnumWithArgs.named(this.value, this.shade);
+
+  void method() {
+    print('Hello');
+  }
+
+  bool get isRed => value == 'red';
+}
+
+// @test2.SuperX()
+// @genix$
+// @Genix$(String, superStr: 'SuperStr2')
+// @Genix$.named(String)
 class AnnotatedClass {
   const AnnotatedClass(this.fieldType);
 

@@ -17,8 +17,7 @@ import 'package:collection/collection.dart';
 
 import 'constant.dart';
 
-/// some implementations of this classes is coped over
-/// from analyzer package
+/// some implementations of this classes is copied over from analyzer package
 
 class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementStack<Constant> {
   final ElementResolver _resolver;
@@ -62,24 +61,28 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
       });
     }
 
-    final classDeclaration = node.thisOrAncestorOfType<ClassDeclaration>();
-    final initializers = node.initializers;
-    final superClass = classDeclaration?.extendsClause?.superclass;
+    final interfaceDec = node.parent as NamedCompilationUnitMember;
+    assert(interfaceDec is ClassDeclaration || interfaceDec is EnumDeclaration);
     ConstObjectImpl? superConstObj;
-    if (superClass != null) {
-      final superConstInvocations = initializers.whereType<SuperConstructorInvocation>();
-      final superConstName = superConstInvocations.firstOrNull?.constructorName?.name;
-      final (superLib, superNode as ClassDeclaration, loc) = _resolver.astNodeFor(
-        IdentifierRef.fromType(superClass),
-        _library,
-      );
-      visitElementScoped(superLib, () {
-        final constructors = superNode.members.whereType<ConstructorDeclaration>();
-        final superConstructor = constructors.where((c) => c.name?.lexeme == superConstName).single;
-        superConstObj = evaluate(superConstructor) as ConstObjectImpl?;
-      });
+    final initializers = node.initializers;
+    if (interfaceDec is ClassDeclaration) {
+      final superClass = interfaceDec.extendsClause?.superclass;
+      if (superClass != null) {
+        final superConstInvocations = initializers.whereType<SuperConstructorInvocation>();
+        final superConstName = superConstInvocations.firstOrNull?.constructorName?.name;
+        final (superLib, superNode as ClassDeclaration, loc) = _resolver.astNodeFor(
+          IdentifierRef.fromType(superClass),
+          _library,
+        );
+        visitElementScoped(superLib, () {
+          final constructors = superNode.members.whereType<ConstructorDeclaration>();
+          final superConstructor = constructors.where((c) => c.name?.lexeme == superConstName).single;
+          superConstObj = evaluate(superConstructor) as ConstObjectImpl?;
+        });
+      }
     }
-    final fields = classDeclaration!.members.whereType<FieldDeclaration>();
+
+    final fields = interfaceDec.childEntities.whereType<FieldDeclaration>();
     final params = node.parameters.parameters;
     final values = <String, Constant?>{};
     final positionalNames = <int, String>{};
@@ -112,8 +115,11 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
       }
     }
 
-    final className = classDeclaration.name.lexeme;
-    final type = NamedTypeRefImpl(className, _library.buildLocation(className, TopLevelIdentifierType.$class));
+    final interfaceName = interfaceDec.name.lexeme;
+    final type = NamedTypeRefImpl(
+      interfaceName,
+      _library.buildDeclarationRef(interfaceName, TopLevelIdentifierType.$class),
+    );
     return ConstObjectImpl(values, positionalNames, type);
   }
 
@@ -343,7 +349,6 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
 
   @override
   Constant? visitPropertyAccess(PropertyAccess node) {
-    print('PropertyAccess: ${node.propertyName}');
     final target = node.realTarget;
     if (target is PrefixedIdentifier) {
       return _getConstantValue(
