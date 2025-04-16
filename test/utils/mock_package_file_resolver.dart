@@ -34,16 +34,6 @@ class MockPackageFileResolver implements PackageFileResolver {
   }
 
   @override
-  String uriToPackageImport(Uri uri) {
-    final path = uri.toString();
-    if (path.startsWith('path/to/test/lib/')) {
-      final packagePath = path.replaceFirst('path/to/test/lib/', '');
-      return 'package:test/$packagePath';
-    }
-    return path;
-  }
-
-  @override
   AssetSrc buildAssetUri(Uri uri, {AssetSrc? relativeTo}) {
     return AssetSrc(File.fromUri(uri), uri, 'mock-test-hash');
   }

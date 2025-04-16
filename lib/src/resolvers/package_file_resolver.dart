@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:lean_builder/src/errors/resolver_error.dart';
 import 'package:path/path.dart' as p;
 import 'package:xxh3/xxh3.dart';
 import 'file_asset.dart';
@@ -26,9 +27,6 @@ abstract class PackageFileResolver {
   String packageFor(Uri uri, {Uri? relativeTo});
 
   String pathFor(String package);
-
-  /// Converts a file URI to a package import string
-  String uriToPackageImport(Uri uri);
 
   AssetSrc buildAssetUri(Uri uri, {AssetSrc? relativeTo});
 
@@ -72,8 +70,10 @@ class PackageFileResolverImpl implements PackageFileResolver {
 
   @override
   String pathFor(String package) {
-    assert(packageToPath.containsKey(package), 'Package $package not found');
-    return packageToPath[package]!;
+    if (packageToPath.containsKey(package)) {
+      return packageToPath[package]!;
+    }
+    throw PackageNotFoundError('Package $package not found');
   }
 
   /// Creates a resolver for the specified root directory
@@ -84,36 +84,41 @@ class PackageFileResolverImpl implements PackageFileResolver {
 
   /// Helper method to load and parse package configuration
   static _PackageConfig _loadPackageConfig(String rootPath) {
-    final packageConfig = File.fromUri(Uri.file(p.join(rootPath, _packageConfigPath)));
-    final json = jsonDecode(packageConfig.readAsStringSync());
-    final packageConfigJson = json['packages'] as List<dynamic>;
-    final packagesHash = xxh3String(Uint8List.fromList(jsonEncode(packageConfigJson).codeUnits));
-
-    final packageToPath = <String, String>{};
-    final pathToPackage = <String, String>{};
-
-    for (var entry in packageConfigJson) {
-      String name = entry['name'] as String;
-      if (name[0] == '_') continue;
-      if (name == _skyEnginePackage) {
-        name = PackageFileResolver.dartSdk;
-      }
-      final packageUri = Uri.parse(entry['rootUri'] as String);
-      String resolvedPath = packageUri.toString();
-      if (!packageUri.hasScheme) {
-        Uri absoluteUri = packageUri;
-        absoluteUri = Directory.current.uri.resolve(packageUri.pathSegments.skip(1).join('/'));
-        resolvedPath = absoluteUri.replace(path: p.canonicalize(absoluteUri.path)).toString();
-      }
-      packageToPath[name] = resolvedPath;
-      pathToPackage[resolvedPath] = name;
+    final packageConfig = File(p.join(rootPath, _packageConfigPath));
+    if (!packageConfig.existsSync()) {
+      throw PackageConfigLoadError('Package config file not found at ${packageConfig.path}');
     }
-    if (!packageToPath.containsKey(PackageFileResolver.dartSdk)) {
-      final sdkPath = PackageFileResolver.dartSdkPath.toString();
-      pathToPackage[sdkPath] = PackageFileResolver.dartSdk;
-      packageToPath[PackageFileResolver.dartSdk] = sdkPath;
+    try {
+      final json = jsonDecode(packageConfig.readAsStringSync());
+      final packageConfigJson = json['packages'] as List<dynamic>;
+      final packagesHash = xxh3String(Uint8List.fromList(jsonEncode(packageConfigJson).codeUnits));
+      final packageToPath = <String, String>{};
+      final pathToPackage = <String, String>{};
+      for (var entry in packageConfigJson) {
+        String name = entry['name'] as String;
+        if (name[0] == '_') continue;
+        if (name == _skyEnginePackage) {
+          name = PackageFileResolver.dartSdk;
+        }
+        final packageUri = Uri.parse(entry['rootUri'] as String);
+        String resolvedPath = packageUri.toString();
+        if (!packageUri.hasScheme) {
+          Uri absoluteUri = packageUri;
+          absoluteUri = Directory.current.uri.resolve(packageUri.pathSegments.skip(1).join('/'));
+          resolvedPath = absoluteUri.replace(path: p.canonicalize(absoluteUri.path)).toString();
+        }
+        packageToPath[name] = resolvedPath;
+        pathToPackage[resolvedPath] = name;
+      }
+      if (!packageToPath.containsKey(PackageFileResolver.dartSdk)) {
+        final sdkPath = PackageFileResolver.dartSdkPath.toString();
+        pathToPackage[sdkPath] = PackageFileResolver.dartSdk;
+        packageToPath[PackageFileResolver.dartSdk] = sdkPath;
+      }
+      return _PackageConfig(packageToPath, pathToPackage, packagesHash);
+    } catch (e) {
+      throw PackageConfigParseError(packageConfig.path, e);
     }
-    return _PackageConfig(packageToPath, pathToPackage, packagesHash);
   }
 
   @override
@@ -121,7 +126,6 @@ class PackageFileResolverImpl implements PackageFileResolver {
     if (uri.scheme == 'dart') {
       return PackageFileResolver.dartSdk;
     }
-
     final path = resolveFileUri(uri, relativeTo: relativeTo).replace(scheme: 'file').toString();
     String? bestMatch;
     int bestMatchLength = 0;
@@ -142,8 +146,10 @@ class PackageFileResolverImpl implements PackageFileResolver {
         }
       }
     }
-    assert(bestMatch != null, 'Could not find package for $path');
-    return bestMatch!;
+    if (bestMatch == null) {
+      throw PackageNotFoundError(path);
+    }
+    return bestMatch;
   }
 
   @override
@@ -184,14 +190,12 @@ class PackageFileResolverImpl implements PackageFileResolver {
     assert(!uri.hasEmptyPath, 'URI path cannot be empty');
     final absoluteUri = resolveFileUri(uri, relativeTo: relativeTo?.uri);
     final shortUri = toShortUri(absoluteUri);
-
     try {
       final hash = xxh3String(Uint8List.fromList(shortUri.toString().codeUnits));
       final asset = AssetSrc(File.fromUri(absoluteUri), shortUri, hash);
       return _assetCache[reqId] = asset;
     } catch (e) {
-      print(e);
-      rethrow;
+      throw AssetUriError(uri.toString(), e.toString());
     }
   }
 
@@ -230,8 +234,8 @@ class PackageFileResolverImpl implements PackageFileResolver {
     // Handle special case for dart:core and other standard libraries
     String libraryName = uri.path;
 
-    /// remove the leading underscore
-    /// for the internal libraries
+    // remove the leading underscore for the internal library
+    /// todo: investigate why this is needed
     if (libraryName == '_internal') {
       libraryName = libraryName.substring(1);
     }
@@ -243,7 +247,7 @@ class PackageFileResolverImpl implements PackageFileResolver {
     }
 
     // Some libraries might be directly in the lib directory
-    final directUri = Uri.parse(p.joinAll([sdkPath, 'lib', '$libraryName.dart']));
+    final directUri = Uri.parse(p.joinAll([sdkPath, 'lib', ...uri.pathSegments]));
     if (File.fromUri(directUri).existsSync()) {
       return directUri;
     }
@@ -260,22 +264,30 @@ class PackageFileResolverImpl implements PackageFileResolver {
     }
 
     // If we can't find the file, return the best guess
-    return absoluteUri;
+    return directUri;
   }
 
   Uri _resolveRelativeUri(Uri uri, Uri? relativeTo) {
-    assert(relativeTo != null, 'Relative URI requires a base URI');
-    final baseDir = p.dirname(relativeTo!.path);
+    if (relativeTo == null) {
+      throw InvalidPathError('Relative URI requires a base URI');
+    }
+    final baseDir = p.dirname(relativeTo.path);
     final uriPath = uri.path.startsWith('/') ? uri.path.substring(1) : uri.path;
-    final normalized = p.normalize(p.join(baseDir, uriPath));
-    return Uri(scheme: 'file', path: normalized);
+    try {
+      final normalized = p.normalize(p.join(baseDir, uriPath));
+      return Uri(scheme: 'file', path: normalized);
+    } catch (e) {
+      throw InvalidPathError(uri.toString());
+    }
   }
 
   @override
   String uriToPackageImport(Uri uri) {
     final splits = uri.path.split('/lib/');
     final package = pathToPackage[splits.firstOrNull];
-    assert(package != null, 'Package not found for URI: $uri');
+    if (package == null) {
+      throw PackageNotFoundError(uri.toString());
+    }
     return 'package:$package/${splits.last}';
   }
 
