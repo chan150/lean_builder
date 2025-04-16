@@ -1,10 +1,11 @@
 import 'dart:io';
 import 'dart:typed_data';
-
+import 'package:xxh3/xxh3.dart';
 import 'package:lean_builder/src/resolvers/file_asset.dart';
 
-class AssetFileMock extends AssetSrc {
-  AssetFileMock(this.content, {String id = 'mock-test-hash'}) : super(File('mock/path'), Uri.parse('mock/path'), id);
+class StringSrc extends AssetSrc {
+  StringSrc(this.content, {String uri = 'package:root/path.dart'})
+    : super(File(uri), Uri.parse(uri), xxh3String(Uint8List.fromList(uri.codeUnits)));
 
   final String content;
 

@@ -31,10 +31,10 @@ class TopLevelScanner {
         Token nextToken = token.next!;
         if (token.type == TokenType.AT) {
           hasTopLevelAnnotation = true;
-          token = nextToken.next;
-          // could be import-prefixed
-          if (token?.type == TokenType.PERIOD) {
-            token = token?.next;
+          token = nextToken;
+          // could be import-prefixed or has a named constructor
+          while (token?.next?.type == TokenType.PERIOD) {
+            token = token?.next?.next;
           }
           token = _skipParenthesis(token?.next);
           continue;
@@ -50,7 +50,7 @@ class TopLevelScanner {
               final (nextT, name) = _tryParseLibraryDirective(nextToken);
               libraryName = name;
               token = nextT ?? nextToken;
-              break;
+              continue;
             case Keyword.IMPORT:
             case Keyword.EXPORT:
             case Keyword.PART:
@@ -59,25 +59,25 @@ class TopLevelScanner {
               if (direcitve != null) {
                 results.addDirective(asset, direcitve);
               }
-              break;
+              continue;
             case Keyword.TYPEDEF:
               nextToken = parseTypeDef(nextToken, asset) ?? nextToken;
-              break;
+              continue;
             case Keyword.CLASS:
-              if (_isValidName(nextLexeme)) {
-                // it could be a class type alias
-                nextToken = _skipUntilAny(nextToken, {TokenType.OPEN_CURLY_BRACKET, TokenType.SEMICOLON});
-                final type =
-                    nextToken.type == TokenType.SEMICOLON
-                        ? TopLevelIdentifierType.$typeAlias
-                        : TopLevelIdentifierType.$class;
-                results.addDeclaration(nextLexeme, asset, type);
-              }
-              break;
+              results.addDeclaration(nextLexeme, asset, TopLevelIdentifierType.$class);
+              token = _skipUntilAny(token, {TokenType.OPEN_CURLY_BRACKET, TokenType.SEMICOLON});
+              continue;
             case Keyword.MIXIN:
+              if (nextToken.type == Keyword.CLASS) {
+                token = nextToken;
+                continue;
+              }
+              results.addDeclaration(nextLexeme, asset, TopLevelIdentifierType.$mixin);
+              token = _skipUntil(token, TokenType.OPEN_CURLY_BRACKET);
+              continue;
             case Keyword.ENUM:
               results.addDeclaration(nextLexeme, asset, TopLevelIdentifierType.fromKeyword(type));
-              break;
+              continue;
             case Keyword.EXTENSION:
               String extName = nextLexeme;
               if (nextLexeme == 'type') {
@@ -92,7 +92,7 @@ class TopLevelScanner {
               results.addDeclaration(extName, asset, TopLevelIdentifierType.$extension);
 
               nextToken = _skipUntil(nextToken, TokenType.OPEN_CURLY_BRACKET);
-              break;
+              continue;
           }
         } else if ({Keyword.CONST, Keyword.FINAL, Keyword.VAR, Keyword.LATE}.contains(token.type) &&
             nextToken.isIdentifier) {

@@ -533,7 +533,17 @@ class ParameterElementImpl extends VariableElementImpl implements ParameterEleme
 }
 
 class ClassElementImpl extends InterfaceElementImpl implements ClassElement {
-  ClassElementImpl({required super.name, required super.library});
+  ClassElementImpl({
+    required super.name,
+    required super.library,
+    required this.isAbstract,
+    required this.isBase,
+    required this.isFinal,
+    required this.isInterface,
+    required this.isMixinApplication,
+    required this.isMixinClass,
+    required this.isSealed,
+  });
 
   @override
   List<ConstructorElement> get constructors => _constructors;
@@ -551,19 +561,30 @@ class ClassElementImpl extends InterfaceElementImpl implements ClassElement {
 
   @override
   ConstructorElement? get unnamedConstructor => _constructors.firstWhereOrNull((e) => e.name.isEmpty);
-}
-
-class ClassTypeAliasElementImpl extends InterfaceElementImpl implements ClassTypeAliasElement, TypeAliasElement {
-  ClassTypeAliasElementImpl({required super.name, required super.library});
 
   @override
-  TypeRef get aliasedType => _aliasedType!;
+  final bool isAbstract;
 
-  TypeRef? _aliasedType;
+  @override
+  final bool isBase;
 
-  set aliasedType(TypeRef? aliasedType) {
-    _aliasedType = aliasedType;
-  }
+  @override
+  bool get isConstructable => !isAbstract && !isSealed;
+
+  @override
+  final bool isFinal;
+
+  @override
+  final bool isInterface;
+
+  @override
+  final bool isMixinApplication;
+
+  @override
+  final bool isMixinClass;
+
+  @override
+  final bool isSealed;
 }
 
 class EnumElementImpl extends InterfaceElementImpl implements EnumElement {
@@ -571,10 +592,13 @@ class EnumElementImpl extends InterfaceElementImpl implements EnumElement {
 }
 
 class MixinElementImpl extends InterfaceElementImpl implements MixinElement {
-  MixinElementImpl({required super.name, required super.library});
+  MixinElementImpl({required super.name, required super.library, required this.isBase});
 
   @override
-  List<TypeRef> get superclassConstraints => _superConstrains;
+  final bool isBase;
+
+  @override
+  List<NamedTypeRef> get superclassConstraints => _superConstrains;
 
   void addSuperConstrain(NamedTypeRef superConstrains) {
     _superConstrains.add(superConstrains);

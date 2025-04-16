@@ -4,7 +4,7 @@ import 'package:lean_builder/src/resolvers/file_asset.dart';
 import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
 import 'package:lean_builder/src/resolvers/type/type_ref.dart';
-import 'package:lean_builder/src/resolvers/visitor/element_resolver_visitor.dart';
+import 'package:lean_builder/src/resolvers/element_builder/element_builder.dart';
 import 'package:lean_builder/src/scanner/assets_graph.dart';
 import 'package:lean_builder/src/scanner/directive_statement.dart';
 import 'package:lean_builder/src/scanner/identifier_ref.dart';
@@ -29,15 +29,14 @@ class ElementResolver {
   ElementResolver(this.graph, this.fileResolver, this.parser);
 
   LibraryElement resolveLibrary(AssetSrc src) {
-    final unit = parser.parse(src.path, key: src.id);
-    final rootLibrary = libraryFor(src);
-    final visitor = ElementResolverVisitor(this, rootLibrary);
-    for (final child in unit.childEntities.whereType<AnnotatedNode>()) {
+    final library = libraryFor(src);
+    final visitor = ElementBuilder(this, library);
+    for (final child in library.compilationUnit.childEntities.whereType<AnnotatedNode>()) {
       if (child.metadata.isNotEmpty) {
         child.accept(visitor);
       }
     }
-    return rootLibrary;
+    return library;
   }
 
   LibraryElement libraryForDirective(DirectiveElement directive) {
@@ -63,7 +62,7 @@ class ElementResolver {
         final importingLib = libraryFor(importingLibrary);
         final identifier = IdentifierRef(ref.name, importPrefix: ref.importPrefix);
         final (library, unit, _) = astNodeFor(identifier, importingLib);
-        final visitor = ElementResolverVisitor(this, library);
+        final visitor = ElementBuilder(this, library);
         unit.accept(visitor);
         final element = library.getElement(ref.name);
         if (element != null) {
@@ -78,7 +77,7 @@ class ElementResolver {
 
   LibraryElementImpl libraryFor(AssetSrc src) {
     return _libraryCache.putIfAbsent(src.id, () {
-      final unit = parser.parse(src.path, key: src.id);
+      final unit = parser.parse(src);
       return LibraryElementImpl(this, unit, src: src);
     });
   }
@@ -228,23 +227,23 @@ class ElementResolver {
   }
 
   void resolveMethods(InterfaceElement elem, {ResolvePredicate<MethodDeclaration>? predicate}) {
-    final astResolver = ElementResolverVisitor(this, elem.library);
+    final elementBuilder = ElementBuilder(this, elem.library);
     final declaration = elem.library.compilationUnit.declarations.whereType<NamedCompilationUnitMember>();
     final interfaceElemDeclaration = declaration.firstWhere(
       (d) => d.name.lexeme == elem.name,
       orElse: () => throw Exception('Could not find element declaration named ${elem.name}'),
     );
     final methods = interfaceElemDeclaration.childEntities.filterAs<MethodDeclaration>(predicate);
-    astResolver.visitElementScoped(elem, () {
+    elementBuilder.visitElementScoped(elem, () {
       for (final method in methods) {
-        method.accept(astResolver);
+        method.accept(elementBuilder);
       }
     });
   }
 
   void resolveTypeAliases(LibraryElementImpl library, {ResolvePredicate<TypeAlias>? predicate}) {
     final unit = library.compilationUnit;
-    final visitor = ElementResolverVisitor(this, library);
+    final visitor = ElementBuilder(this, library);
     for (final typeAlias in unit.declarations.filterAs<TypeAlias>(predicate)) {
       typeAlias.accept(visitor);
     }
@@ -252,7 +251,7 @@ class ElementResolver {
 
   void resolveMixins(LibraryElementImpl library, {ResolvePredicate<MixinDeclaration>? predicate}) {
     final unit = library.compilationUnit;
-    final visitor = ElementResolverVisitor(this, library);
+    final visitor = ElementBuilder(this, library);
     for (final mixin in unit.declarations.filterAs<MixinDeclaration>(predicate)) {
       mixin.accept(visitor);
     }
@@ -260,7 +259,7 @@ class ElementResolver {
 
   void resolveEnums(LibraryElementImpl library, {ResolvePredicate<EnumDeclaration>? predicate}) {
     final unit = library.compilationUnit;
-    final visitor = ElementResolverVisitor(this, library);
+    final visitor = ElementBuilder(this, library);
     for (final enumDeclaration in unit.declarations.filterAs<EnumDeclaration>(predicate)) {
       enumDeclaration.accept(visitor);
     }
@@ -268,17 +267,22 @@ class ElementResolver {
 
   void resolveFunctions(LibraryElementImpl library, {ResolvePredicate<FunctionDeclaration>? predicate}) {
     final unit = library.compilationUnit;
-    final visitor = ElementResolverVisitor(this, library);
+    final visitor = ElementBuilder(this, library);
     for (final function in unit.declarations.filterAs<FunctionDeclaration>(predicate)) {
       function.accept(visitor);
     }
   }
 
-  void resolveClasses(LibraryElementImpl library, {ResolvePredicate<ClassDeclaration>? predicate}) {
+  void resolveClasses(LibraryElementImpl library, {ResolvePredicate<NamedCompilationUnitMember>? predicate}) {
     final unit = library.compilationUnit;
-    final visitor = ElementResolverVisitor(this, library);
+    final visitor = ElementBuilder(this, library);
     for (final classDeclaration in unit.declarations.filterAs<ClassDeclaration>(predicate)) {
       classDeclaration.accept(visitor);
+    }
+
+    /// class type alias are treated as classes
+    for (final classTypeAlias in unit.declarations.filterAs<ClassTypeAlias>(predicate)) {
+      classTypeAlias.accept(visitor);
     }
   }
 

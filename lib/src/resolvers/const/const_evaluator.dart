@@ -10,8 +10,8 @@ import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:lean_builder/src/resolvers/element/element.dart';
 import 'package:lean_builder/src/resolvers/element_resolver.dart';
 import 'package:lean_builder/src/resolvers/type/type_ref.dart';
-import 'package:lean_builder/src/resolvers/visitor/element_resolver_visitor.dart';
-import 'package:lean_builder/src/resolvers/visitor/element_stack.dart';
+import 'package:lean_builder/src/resolvers/element_builder/element_builder.dart';
+import 'package:lean_builder/src/resolvers/element_builder/element_stack.dart';
 import 'package:lean_builder/src/scanner/scan_results.dart';
 import 'package:collection/collection.dart';
 
@@ -23,7 +23,7 @@ import 'constant.dart';
 class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementStack<Constant> {
   final ElementResolver _resolver;
 
-  final ElementResolverVisitor _elementResolverVisitor;
+  final ElementBuilder _elementResolverVisitor;
 
   LibraryElement get _library => currentLibrary();
 

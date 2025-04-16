@@ -184,14 +184,63 @@ abstract class ClassElement extends InterfaceElement {
   ConstructorElement? getConstructor(String name);
 
   ConstructorElement? get unnamedConstructor;
-}
 
-abstract class ClassTypeAliasElement extends InterfaceElement {}
+  /// Whether the class is abstract. A class is abstract if it has an
+  /// explicit `abstract` modifier. Note, that this definition of
+  /// <i>abstract</i> is different from <i>has unimplemented members</i>.
+  bool get isAbstract;
+
+  /// Whether this class is a base class.
+  ///
+  /// A class is a base class if it has an explicit `base` modifier, or the
+  /// class has a `base` induced modifier and [isSealed] is `true` as well.
+  /// The base modifier allows the class to be extended but not implemented.
+  bool get isBase;
+
+  /// Whether the class can be instantiated.
+  bool get isConstructable;
+
+  /// Whether the class is a final class.
+  ///
+  /// A class is a final class if it has an explicit `final` modifier, or the
+  /// class has a `final` induced modifier and [isSealed] is `true` as well.
+  /// The final modifier prohibits this class from being extended, implemented,
+  /// or mixed in.
+  bool get isFinal;
+
+  /// Whether the class is an interface class.
+  ///
+  /// A class is an interface class if it has an explicit `interface` modifier,
+  /// or the class has an `interface` induced modifier and [isSealed] is `true`
+  /// as well. The interface modifier allows the class to be implemented, but
+  /// not extended or mixed in.
+  bool get isInterface;
+
+  /// Whether the class is a mixin application.
+  ///
+  /// A class is a mixin application if it was declared using the syntax
+  /// `class A = B with C;`.
+  bool get isMixinApplication;
+
+  /// Whether the class is a mixin class.
+  ///
+  /// A class is a mixin class if it has an explicit `mixin` modifier.
+  bool get isMixinClass;
+
+  /// Whether the class is a sealed class.
+  ///
+  /// A class is a sealed class if it has an explicit `sealed` modifier.
+  bool get isSealed;
+}
 
 abstract class EnumElement implements InterfaceElement {}
 
 abstract class MixinElement implements Element {
   List<TypeRef> get superclassConstraints;
-}
 
-abstract class NullElement extends Element {}
+  /// Whether the mixin is a base mixin.
+  ///
+  /// A mixin is a base mixin if it has an explicit `base` modifier.
+  /// The base modifier allows a mixin to be mixed in, but not implemented.
+  bool get isBase;
+}

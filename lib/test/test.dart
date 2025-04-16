@@ -3,6 +3,8 @@ import 'package:lean_builder/test/test2.dart';
 
 typedef TypedType = void Function(int x, bool y);
 
+abstract base class X {}
+
 class Genix$ extends test2.SuperX {
   final Type type;
   final String? str2;
