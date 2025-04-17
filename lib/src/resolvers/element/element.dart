@@ -275,7 +275,7 @@ abstract class ClassElement extends InterfaceElement {
   bool get isFinal;
 
   /// Whether the declaration has an explicit `interface` modifier
-  bool get inInterface;
+  bool get isInterface;
 
   /// Whether the class is a mixin application.
   ///

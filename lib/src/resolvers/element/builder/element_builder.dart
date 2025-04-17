@@ -49,7 +49,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       isAbstract: node.abstractKeyword != null,
       isSealed: node.sealedKeyword != null,
       isBase: node.baseKeyword != null,
-      inInterface: node.interfaceKeyword != null,
+      isInterface: node.interfaceKeyword != null,
       isMixinClass: node.mixinKeyword != null,
       isFinal: node.finalKeyword != null,
       isMixinApplication: true,
@@ -148,7 +148,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       isSealed: isSealed,
       isBase: node.baseKeyword != null,
       isFinal: node.finalKeyword != null,
-      inInterface: node.interfaceKeyword != null,
+      isInterface: node.interfaceKeyword != null,
       isMixinClass: node.mixinKeyword != null,
       isMixinApplication: false,
     );

@@ -663,7 +663,7 @@ class ClassElementImpl extends InterfaceElementImpl implements ClassElement {
     required this.isAbstract,
     required this.isBase,
     required this.isFinal,
-    required this.inInterface,
+    required this.isInterface,
     required this.isMixinApplication,
     required this.isMixinClass,
     required this.isSealed,
@@ -682,7 +682,7 @@ class ClassElementImpl extends InterfaceElementImpl implements ClassElement {
   final bool isFinal;
 
   @override
-  final bool inInterface;
+  final bool isInterface;
 
   @override
   final bool isMixinApplication;
