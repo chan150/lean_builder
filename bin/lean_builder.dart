@@ -51,7 +51,7 @@ void main(List<String> args) async {
       final chunkResolver = ElementResolver(assetsGraph, fileResolver, parser);
       for (final asset in chunk) {
         if (asset.hasAnnotation) {
-          final assetFile = fileResolver.buildAssetUri(asset.uri);
+          final assetFile = fileResolver.assetSrcFor(asset.uri);
           count++;
           final library = chunkResolver.resolveLibrary(assetFile) as LibraryElementImpl;
           final element = library.resolvedElements.firstOrNull;

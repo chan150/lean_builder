@@ -43,7 +43,7 @@ class FileAssetReader {
 
         _collectAssets(package, entity, assets);
       } else if (entity is File && isValid(package, entity)) {
-        assets.add(fileResolver.buildAssetUri(entity.uri));
+        assets.add(fileResolver.assetSrcFor(entity.uri));
       }
     }
   }

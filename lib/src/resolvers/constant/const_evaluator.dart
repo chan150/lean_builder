@@ -120,7 +120,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
       interfaceName,
       _library.buildDeclarationRef(interfaceName, TopLevelIdentifierType.$class),
     );
-    return ConstObjectImpl(values, positionalNames, type);
+    return ConstObjectImpl(values, type, positionalNames: positionalNames);
   }
 
   @override
@@ -509,7 +509,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
       final type = NamedTypeRefImpl(node.name.lexeme, loc);
       return ConstTypeRef(type);
     } else if (node is MethodDeclaration) {
-      assert(node.isStatic, 'Methods reference in const context should be static');
+      assert(node.isStatic, 'Methods reference in constant context should be static');
       final tempInterfaceElm = InterfaceElementImpl(name: '_', library: lib);
       _elementResolverVisitor.visitElementScoped(tempInterfaceElm, () {
         _elementResolverVisitor.visitMethodDeclaration(node);
@@ -523,7 +523,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
       final enumDeclaration = node.thisOrAncestorOfType<EnumDeclaration>();
       return ConstEnumValue(enumDeclaration?.name.lexeme ?? '', node.name.lexeme);
     } else if (node is FieldDeclaration) {
-      assert(node.isStatic, 'Fields reference in const context should be static');
+      assert(node.isStatic, 'Fields reference in constant context should be static');
       final variable = node.fields.variables.firstWhere(
         (e) => e.name.lexeme == ref.name,
         orElse: () => throw Exception('Identifier ${ref.name} not found in ${lib.src.uri}'),

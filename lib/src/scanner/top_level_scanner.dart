@@ -108,7 +108,7 @@ class TopLevelScanner {
       }
       results.updateAssetInfo(asset, content: bytes, hasAnnotation: hasTopLevelAnnotation, libraryName: libraryName);
     } catch (e) {
-      print('Error scanning file: ${asset.path}');
+      print('Error scanning file: ${asset.uri}');
       if (e is Error) {
         print(e.stackTrace);
       } else {
@@ -222,7 +222,7 @@ class TopLevelScanner {
       return (_skipUntil(next, TokenType.SEMICOLON), null);
     }
 
-    final asset = fileResolver.buildAssetUri(uri, relativeTo: enclosingAsset);
+    final asset = fileResolver.assetSrcFor(uri, relativeTo: enclosingAsset);
 
     final show = <String>[];
     final hide = <String>[];

@@ -1,5 +1,5 @@
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:lean_builder/src/resolvers/const/constant.dart';
+import 'package:lean_builder/src/resolvers/constant/constant.dart';
 import 'package:lean_builder/src/resolvers/element_resolver.dart';
 import 'package:lean_builder/src/resolvers/file_asset.dart';
 import 'package:lean_builder/src/resolvers/type/substitution.dart';
@@ -31,6 +31,8 @@ abstract class Element {
   String get identifier;
 
   List<ElementAnnotation> get metadata;
+
+  AssetSrc get librarySrc;
 }
 
 abstract class TypeParameterizedElement extends Element {

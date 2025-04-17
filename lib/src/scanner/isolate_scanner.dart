@@ -140,7 +140,7 @@ class IsolateTLScanner {
 
   void updateIncrementalAssets(TopLevelScanner scanner) {
     for (final entry in assetsGraph.getAssetsForPackage(rootPackageName)) {
-      final asset = fileResolver.buildAssetUri(entry.uri);
+      final asset = fileResolver.assetSrcFor(entry.uri);
       if (!asset.existsSync()) {
         assetsGraph.removeAsset(asset.id);
         continue;

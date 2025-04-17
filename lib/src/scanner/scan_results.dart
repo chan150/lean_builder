@@ -195,7 +195,7 @@ class AssetsScanResults extends ScanResults {
   @override
   String addAsset(AssetSrc asset, {bool isVisited = true}) {
     if (!assets.containsKey(asset.id)) {
-      assets[asset.id] = [asset.shortPath.toString(), null, 0];
+      assets[asset.id] = [asset.shortUri.toString(), null, 0];
     }
     if (isVisited) visitedAssets.add(asset.id);
     return asset.id;

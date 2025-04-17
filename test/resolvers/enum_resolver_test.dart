@@ -1,3 +1,4 @@
+import 'package:lean_builder/src/resolvers/constant/constant.dart';
 import 'package:lean_builder/src/resolvers/element_resolver.dart';
 import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
@@ -6,6 +7,8 @@ import 'package:lean_builder/src/scanner/top_level_scanner.dart';
 import 'package:test/test.dart';
 
 import '../scanner/string_asset_src.dart';
+import '../utils/mock_package_file_resolver.dart';
+import 'dart_core_assets.dart';
 
 void main() {
   late PackageFileResolver fileResolver;
@@ -14,7 +17,7 @@ void main() {
 
   setUpAll(() {
     final packageToPath = {PackageFileResolver.dartSdk: 'path/to/sdk', 'root': 'path/to/root'};
-    fileResolver = PackageFileResolverImpl(packageToPath, packageToPath.map((k, v) => MapEntry(v, k)), '', 'root');
+    fileResolver = MockPackageFileResolver(packageToPath);
   });
 
   setUp(() {
@@ -71,14 +74,45 @@ void main() {
 
   test('should resolve enum with fields', () {
     final asset = StringSrc('''
-      enum Foo { item1, item2 }
+      enum Foo { enum1, enum2 }
     ''');
     scanner!.scanFile(asset);
     final library = resolver!.resolveLibrary(asset);
     final enumElement = library.getEnum('Foo');
     expect(enumElement, isNotNull);
     expect(enumElement!.fields.length, 2);
-    expect(enumElement.fields[0].name, 'item1');
-    expect(enumElement.fields[1].name, 'item2');
+    expect(enumElement.fields[0].name, 'enum1');
+    expect(enumElement.fields[1].name, 'enum2');
+  });
+
+  test('should resolve enum with no arguments', () {
+    final asset = StringSrc('''
+      enum Foo { item1; }
+    ''');
+    scanner!.scanFile(asset);
+
+    final library = resolver!.resolveLibrary(asset);
+    final enumElement = library.getEnum('Foo');
+    expect(enumElement, isNotNull);
+    expect(enumElement!.fields[0].constantValue, isNull);
+  });
+
+  test('should resolve enum with arguments', () {
+    final asset = StringSrc('''
+      enum Foo { 
+        item1(1);
+        final int value; 
+        const Foo(this.value); 
+      }
+    ''');
+    scanner!.scanFile(asset);
+    includeDartCoreAssets(scanner!);
+    final library = resolver!.resolveLibrary(asset);
+    final enumElement = library.getEnum('Foo');
+    expect(enumElement, isNotNull);
+    final constantFields = enumElement!.fields.where((field) => field.isEnumConstant);
+    final constantObj = constantFields.first.constantValue;
+    expect(constantObj, isA<ConstObject>());
+    expect((constantObj as ConstObject).props, {'value': ConstInt(1)});
   });
 }

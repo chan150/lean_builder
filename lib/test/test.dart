@@ -98,5 +98,5 @@ enum ColorEnum { red, green, blue }
 //
 //   final String value;
 //
-//   const EnumWithArgs(this.value);
+//   constant EnumWithArgs(this.value);
 // }

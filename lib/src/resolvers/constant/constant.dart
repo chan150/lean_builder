@@ -1,7 +1,9 @@
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:lean_builder/src/resolvers/const/const_evaluator.dart';
+import 'package:collection/collection.dart';
 import 'package:lean_builder/src/resolvers/type/type_ref.dart';
 import 'package:lean_builder/src/scanner/identifier_ref.dart';
+
+import 'const_evaluator.dart';
 
 sealed class Constant {
   const Constant();
@@ -14,6 +16,12 @@ class InvalidConst extends Constant {
 
   @override
   String toString() => 'INVALID_CONST';
+
+  @override
+  bool operator ==(Object other) => identical(this, other) || other is InvalidConst && runtimeType == other.runtimeType;
+
+  @override
+  int get hashCode => 0;
 }
 
 // represents a primitive constant value
@@ -28,6 +36,13 @@ class ConstTypeRef extends ConstValue<TypeRef> {
 
   @override
   String toString() => value.toString();
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is ConstTypeRef && runtimeType == other.runtimeType && value == other.value;
+
+  @override
+  int get hashCode => value.hashCode;
 }
 
 class ConstString extends ConstValue<String> {
@@ -35,6 +50,13 @@ class ConstString extends ConstValue<String> {
 
   @override
   String toString() => value;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is ConstString && runtimeType == other.runtimeType && value == other.value;
+
+  @override
+  int get hashCode => value.hashCode;
 }
 
 class ConstNum extends ConstValue<num> {
@@ -42,6 +64,13 @@ class ConstNum extends ConstValue<num> {
 
   @override
   String toString() => value.toString();
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is ConstNum && runtimeType == other.runtimeType && value == other.value;
+
+  @override
+  int get hashCode => value.hashCode;
 }
 
 class ConstInt extends ConstValue<int> {
@@ -49,6 +78,13 @@ class ConstInt extends ConstValue<int> {
 
   @override
   String toString() => value.toString();
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is ConstInt && runtimeType == other.runtimeType && value == other.value;
+
+  @override
+  int get hashCode => value.hashCode;
 }
 
 class ConstDouble extends ConstValue<double> {
@@ -56,13 +92,27 @@ class ConstDouble extends ConstValue<double> {
 
   @override
   String toString() => value.toString();
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is ConstDouble && runtimeType == other.runtimeType && value == other.value;
+
+  @override
+  int get hashCode => value.hashCode;
 }
 
 class ConstSymbol extends ConstValue<String> {
   ConstSymbol(super.value);
 
   @override
-  String toString() => "'$value'";
+  String toString() => value;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is ConstSymbol && runtimeType == other.runtimeType && value == other.value;
+
+  @override
+  int get hashCode => value.hashCode;
 }
 
 class ConstBool extends ConstValue<bool> {
@@ -70,6 +120,13 @@ class ConstBool extends ConstValue<bool> {
 
   @override
   String toString() => value.toString();
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is ConstBool && runtimeType == other.runtimeType && value == other.value;
+
+  @override
+  int get hashCode => value.hashCode;
 }
 
 class ConstEnumValue extends ConstValue<String> {
@@ -79,6 +136,14 @@ class ConstEnumValue extends ConstValue<String> {
 
   @override
   String toString() => '$enumName.$value';
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ConstEnumValue && runtimeType == other.runtimeType && value == other.value && enumName == other.enumName;
+
+  @override
+  int get hashCode => value.hashCode ^ enumName.hashCode;
 }
 
 abstract class ConstFunctionReference extends Constant {
@@ -113,6 +178,19 @@ class ConstFunctionReferenceImpl extends ConstFunctionReference {
   void addTypeArgument(TypeRef type) {
     _typeArguments.add(type);
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ConstFunctionReferenceImpl &&
+          runtimeType == other.runtimeType &&
+          type == other.type &&
+          name == other.name &&
+          src == other.src &&
+          const ListEquality().equals(_typeArguments, other._typeArguments);
+
+  @override
+  int get hashCode => type.hashCode ^ name.hashCode ^ src.hashCode ^ const ListEquality().hash(_typeArguments);
 }
 
 class ConstList extends ConstValue<List<Constant>> {
@@ -120,6 +198,14 @@ class ConstList extends ConstValue<List<Constant>> {
 
   @override
   String toString() => '[${value.map((e) => e.toString()).join(', ')}]';
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ConstList && runtimeType == other.runtimeType && const ListEquality().equals(value, other.value);
+
+  @override
+  int get hashCode => const ListEquality().hash(value);
 }
 
 class ConstMap extends ConstValue<Map<String, Constant>> {
@@ -127,6 +213,14 @@ class ConstMap extends ConstValue<Map<String, Constant>> {
 
   @override
   String toString() => '{${value.entries.map((e) => '${e.key}: ${e.value}').join(', ')}}';
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ConstMap && runtimeType == other.runtimeType && const MapEquality().equals(value, other.value);
+
+  @override
+  int get hashCode => const MapEquality().hash(value);
 }
 
 class ConstSet extends ConstValue<Set<Constant>> {
@@ -134,6 +228,14 @@ class ConstSet extends ConstValue<Set<Constant>> {
 
   @override
   String toString() => '{${value.map((e) => e.toString()).join(', ')}}';
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ConstSet && runtimeType == other.runtimeType && const SetEquality().equals(value, other.value);
+
+  @override
+  int get hashCode => const SetEquality().hash(value);
 }
 
 abstract class ConstObject extends ConstValue<Null> {
@@ -169,7 +271,7 @@ abstract class ConstObject extends ConstValue<Null> {
 }
 
 class ConstObjectImpl extends ConstObject {
-  ConstObjectImpl(this.props, this._positionalNames, this.type);
+  ConstObjectImpl(this.props, this.type, {this.positionalNames = const {}});
 
   @override
   final TypeRef type;
@@ -177,7 +279,7 @@ class ConstObjectImpl extends ConstObject {
   @override
   final Map<String, Constant?> props;
 
-  final Map<int, String> _positionalNames;
+  final Map<int, String> positionalNames;
 
   @override
   String toString() => '{${props.entries.map((e) => '${e.key}: ${e.value}').join(', ')}}';
@@ -228,12 +330,23 @@ class ConstObjectImpl extends ConstObject {
         final name = arg.name.label.name;
         props[name] = evaluator.evaluate(arg.expression);
       } else {
-        final name = _positionalNames[i];
+        final name = positionalNames[i];
         if (name != null) {
           props[name] = evaluator.evaluate(arg);
         }
       }
     }
-    return ConstObjectImpl(props, _positionalNames, type);
+    return ConstObjectImpl(props, type, positionalNames: positionalNames);
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ConstObjectImpl &&
+          runtimeType == other.runtimeType &&
+          const MapEquality().equals(props, other.props) &&
+          type == other.type;
+
+  @override
+  int get hashCode => const MapEquality().hash(props) ^ type.hashCode;
 }

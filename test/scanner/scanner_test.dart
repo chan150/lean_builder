@@ -12,7 +12,7 @@ main() {
   late TopLevelScanner scanner;
   late AssetsGraph assetsGraph;
   setUp(() {
-    final mockPackageFileResolver = MockPackageFileResolver();
+    final mockPackageFileResolver = MockPackageFileResolver({'test': 'path/to/test'});
     assetsGraph = AssetsGraph(mockPackageFileResolver.packagesHash);
     scanner = TopLevelScanner(assetsGraph, mockPackageFileResolver);
   });
@@ -40,10 +40,10 @@ main() {
 
   test('TopLevelScanner should ignore commented out identifiers', () {
     final file = StringSrc('''
-    // const kPi = 3.14159;
+    // constant kPi = 3.14159;
     // class Shape {}
     // void add(){}
-    /* const constInt = 42; */
+    /* constant constInt = 42; */
     ''');
     scanner.scanFile(file);
     expect(assetsGraph.identifiers.isEmpty, true);
@@ -53,7 +53,7 @@ main() {
   test('TopLevelScanner should ignore member variables and methods', () {
     final file = StringSrc('''
     class MyClass {
-      static const privateInt = 42;
+      static constant privateInt = 42;
       final int finalInt = 42;
       late final String lateString;
       void privateMethod() {}
@@ -262,7 +262,7 @@ main() {
   });
 
   test('Should parse simple import', () {
-    final file = StringSrc("import 'path.dart';", uri: 'path.dart');
+    final file = StringSrc("import 'path.dart';", uriString: 'path.dart');
     scanner.scanFile(file);
     final imports = assetsGraph.importsOf(file.id);
     expect(imports.length, 1);
@@ -271,7 +271,7 @@ main() {
   });
 
   test('Should parse simple import with alias', () {
-    final file = StringSrc("import 'path.dart' as i;", uri: 'path.dart');
+    final file = StringSrc("import 'path.dart' as i;", uriString: 'path.dart');
     scanner.scanFile(file);
     final imports = assetsGraph.importsOf(file.id);
     expect(imports.length, 1);
@@ -279,7 +279,7 @@ main() {
   });
 
   test('Should parse simple deferred import', () {
-    final file = StringSrc("import 'path.dart' deferred as i;", uri: 'path.dart');
+    final file = StringSrc("import 'path.dart' deferred as i;", uriString: 'path.dart');
     scanner.scanFile(file);
     final imports = assetsGraph.importsOf(file.id);
     expect(imports.length, 1);
@@ -287,7 +287,7 @@ main() {
   });
 
   test('Should parse simple import with show', () {
-    final file = StringSrc("import 'path.dart' show A, B;", uri: 'path.dart');
+    final file = StringSrc("import 'path.dart' show A, B;", uriString: 'path.dart');
     scanner.scanFile(file);
     final imports = assetsGraph.importsOf(file.id);
     expect(imports.length, 1);
@@ -301,7 +301,7 @@ main() {
   });
 
   test('Should parse simple import with hide', () {
-    final file = StringSrc("import 'path.dart' hide A, B;", uri: 'path.dart');
+    final file = StringSrc("import 'path.dart' hide A, B;", uriString: 'path.dart');
     scanner.scanFile(file);
     final imports = assetsGraph.importsOf(file.id);
     expect(imports.first, [
@@ -314,7 +314,7 @@ main() {
   });
 
   test('Should parse simple import with show and hide', () {
-    final file = StringSrc("import 'path.dart' show A, B hide C, D;", uri: 'path.dart');
+    final file = StringSrc("import 'path.dart' show A, B hide C, D;", uriString: 'path.dart');
     scanner.scanFile(file);
     final imports = assetsGraph.importsOf(file.id);
     expect(imports.length, 1);
@@ -328,14 +328,14 @@ main() {
   });
 
   test('Should parse simple export', () {
-    final file = StringSrc("export 'path.dart';", uri: 'path.dart');
+    final file = StringSrc("export 'path.dart';", uriString: 'path.dart');
     scanner.scanFile(file);
     final exports = assetsGraph.exportsOf(file.id);
     expect(exports.first, [DirectiveStatement.export, file.id, 'path.dart', null, null]);
   });
 
   test('Should parse simple export with show', () {
-    final file = StringSrc("export 'path.dart' show A, B;", uri: 'path.dart');
+    final file = StringSrc("export 'path.dart' show A, B;", uriString: 'path.dart');
     scanner.scanFile(file);
     final exports = assetsGraph.exportsOf(file.id);
     expect(exports.first, [
@@ -348,7 +348,7 @@ main() {
   });
 
   test('Should parse simple export with hide', () {
-    final file = StringSrc("export 'path.dart' hide A, B;", uri: 'path.dart');
+    final file = StringSrc("export 'path.dart' hide A, B;", uriString: 'path.dart');
     scanner.scanFile(file);
     final exports = assetsGraph.exportsOf(file.id);
     expect(exports.first, [
@@ -361,7 +361,7 @@ main() {
   });
 
   test('Should parse simple export with show and hide', () {
-    final file = StringSrc("export 'path.dart' show A, B hide C, D;", uri: 'path.dart');
+    final file = StringSrc("export 'path.dart' show A, B hide C, D;", uriString: 'path.dart');
     scanner.scanFile(file);
     final exports = assetsGraph.exportsOf(file.id);
     expect(exports.first, [
@@ -374,7 +374,7 @@ main() {
   });
 
   test('Should parse simple part', () {
-    final file = StringSrc("part 'path.dart';", uri: 'path.dart');
+    final file = StringSrc("part 'path.dart';", uriString: 'path.dart');
     scanner.scanFile(file);
     final imports = assetsGraph.importsOf(file.id);
     final exports = assetsGraph.exportsOf(file.id);
@@ -410,7 +410,7 @@ main() {
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
 
-  test('TopLevelScanner should detect class annotation with const var', () {
+  test('TopLevelScanner should detect class annotation with constant var', () {
     final file = StringSrc('''
       @annotation
       class MyClass {}

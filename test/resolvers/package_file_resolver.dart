@@ -7,17 +7,14 @@ import 'package:test/test.dart';
 void main() {
   late final PackageFileResolverImpl fileResolver;
   setUpAll(() {
+    final packageToPath = {
+      'lean_builder': 'file:///root/lean_builder-1.0.0',
+      'git': 'file:///root/git/vertex_core-12345/',
+      r'$sdk': 'file:///sdk-path',
+    };
     fileResolver = PackageFileResolverImpl(
-      {
-        'lean_builder': 'file:///root/lean_builder-1.0.0',
-        'git': 'file:///root/git/vertex_core-12345/',
-        r'$sdk': 'file:///sdk-path',
-      },
-      {
-        'file:///root/lean_builder-1.0.0': 'lean_builder',
-        'file:///root/git/vertex_core-12345/': 'git',
-        'file:///sdk-path': r'$sdk',
-      },
+      packageToPath,
+      packageToPath.map((k, v) => MapEntry(v, k)),
       'mock-test-hash',
       'lean_builder',
     );
@@ -115,11 +112,11 @@ void main() {
   });
 
   test('Building relative uri without passing a relativeTo uri should throw', () {
-    expect(() => fileResolver.buildAssetUri(Uri.parse('path')), throwsA(isA<InvalidPathError>()));
+    expect(() => fileResolver.assetSrcFor(Uri.parse('path')), throwsA(isA<InvalidPathError>()));
   });
 
   test('Building asset uri with invalid file path should throw', () {
-    expect(() => fileResolver.buildAssetUri(Uri.parse('invalid:io')), throwsA(isA<AssetUriError>()));
+    expect(() => fileResolver.assetSrcFor(Uri.parse('invalid:io')), throwsA(isA<AssetUriError>()));
   });
 
   /// non existing package config path should throw
@@ -131,8 +128,6 @@ void main() {
   test('PackageFileResolver should throw exception for invalid package config', () {
     final dir = Directory.current.path;
     final path = '$dir/test/resolvers/package_file_resolver.dart';
-
-    print(File(path).existsSync());
-    expect(() => PackageFileResolverImpl.forRoot(path, 'root'), throwsA(isA<PackageConfigParseError>()));
+    expect(() => PackageFileResolverImpl.loadPackageConfig(path), throwsA(isA<PackageConfigParseError>()));
   });
 }

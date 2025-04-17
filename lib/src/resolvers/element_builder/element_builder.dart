@@ -1,7 +1,7 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
-import 'package:lean_builder/src/resolvers/const/const_evaluator.dart';
-import 'package:lean_builder/src/resolvers/const/constant.dart';
+import 'package:lean_builder/src/resolvers/constant/const_evaluator.dart';
+import 'package:lean_builder/src/resolvers/constant/constant.dart';
 import 'package:lean_builder/src/resolvers/element/element.dart';
 import 'package:lean_builder/src/resolvers/element_resolver.dart';
 import 'package:lean_builder/src/resolvers/type/type_ref.dart';
@@ -216,12 +216,13 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     visitElementScoped(enumElement, () {
       node.typeParameters?.visitChildren(this);
       node.metadata.accept(this);
-      node.constants.accept(this);
-      for (final member in node.members) {
-        if (member is! MethodDeclaration) {
-          member.accept(this);
-        }
+      for (final member in node.members.whereType<FieldDeclaration>()) {
+        member.accept(this);
       }
+      for (final member in node.members.whereType<ConstructorDeclaration>()) {
+        member.accept(this);
+      }
+      node.constants.accept(this);
     });
     _resolveInterfaceTypeRefs(enumElement, implementsClause: node.implementsClause, withClause: node.withClause);
   }
@@ -341,7 +342,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       importPrefix: importPrefix?.name.lexeme,
     );
     if (identifierLocation == null) {
-      throw Exception('Could not find identifier $typename in ${enclosingEle.library.src.shortPath}');
+      throw Exception('Could not find identifier $typename in ${enclosingEle.librarySrc.shortUri}');
     }
     return NamedTypeRefImpl(
       typename,
@@ -358,7 +359,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
 
     final metadata = visitWithHolder(interfaceElement.library, (holder) {
       node.metadata.accept(this);
-      holder.metadata;
+      return holder.metadata;
     });
 
     // Process each variable in the field declaration
@@ -385,7 +386,9 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
         });
       }
       interfaceElement.addField(fieldEle);
-      fieldEle.metadata.addAll(metadata);
+      if (metadata != null) {
+        fieldEle.metadata.addAll(metadata);
+      }
     }
   }
 

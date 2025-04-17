@@ -12,7 +12,7 @@ import 'package:lean_builder/src/scanner/scan_results.dart';
 import 'package:collection/collection.dart';
 import 'package:synchronized/synchronized.dart';
 
-import 'const/constant.dart';
+import 'constant/constant.dart';
 
 typedef ResolvePredicate<T> = bool Function(T member);
 
@@ -40,7 +40,7 @@ class ElementResolver {
   }
 
   LibraryElement libraryForDirective(DirectiveElement directive) {
-    final assetSrc = fileResolver.buildAssetUri(directive.uri);
+    final assetSrc = fileResolver.assetSrcFor(directive.uri);
     return libraryFor(assetSrc);
   }
 
@@ -98,7 +98,7 @@ class ElementResolver {
 
     assert(loc != null, 'Identifier $identifier not found in ${enclosingAsset.uri}');
     final srcUri = uriForAsset(loc!.srcId);
-    final assetFile = fileResolver.buildAssetUri(srcUri, relativeTo: enclosingAsset);
+    final assetFile = fileResolver.assetSrcFor(srcUri, relativeTo: enclosingAsset);
 
     final library = libraryFor(assetFile);
     final compilationUnit = library.compilationUnit;

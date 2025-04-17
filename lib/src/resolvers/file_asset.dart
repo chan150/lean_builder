@@ -1,51 +1,51 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-class AssetSrc {
+abstract class AssetSrc {
+  String get id;
+
+  Uri get shortUri;
+
+  Uri get uri;
+
+  Uint8List readAsBytesSync();
+
+  String readAsStringSync();
+
+  bool existsSync();
+
+  factory AssetSrc(File file, Uri shortUri, String id) = FileAssetSrc;
+}
+
+class FileAssetSrc implements AssetSrc {
   final File file;
+
+  @override
   final String id;
 
-  final Uri shortPath;
+  @override
+  final Uri shortUri;
 
-  AssetSrc(this.file, this.shortPath, this.id);
+  FileAssetSrc(this.file, this.shortUri, this.id);
 
-  String get path => file.path;
-
+  @override
   Uri get uri => file.uri;
 
+  @override
   Uint8List readAsBytesSync() {
     return file.readAsBytesSync();
   }
 
+  @override
   String readAsStringSync() {
     return file.readAsStringSync();
   }
 
+  @override
   bool existsSync() => file.existsSync();
 
   @override
   String toString() {
-    return 'FileAsset{file: $file, pathHash: $id, packagePath: $shortPath}';
+    return 'FileAsset{file: $file, pathHash: $id, packagePath: $shortUri}';
   }
-
-  //
-  // factory FileAsset.fromUri(Uri uri, {FileAsset? relativeTo}) {
-  //   Uri effectiveUri = uri;
-  //   if (!effectiveUri.isAbsolute) {
-  //     assert(relativeTo != null, 'Relative uri must have a relativeTo argument');
-  //     effectiveUri = relativeTo!.uri.resolveUri(uri);
-  //   }
-  //   String? shortPath;
-  //   for (final dir in _dirs) {
-  //     final segments = effectiveUri.pathSegments;
-  //     final dirIndex = segments.indexOf(dir);
-  //     if (dirIndex != -1 && dirIndex < segments.length - 1) {
-  //       shortPath = segments.sublist(dirIndex - 1).join('/');
-  //       break;
-  //     }
-  //   }
-  //   assert(shortPath != null, 'Uri $uri is not in a known package directory');
-  //   final hash = xxh3String(Uint8List.fromList(shortPath!.codeUnits));
-  //   return FileAsset(File.fromUri(effectiveUri), shortPath, hash);
-  // }
 }

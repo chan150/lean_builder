@@ -28,7 +28,7 @@ abstract class PackageFileResolver {
 
   String pathFor(String package);
 
-  AssetSrc buildAssetUri(Uri uri, {AssetSrc? relativeTo});
+  AssetSrc assetSrcFor(Uri uri, {AssetSrc? relativeTo});
 
   /// Returns the set of available packages
   Set<String> get packages;
@@ -78,13 +78,13 @@ class PackageFileResolverImpl implements PackageFileResolver {
 
   /// Creates a resolver for the specified root directory
   factory PackageFileResolverImpl.forRoot(String path, String rootPackage) {
-    final config = _loadPackageConfig(path);
+    final config = loadPackageConfig(p.join(path, _packageConfigPath));
     return PackageFileResolverImpl(config.packageToPath, config.pathToPackage, config.packagesHash, rootPackage);
   }
 
   /// Helper method to load and parse package configuration
-  static _PackageConfig _loadPackageConfig(String rootPath) {
-    final packageConfig = File(p.join(rootPath, _packageConfigPath));
+  static PackageConfig loadPackageConfig(String packageConfigPath) {
+    final packageConfig = File(packageConfigPath);
     if (!packageConfig.existsSync()) {
       throw PackageConfigLoadError('Package config file not found at ${packageConfig.path}');
     }
@@ -115,7 +115,7 @@ class PackageFileResolverImpl implements PackageFileResolver {
         pathToPackage[sdkPath] = PackageFileResolver.dartSdk;
         packageToPath[PackageFileResolver.dartSdk] = sdkPath;
       }
-      return _PackageConfig(packageToPath, pathToPackage, packagesHash);
+      return PackageConfig(packageToPath, pathToPackage, packagesHash);
     } catch (e) {
       throw PackageConfigParseError(packageConfig.path, e);
     }
@@ -182,7 +182,7 @@ class PackageFileResolverImpl implements PackageFileResolver {
   final _assetCache = <String, AssetSrc>{};
 
   @override
-  AssetSrc buildAssetUri(Uri uri, {AssetSrc? relativeTo}) {
+  AssetSrc assetSrcFor(Uri uri, {AssetSrc? relativeTo}) {
     final reqId = '$uri@${relativeTo?.uri}';
     if (_assetCache.containsKey(reqId)) {
       return _assetCache[reqId]!;
@@ -303,10 +303,10 @@ class PackageFileResolverImpl implements PackageFileResolver {
 }
 
 /// Private class to hold package configuration data
-class _PackageConfig {
+class PackageConfig {
   final Map<String, String> packageToPath;
   final Map<String, String> pathToPackage;
   final String packagesHash;
 
-  _PackageConfig(this.packageToPath, this.pathToPackage, this.packagesHash);
+  PackageConfig(this.packageToPath, this.pathToPackage, this.packagesHash);
 }

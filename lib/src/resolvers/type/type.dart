@@ -101,7 +101,7 @@
 //     if (element is MixinElement) {
 //       return (element as MixinElement).superclassConstraints;
 //     }
-//     return const [];
+//     return constant [];
 //   }
 //
 //   @override
@@ -113,7 +113,7 @@
 //   @override
 //   final bool isNullable;
 //
-//   InterfaceTypeImpl(this.element, {this.typeArguments = const [], required this.isNullable, this.alias});
+//   InterfaceTypeImpl(this.element, {this.typeArguments = constant [], required this.isNullable, this.alias});
 //
 //   @override
 //   String toString() {
@@ -243,8 +243,8 @@
 //
 //   FunctionTypeImpl({
 //     required this.name,
-//     this.parameters = const [],
-//     this.typeParameters = const [],
+//     this.parameters = constant [],
+//     this.typeParameters = constant [],
 //     required this.returnType,
 //     required this.isNullable,
 //     this.alias,

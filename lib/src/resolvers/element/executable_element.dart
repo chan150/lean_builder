@@ -69,7 +69,7 @@ abstract class FunctionElement implements ExecutableElement {
 }
 
 abstract class ConstructorElement implements ClassMemberElement, ExecutableElement {
-  /// Whether the constructor is a const constructor.
+  /// Whether the constructor is a constant constructor.
   bool get isConst;
 
   /// Whether the constructor can be used as a default constructor - unnamed,

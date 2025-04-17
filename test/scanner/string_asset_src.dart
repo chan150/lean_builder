@@ -1,11 +1,17 @@
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:xxh3/xxh3.dart';
 import 'package:lean_builder/src/resolvers/file_asset.dart';
 
-class StringSrc extends AssetSrc {
-  StringSrc(this.content, {String uri = 'package:root/path.dart'})
-    : super(File(uri), Uri.parse(uri), xxh3String(Uint8List.fromList(uri.codeUnits)));
+class StringSrc implements AssetSrc {
+  StringSrc(this.content, {this.uriString = 'package:root/path.dart'});
+
+  final String uriString;
+
+  @override
+  late final String id = xxh3String(Uint8List.fromList(uriString.codeUnits));
+
+  @override
+  late final Uri uri = Uri.parse(uriString);
 
   final String content;
 
@@ -21,4 +27,7 @@ class StringSrc extends AssetSrc {
 
   @override
   bool existsSync() => true;
+
+  @override
+  Uri get shortUri => uri;
 }

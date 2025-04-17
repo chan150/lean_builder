@@ -26,6 +26,9 @@ abstract class ElementImpl implements Element {
   void addMetadata(ElementAnnotation annotation) {
     _metadata.add(annotation);
   }
+
+  @override
+  AssetSrc get librarySrc => library.src;
 }
 
 class LibraryElementImpl extends ElementImpl implements LibraryElement {
@@ -62,7 +65,7 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   }
 
   @override
-  late final String name = src.shortPath.pathSegments.last;
+  late final String name = src.shortUri.pathSegments.last;
 
   @override
   final AssetSrc src;

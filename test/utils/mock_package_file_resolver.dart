@@ -5,6 +5,8 @@ import 'package:lean_builder/src/resolvers/file_asset.dart';
 import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 import 'package:xxh3/xxh3.dart';
 
+import '../scanner/string_asset_src.dart';
+
 class MockPackageFileResolver implements PackageFileResolver {
   final Map<String, String> packageToPath;
   final Map<String, String> pathToPackage;
@@ -12,13 +14,14 @@ class MockPackageFileResolver implements PackageFileResolver {
   @override
   final String packagesHash;
 
-  MockPackageFileResolver()
-    : packageToPath = {'test': 'path/to/test'},
-      pathToPackage = {'path/to/test': 'test'},
-      packagesHash = 'mock-test-hash';
+  MockPackageFileResolver._(this.packageToPath, this.pathToPackage, this.packagesHash);
+
+  factory MockPackageFileResolver(Map<String, String> packageToPath) {
+    return MockPackageFileResolver._(packageToPath, packageToPath.map((k, v) => MapEntry(v, k)), 'hash');
+  }
 
   @override
-  Set<String> get packages => {'test'};
+  Set<String> get packages => Set.of(packageToPath.keys);
 
   @override
   String packageFor(Uri uri, {Uri? relativeTo}) {
@@ -36,8 +39,8 @@ class MockPackageFileResolver implements PackageFileResolver {
   }
 
   @override
-  AssetSrc buildAssetUri(Uri uri, {AssetSrc? relativeTo}) {
-    return AssetSrc(File.fromUri(uri), uri, xxh3String(Uint8List.fromList(uri.toString().codeUnits)));
+  AssetSrc assetSrcFor(Uri uri, {AssetSrc? relativeTo}) {
+    return StringSrc('', uriString: uri.toString());
   }
 
   @override
@@ -51,7 +54,5 @@ class MockPackageFileResolver implements PackageFileResolver {
   }
 
   @override
-  Uri toShortUri(Uri uri) {
-    return uri;
-  }
+  Uri toShortUri(Uri uri) => uri;
 }
