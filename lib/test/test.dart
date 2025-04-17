@@ -1,26 +1,58 @@
 import 'package:lean_builder/test/test2.dart' as test2;
 import 'package:lean_builder/test/test2.dart';
+import 'package:meta/meta.dart';
 
 typedef TypedType = void Function(int x, bool y);
 
 abstract base class X {}
 
-class Genix$ extends test2.SuperX {
-  final Type type;
+class Genix$ {
+  final ObjectArg objectArg;
   final String? str2;
 
-  const Genix$(this.type, {super.superStr = 'SuperStr2'}) : str2 = 'str2';
+  const Genix$(this.objectArg) : str2 = 'str2';
 
-  const Genix$.named(this.type) : str2 = null;
+  const Genix$.named(this.objectArg) : str2 = null;
 
   static const test2.SuperX named2 = test2.SuperX(superStr: 'SuperStr2');
 }
 
-const genix$ = Genix$(String, superStr: 'SuperV5ar');
-const genixNamed = Genix$.named(String);
+const genix$ = Genix$(ObjectArg('Arg'));
+const genixNamed = Genix$.named(ObjectArg('Arg'));
 const String constArg = 'Hello';
 
-@Genix$(String)
+class ObjectArg {
+  const ObjectArg(this.arg);
+
+  final String arg;
+}
+
+const constVar = 'Hello';
+
+@immutable
+// @internal
+// @factory
+// @Deprecated('This is deprecated')
+// @deprecated
+@alwaysThrows
+// @visibleForOverriding
+// @UseResult('Just because')
+// @useResult
+@sealed
+// @reopen
+// @redeclare
+// @nonVirtual
+// @isTestGroup
+// @isTest
+// @protected
+// @literal
+// @optionalTypeArgs
+// @constVar
+// @override
+// @mustBeConst
+// @mustBeOverridden
+// @mustCallSuper
+@doNotStore
 enum ColorEnumWithArgs {
   red(constVar),
   green('green'),

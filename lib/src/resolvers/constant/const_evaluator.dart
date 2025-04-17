@@ -10,8 +10,8 @@ import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:lean_builder/src/resolvers/element/element.dart';
 import 'package:lean_builder/src/resolvers/element_resolver.dart';
 import 'package:lean_builder/src/resolvers/type/type_ref.dart';
-import 'package:lean_builder/src/resolvers/element_builder/element_builder.dart';
-import 'package:lean_builder/src/resolvers/element_builder/element_stack.dart';
+import 'package:lean_builder/src/resolvers/element/builder/element_builder.dart';
+import 'package:lean_builder/src/resolvers/element/builder/element_stack.dart';
 import 'package:lean_builder/src/scanner/scan_results.dart';
 import 'package:collection/collection.dart';
 
@@ -481,7 +481,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
   }
 
   /// Return the constant value of the static constant represented by the given
-  /// [type].
+  /// [objectArg].
   Constant _getConstantValue(IdentifierRef ref, LibraryElement library) {
     final (lib, node, loc) = _resolver.astNodeFor(ref, library);
 

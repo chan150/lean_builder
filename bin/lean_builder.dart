@@ -57,7 +57,7 @@ void main(List<String> args) async {
           final element = library.resolvedElements.firstOrNull;
           if (element != null) {
             for (final e in element.metadata) {
-              print('Metadata: ${e.type} ${e.constant}');
+              print('Metadata: ${e.declarationRef.identifier} ${e.constant} ${e.isImmutable}');
             }
           }
         }

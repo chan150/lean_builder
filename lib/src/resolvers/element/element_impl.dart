@@ -29,6 +29,66 @@ abstract class ElementImpl implements Element {
 
   @override
   AssetSrc get librarySrc => library.src;
+
+  @override
+  bool get hasAlwaysThrows => metadata.any((m) => m.isAlwaysThrows);
+
+  @override
+  bool get hasDeprecated => metadata.any((m) => m.isDeprecated);
+
+  @override
+  bool get hasDoNotStore => metadata.any((m) => m.isDoNotStore);
+
+  @override
+  bool get hasFactory => metadata.any((m) => m.isFactory);
+
+  @override
+  bool get hasInternal => metadata.any((m) => m.isInternal);
+
+  @override
+  bool get hasIsTest => metadata.any((m) => m.isIsTest);
+
+  @override
+  bool get hasIsTestGroup => metadata.any((m) => m.isIsTestGroup);
+
+  @override
+  bool get hasLiteral => metadata.any((m) => m.isLiteral);
+
+  @override
+  bool get hasMustBeOverridden => metadata.any((m) => m.isMustBeOverridden);
+
+  @override
+  bool get hasMustCallSuper => metadata.any((m) => m.isMustCallSuper);
+
+  @override
+  bool get hasNonVirtual => metadata.any((m) => m.isNonVirtual);
+
+  @override
+  bool get hasOptionalTypeArgs => metadata.any((m) => m.isOptionalTypeArgs);
+
+  @override
+  bool get hasOverride => metadata.any((m) => m.isOverride);
+
+  @override
+  bool get hasProtected => metadata.any((m) => m.isProtected);
+
+  @override
+  bool get hasRedeclare => metadata.any((m) => m.isRedeclare);
+
+  @override
+  bool get hasReopen => metadata.any((m) => m.isReopen);
+
+  @override
+  bool get hasRequired => metadata.any((m) => m.isRequired);
+
+  @override
+  bool get hasSealed => metadata.any((m) => m.isSealed);
+
+  @override
+  bool get hasUseResult => metadata.any((m) => m.isUseResult);
+
+  @override
+  bool get hasVisibleForOverriding => metadata.any((m) => m.isVisibleForOverriding);
 }
 
 class LibraryElementImpl extends ElementImpl implements LibraryElement {
@@ -603,7 +663,7 @@ class ClassElementImpl extends InterfaceElementImpl implements ClassElement {
     required this.isAbstract,
     required this.isBase,
     required this.isFinal,
-    required this.isInterface,
+    required this.inInterface,
     required this.isMixinApplication,
     required this.isMixinClass,
     required this.isSealed,
@@ -622,7 +682,7 @@ class ClassElementImpl extends InterfaceElementImpl implements ClassElement {
   final bool isFinal;
 
   @override
-  final bool isInterface;
+  final bool inInterface;
 
   @override
   final bool isMixinApplication;

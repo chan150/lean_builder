@@ -5,7 +5,7 @@ import 'package:lean_builder/src/resolvers/constant/constant.dart';
 import 'package:lean_builder/src/resolvers/element/element.dart';
 import 'package:lean_builder/src/resolvers/element_resolver.dart';
 import 'package:lean_builder/src/resolvers/type/type_ref.dart';
-import 'package:lean_builder/src/resolvers/element_builder/element_stack.dart';
+import 'package:lean_builder/src/resolvers/element/builder/element_stack.dart';
 import 'package:lean_builder/src/scanner/scan_results.dart';
 
 class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
@@ -46,10 +46,10 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     final clazzElement = ClassElementImpl(
       library: library,
       name: node.name.lexeme,
-      isAbstract: node.abstractKeyword != null || node.sealedKeyword != null,
+      isAbstract: node.abstractKeyword != null,
       isSealed: node.sealedKeyword != null,
       isBase: node.baseKeyword != null,
-      isInterface: node.interfaceKeyword != null,
+      inInterface: node.interfaceKeyword != null,
       isMixinClass: node.mixinKeyword != null,
       isFinal: node.finalKeyword != null,
       isMixinApplication: true,
@@ -144,11 +144,11 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     final classElement = ClassElementImpl(
       name: node.name.lexeme,
       library: library,
-      isAbstract: node.abstractKeyword != null || node.sealedKeyword != null,
+      isAbstract: node.abstractKeyword != null,
       isSealed: isSealed,
       isBase: node.baseKeyword != null,
       isFinal: node.finalKeyword != null,
-      isInterface: node.interfaceKeyword != null,
+      inInterface: node.interfaceKeyword != null,
       isMixinClass: node.mixinKeyword != null,
       isMixinApplication: false,
     );
@@ -400,14 +400,14 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       if (name is SimpleIdentifier) name.name,
       if (name is PrefixedIdentifier) ...[name.prefix.name, name.identifier.name],
     ]);
-    final (lib, targetNode, loc) = _resolver.astNodeFor(identifier, currentElement.library);
+    final (lib, targetNode, decRef) = _resolver.astNodeFor(identifier, currentElement.library);
     final constantEvaluator = ConstantEvaluator(_resolver, lib, this);
     if (targetNode is ClassDeclaration || targetNode is ConstructorDeclaration) {
       final classDeclaration = targetNode.thisOrAncestorOfType<ClassDeclaration>()!;
       final className = classDeclaration.name.lexeme;
       final elem = ElementAnnotationImpl(
-        name: name.name,
-        type: NamedTypeRefImpl(className, loc),
+        type: NamedTypeRefImpl(className, decRef),
+        declarationRef: decRef,
         constantValueCompute: () {
           final ConstructorDeclaration constructor;
           if (targetNode is ConstructorDeclaration) {
@@ -456,8 +456,8 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
         typeRef = NamedTypeRefImpl(identifier.topLevelTarget, loc);
       }
       final elem = ElementAnnotationImpl(
-        name: identifier.name,
         type: typeRef,
+        declarationRef: decRef,
         constantValueCompute: () {
           return constantEvaluator.evaluate(variable.initializer!);
         },

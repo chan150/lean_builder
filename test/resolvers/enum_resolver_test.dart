@@ -1,4 +1,5 @@
 import 'package:lean_builder/src/resolvers/constant/constant.dart';
+import 'package:lean_builder/src/resolvers/element/element.dart';
 import 'package:lean_builder/src/resolvers/element_resolver.dart';
 import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
@@ -49,7 +50,7 @@ void main() {
   test('should resolve enum with mixin clause', () {
     final asset = StringSrc('''
      class Bar {}
-     enum Foo with Bar {item;}
+     enum Foo with Bar {enum1;}
     ''');
     scanner!.scanFile(asset);
     final library = resolver!.resolveLibrary(asset);
@@ -62,7 +63,7 @@ void main() {
     final asset = StringSrc('''
       class Bar {}
       mixin Baz {}
-      enum Foo with Baz implements Bar { item }
+      enum Foo with Baz implements Bar { enum1 }
     ''');
     scanner!.scanFile(asset);
     final library = resolver!.resolveLibrary(asset);
@@ -70,6 +71,22 @@ void main() {
     expect(enumElement, isNotNull);
     expect(enumElement!.interfaces, [library.getClass('Bar')!.thisType]);
     expect(enumElement.mixins, [library.getMixin('Baz')!.thisType]);
+  });
+
+  test('should resolve enum with annotations', () {
+    final asset = StringSrc('''
+      class Bar {
+        const Bar();
+      }
+      @Bar()
+      enum Foo { enum1 }
+    ''');
+    scanner!.scanFile(asset);
+    final library = resolver!.resolveLibrary(asset);
+    final enumElement = library.getEnum('Foo');
+    expect(enumElement, isNotNull);
+    expect(enumElement!.metadata.length, 1);
+    expect(enumElement.metadata[0].type, library.getClass('Bar')!.thisType);
   });
 
   test('should resolve enum with fields', () {
@@ -100,7 +117,7 @@ void main() {
   test('should resolve enum with arguments', () {
     final asset = StringSrc('''
       enum Foo { 
-        item1(1);
+        enum1(1);
         final int value; 
         const Foo(this.value); 
       }
@@ -110,9 +127,34 @@ void main() {
     final library = resolver!.resolveLibrary(asset);
     final enumElement = library.getEnum('Foo');
     expect(enumElement, isNotNull);
-    final constantFields = enumElement!.fields.where((field) => field.isEnumConstant);
+    expect(enumElement!.constructors.length, 1);
+    expect(enumElement.constructors[0].parameters[0], isA<ParameterElement>());
+    final constantFields = enumElement.fields.where((field) => field.isEnumConstant);
     final constantObj = constantFields.first.constantValue;
     expect(constantObj, isA<ConstObject>());
     expect((constantObj as ConstObject).props, {'value': ConstInt(1)});
+  });
+
+  test('should resolve enum with named and optional positional arguments', () {
+    final asset = StringSrc('''
+      enum Foo { 
+        enum1(1, name: 'name', value: 2); 
+        
+        final int value;
+        final String name;  
+        const Foo(this.value, {this.name}); 
+      }
+    ''');
+    scanner!.scanFile(asset);
+    includeDartCoreAssets(scanner!);
+    final library = resolver!.resolveLibrary(asset);
+    final enumElement = library.getEnum('Foo');
+    expect(enumElement, isNotNull);
+    final constantFields = enumElement!.fields.where((field) => field.isEnumConstant);
+
+    expect(constantFields.length, 1);
+    final constantObj = constantFields.first.constantValue;
+    expect(constantObj, isA<ConstObject>());
+    expect((constantObj as ConstObject).props, {'value': ConstInt(2), 'name': ConstString('name')});
   });
 }

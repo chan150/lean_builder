@@ -40,7 +40,7 @@ void main() {
     expect(classElement.isAbstract, isTrue);
     expect(classElement.isFinal, isFalse);
     expect(classElement.isBase, isFalse);
-    expect(classElement.isInterface, isFalse);
+    expect(classElement.inInterface, isFalse);
     expect(classElement.isMixinClass, isFalse);
     expect(classElement.isSealed, isFalse);
     expect(classElement.isConstructable, isFalse);
@@ -56,7 +56,7 @@ void main() {
     expect(classElement!.isAbstract, isFalse);
     expect(classElement.isFinal, isTrue);
     expect(classElement.isBase, isFalse);
-    expect(classElement.isInterface, isFalse);
+    expect(classElement.inInterface, isFalse);
     expect(classElement.isMixinClass, isFalse);
     expect(classElement.isSealed, isFalse);
     expect(classElement.isConstructable, isTrue);
@@ -72,7 +72,7 @@ void main() {
     expect(classElement!.isAbstract, isFalse);
     expect(classElement.isFinal, isFalse);
     expect(classElement.isBase, isTrue);
-    expect(classElement.isInterface, isFalse);
+    expect(classElement.inInterface, isFalse);
     expect(classElement.isMixinClass, isFalse);
     expect(classElement.isSealed, isFalse);
     expect(classElement.isConstructable, isTrue);
@@ -88,7 +88,7 @@ void main() {
     expect(classElement!.isAbstract, isFalse);
     expect(classElement.isFinal, isFalse);
     expect(classElement.isBase, isFalse);
-    expect(classElement.isInterface, isTrue);
+    expect(classElement.inInterface, isTrue);
     expect(classElement.isMixinClass, isFalse);
     expect(classElement.isSealed, isFalse);
     expect(classElement.isConstructable, isTrue);
@@ -104,7 +104,7 @@ void main() {
     expect(classElement!.isAbstract, isFalse);
     expect(classElement.isFinal, isFalse);
     expect(classElement.isBase, isFalse);
-    expect(classElement.isInterface, isFalse);
+    expect(classElement.inInterface, isFalse);
     expect(classElement.isMixinClass, isTrue);
     expect(classElement.isSealed, isFalse);
     expect(classElement.isConstructable, isTrue);
@@ -117,11 +117,11 @@ void main() {
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
-    expect(classElement!.isAbstract, isTrue);
+    expect(classElement!.isAbstract, isFalse);
     expect(classElement.isSealed, isTrue);
     expect(classElement.isFinal, isFalse);
     expect(classElement.isBase, isFalse);
-    expect(classElement.isInterface, isFalse);
+    expect(classElement.inInterface, isFalse);
     expect(classElement.isMixinClass, isFalse);
     expect(classElement.isConstructable, isFalse);
     expect(classElement.isMixinApplication, isFalse);
@@ -141,7 +141,7 @@ void main() {
     expect(classElement.isAbstract, isFalse);
     expect(classElement.isFinal, isFalse);
     expect(classElement.isBase, isFalse);
-    expect(classElement.isInterface, isFalse);
+    expect(classElement.inInterface, isFalse);
     expect(classElement.isMixinClass, isFalse);
     expect(classElement.isConstructable, isTrue);
     expect(classElement.isMixinApplication, isTrue);
@@ -157,7 +157,7 @@ void main() {
     expect(classElement.isAbstract, isTrue);
     expect(classElement.isFinal, isFalse);
     expect(classElement.isBase, isFalse);
-    expect(classElement.isInterface, isTrue);
+    expect(classElement.inInterface, isTrue);
     expect(classElement.isMixinClass, isFalse);
     expect(classElement.isSealed, isFalse);
     expect(classElement.isConstructable, isFalse);
@@ -174,7 +174,7 @@ void main() {
     expect(classElement.isAbstract, isTrue);
     expect(classElement.isFinal, isTrue);
     expect(classElement.isBase, isFalse);
-    expect(classElement.isInterface, isFalse);
+    expect(classElement.inInterface, isFalse);
     expect(classElement.isMixinClass, isFalse);
     expect(classElement.isSealed, isFalse);
     expect(classElement.isConstructable, isFalse);
@@ -191,7 +191,7 @@ void main() {
     expect(classElement.isAbstract, isTrue);
     expect(classElement.isFinal, isFalse);
     expect(classElement.isBase, isFalse);
-    expect(classElement.isInterface, isFalse);
+    expect(classElement.inInterface, isFalse);
     expect(classElement.isMixinClass, true);
     expect(classElement.isSealed, false);
     expect(classElement.isConstructable, false);

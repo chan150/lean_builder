@@ -4,7 +4,7 @@ import 'package:lean_builder/src/resolvers/file_asset.dart';
 import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
 import 'package:lean_builder/src/resolvers/type/type_ref.dart';
-import 'package:lean_builder/src/resolvers/element_builder/element_builder.dart';
+import 'package:lean_builder/src/resolvers/element/builder/element_builder.dart';
 import 'package:lean_builder/src/scanner/assets_graph.dart';
 import 'package:lean_builder/src/scanner/directive_statement.dart';
 import 'package:lean_builder/src/scanner/identifier_ref.dart';

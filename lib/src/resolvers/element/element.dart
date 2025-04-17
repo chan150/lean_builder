@@ -33,6 +33,68 @@ abstract class Element {
   List<ElementAnnotation> get metadata;
 
   AssetSrc get librarySrc;
+
+  /// Whether the element has an annotation of the form `@alwaysThrows`.
+  bool get hasAlwaysThrows;
+
+  /// Whether the element has an annotation of the form `@deprecated`
+  /// or `@Deprecated('..')`.
+  bool get hasDeprecated;
+
+  /// Whether the element has an annotation of the form `@doNotStore`.
+  bool get hasDoNotStore;
+
+  /// Whether the element has an annotation of the form `@factory`.
+  bool get hasFactory;
+
+  /// Whether the element has an annotation of the form `@internal`.
+  bool get hasInternal;
+
+  /// Whether the element has an annotation of the form `@isTest`.
+  bool get hasIsTest;
+
+  /// Whether the element has an annotation of the form `@isTestGroup`.
+  bool get hasIsTestGroup;
+
+  /// Whether the element has an annotation of the form `@literal`.
+  bool get hasLiteral;
+
+  /// Whether the element has an annotation of the form `@mustBeOverridden`.
+  bool get hasMustBeOverridden;
+
+  /// Whether the element has an annotation of the form `@mustCallSuper`.
+  bool get hasMustCallSuper;
+
+  /// Whether the element has an annotation of the form `@nonVirtual`.
+  bool get hasNonVirtual;
+
+  /// Whether the element has an annotation of the form `@optionalTypeArgs`.
+  bool get hasOptionalTypeArgs;
+
+  /// Whether the element has an annotation of the form `@override`.
+  bool get hasOverride;
+
+  /// Whether the element has an annotation of the form `@protected`.
+  bool get hasProtected;
+
+  /// Whether the element has an annotation of the form `@redeclare`.
+  bool get hasRedeclare;
+
+  /// Whether the element has an annotation of the form `@reopen`.
+  bool get hasReopen;
+
+  /// Whether the element has an annotation of the form `@required`.
+  bool get hasRequired;
+
+  /// Whether the element has an annotation of the form `@sealed`.
+  bool get hasSealed;
+
+  /// Whether the element has an annotation of the form `@useResult`
+  /// or `@UseResult('..')`.
+  bool get hasUseResult;
+
+  /// Whether the element has an annotation of the form `@visibleForOverriding`.
+  bool get hasVisibleForOverriding;
 }
 
 abstract class TypeParameterizedElement extends Element {
@@ -200,36 +262,20 @@ abstract class ParameterElement extends VariableElement {
 }
 
 abstract class ClassElement extends InterfaceElement {
-  /// Whether the class is abstract. A class is abstract if it has an
-  /// explicit `abstract` modifier. Note, that this definition of
-  /// <i>abstract</i> is different from <i>has unimplemented members</i>.
+  /// Whether the declaration has an explicit `abstract` modifier
   bool get isAbstract;
 
-  /// Whether this class is a base class.
-  ///
-  /// A class is a base class if it has an explicit `base` modifier, or the
-  /// class has a `base` induced modifier and [isSealed] is `true` as well.
-  /// The base modifier allows the class to be extended but not implemented.
+  /// Whether the declaration has an explicit `base` modifier.
   bool get isBase;
 
   /// Whether the class can be instantiated.
   bool get isConstructable;
 
-  /// Whether the class is a final class.
-  ///
-  /// A class is a final class if it has an explicit `final` modifier, or the
-  /// class has a `final` induced modifier and [isSealed] is `true` as well.
-  /// The final modifier prohibits this class from being extended, implemented,
-  /// or mixed in.
+  /// Whether the declaration has an explicit `final` modifier
   bool get isFinal;
 
-  /// Whether the class is an interface class.
-  ///
-  /// A class is an interface class if it has an explicit `interface` modifier,
-  /// or the class has an `interface` induced modifier and [isSealed] is `true`
-  /// as well. The interface modifier allows the class to be implemented, but
-  /// not extended or mixed in.
-  bool get isInterface;
+  /// Whether the declaration has an explicit `interface` modifier
+  bool get inInterface;
 
   /// Whether the class is a mixin application.
   ///
@@ -237,14 +283,10 @@ abstract class ClassElement extends InterfaceElement {
   /// `class A = B with C;`.
   bool get isMixinApplication;
 
-  /// Whether the class is a mixin class.
-  ///
-  /// A class is a mixin class if it has an explicit `mixin` modifier.
+  /// Whether the declaration has an explicit `mixin` modifier.
   bool get isMixinClass;
 
-  /// Whether the class is a sealed class.
-  ///
-  /// A class is a sealed class if it has an explicit `sealed` modifier.
+  /// Whether the declaration has an explicit `sealed` modifier.
   bool get isSealed;
 }
 
@@ -253,9 +295,6 @@ abstract class EnumElement implements InterfaceElement {}
 abstract class MixinElement implements Element {
   List<TypeRef> get superclassConstraints;
 
-  /// Whether the mixin is a base mixin.
-  ///
-  /// A mixin is a base mixin if it has an explicit `base` modifier.
-  /// The base modifier allows a mixin to be mixed in, but not implemented.
+  /// Whether the declaration has an explicit `base` modifier.
   bool get isBase;
 }
