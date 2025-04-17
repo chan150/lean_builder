@@ -32,6 +32,8 @@ abstract class Element {
 
   List<ElementAnnotation> get metadata;
 
+  ElementAnnotation? getAnnotation(String name);
+
   AssetSrc get librarySrc;
 
   String? get documentationComment;

@@ -7,16 +7,14 @@ import 'package:test/test.dart';
 void main() {
   late final PackageFileResolverImpl fileResolver;
   setUpAll(() {
-    final packageToPath = {
-      'lean_builder': 'file:///root/lean_builder-1.0.0',
-      'git': 'file:///root/git/vertex_core-12345/',
-      r'$sdk': 'file:///sdk-path',
-    };
     fileResolver = PackageFileResolverImpl(
-      packageToPath,
-      packageToPath.map((k, v) => MapEntry(v, k)),
-      'mock-test-hash',
-      'lean_builder',
+      {
+        'lean_builder': 'file:///root/lean_builder-1.0.0',
+        'git': 'file:///root/git/vertex_core-12345/',
+        r'$sdk': 'file:///sdk-path',
+      },
+      packagesHash: 'hash',
+      rootPackage: 'lean_builder',
     );
   });
 
@@ -119,12 +117,10 @@ void main() {
     expect(() => fileResolver.assetSrcFor(Uri.parse('invalid:io')), throwsA(isA<AssetUriError>()));
   });
 
-  /// non existing package config path should throw
   test('PackageFileResolver should throw exception for non-existing package config path', () {
     expect(() => PackageFileResolverImpl.forRoot('non_existing_path', 'root'), throwsA(isA<PackageConfigLoadError>()));
   });
 
-  /// parsing package config should throw, use this file as package config src
   test('PackageFileResolver should throw exception for invalid package config', () {
     final dir = Directory.current.path;
     final path = '$dir/test/resolvers/package_file_resolver.dart';

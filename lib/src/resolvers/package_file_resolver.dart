@@ -1,10 +1,11 @@
-import 'dart:convert';
-import 'dart:io';
-import 'dart:typed_data';
+import 'dart:convert' show jsonDecode, jsonEncode;
+import 'dart:io' show File, Directory, Platform;
+import 'dart:typed_data' show Uint8List;
 
 import 'package:lean_builder/src/errors/resolver_error.dart';
+import 'package:meta/meta.dart' show visibleForTesting;
 import 'package:path/path.dart' as p;
-import 'package:xxh3/xxh3.dart';
+import 'package:xxh3/xxh3.dart' show xxh3String;
 import 'file_asset.dart';
 
 /// Abstract interface for resolving package file paths
@@ -42,8 +43,8 @@ abstract class PackageFileResolver {
 
   factory PackageFileResolver.fromJson(Map<String, dynamic> data) {
     final packageToPath = (data['packageToPath'] as Map<dynamic, dynamic>).cast<String, String>();
-    final pathToPackage = Map.of(packageToPath.map((k, v) => MapEntry(v, k)));
-    return PackageFileResolverImpl(packageToPath, pathToPackage, data['packagesHash'], data['rootPackage']);
+
+    return PackageFileResolverImpl(packageToPath, packagesHash: data['packagesHash'], rootPackage: data['rootPackage']);
   }
 
   bool isRootPackage(String package);
@@ -63,7 +64,8 @@ class PackageFileResolverImpl implements PackageFileResolver {
   static const _packageConfigPath = '.dart_tool/package_config.json';
   static const _skyEnginePackage = 'sky_engine';
 
-  PackageFileResolverImpl(this.packageToPath, this.pathToPackage, this.packagesHash, this.rootPackage);
+  PackageFileResolverImpl(this.packageToPath, {required this.packagesHash, required this.rootPackage})
+    : pathToPackage = packageToPath.map((k, v) => MapEntry(v, k));
 
   @override
   Set<String> get packages => packageToPath.keys.toSet();
@@ -79,7 +81,7 @@ class PackageFileResolverImpl implements PackageFileResolver {
   /// Creates a resolver for the specified root directory
   factory PackageFileResolverImpl.forRoot(String path, String rootPackage) {
     final config = loadPackageConfig(p.join(path, _packageConfigPath));
-    return PackageFileResolverImpl(config.packageToPath, config.pathToPackage, config.packagesHash, rootPackage);
+    return PackageFileResolverImpl(config.packageToPath, packagesHash: config.packagesHash, rootPackage: rootPackage);
   }
 
   /// Helper method to load and parse package configuration
@@ -93,7 +95,6 @@ class PackageFileResolverImpl implements PackageFileResolver {
       final packageConfigJson = json['packages'] as List<dynamic>;
       final packagesHash = xxh3String(Uint8List.fromList(jsonEncode(packageConfigJson).codeUnits));
       final packageToPath = <String, String>{};
-      final pathToPackage = <String, String>{};
       for (var entry in packageConfigJson) {
         String name = entry['name'] as String;
         if (name[0] == '_') continue;
@@ -108,14 +109,12 @@ class PackageFileResolverImpl implements PackageFileResolver {
           resolvedPath = absoluteUri.replace(path: p.canonicalize(absoluteUri.path)).toString();
         }
         packageToPath[name] = resolvedPath;
-        pathToPackage[resolvedPath] = name;
       }
       if (!packageToPath.containsKey(PackageFileResolver.dartSdk)) {
         final sdkPath = PackageFileResolver.dartSdkPath.toString();
-        pathToPackage[sdkPath] = PackageFileResolver.dartSdk;
         packageToPath[PackageFileResolver.dartSdk] = sdkPath;
       }
-      return PackageConfig(packageToPath, pathToPackage, packagesHash);
+      return PackageConfig(packageToPath, packagesHash);
     } catch (e) {
       throw PackageConfigParseError(packageConfig.path, e);
     }
@@ -180,6 +179,12 @@ class PackageFileResolverImpl implements PackageFileResolver {
   }
 
   final _assetCache = <String, AssetSrc>{};
+
+  @visibleForTesting
+  void registerAsset(AssetSrc asset, {AssetSrc? relativeTo}) {
+    final reqId = '${asset.uri}@${relativeTo?.uri}';
+    _assetCache[reqId] = asset;
+  }
 
   @override
   AssetSrc assetSrcFor(Uri uri, {AssetSrc? relativeTo}) {
@@ -282,16 +287,6 @@ class PackageFileResolverImpl implements PackageFileResolver {
   }
 
   @override
-  String uriToPackageImport(Uri uri) {
-    final splits = uri.path.split('/lib/');
-    final package = pathToPackage[splits.firstOrNull];
-    if (package == null) {
-      throw PackageNotFoundError(uri.toString());
-    }
-    return 'package:$package/${splits.last}';
-  }
-
-  @override
   bool isRootPackage(String package) {
     return package == rootPackage;
   }
@@ -305,8 +300,7 @@ class PackageFileResolverImpl implements PackageFileResolver {
 /// Private class to hold package configuration data
 class PackageConfig {
   final Map<String, String> packageToPath;
-  final Map<String, String> pathToPackage;
   final String packagesHash;
 
-  PackageConfig(this.packageToPath, this.pathToPackage, this.packagesHash);
+  PackageConfig(this.packageToPath, this.packagesHash);
 }

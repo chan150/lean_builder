@@ -30,7 +30,7 @@ Future<void> scannerWorker(SendPort sendPort) async {
       final resultsCollector = AssetsScanResults();
       final scanner = TopLevelScanner(resultsCollector, fileResolver);
       for (final asset in message.assets) {
-        scanner.scanFile(asset);
+        scanner.scan(asset);
       }
       // Send results back to main isolate
       sendPort.send(resultsCollector.toJson());
@@ -62,7 +62,7 @@ class IsolateTLScanner {
       // Use single-threaded approach for incremental updates
       final scanner = TopLevelScanner(assetsGraph, fileResolver);
       for (final asset in assetsList) {
-        scanner.scanFile(asset);
+        scanner.scan(asset);
       }
       updateIncrementalAssets(scanner);
     }
@@ -149,7 +149,7 @@ class IsolateTLScanner {
       final currentHash = xxh3String(content);
       if (currentHash != entry.digest) {
         assetsGraph.removeAsset(asset.id);
-        scanner.scanFile(asset);
+        scanner.scan(asset);
       }
     }
   }

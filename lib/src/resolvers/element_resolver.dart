@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:lean_builder/src/resolvers/element/element.dart';
 import 'package:lean_builder/src/resolvers/file_asset.dart';
@@ -11,6 +13,7 @@ import 'package:lean_builder/src/scanner/identifier_ref.dart';
 import 'package:lean_builder/src/scanner/scan_results.dart';
 import 'package:collection/collection.dart';
 import 'package:synchronized/synchronized.dart';
+import 'package:xxh3/xxh3.dart';
 
 import 'constant/constant.dart';
 
@@ -37,6 +40,27 @@ class ElementResolver {
       }
     }
     return library;
+  }
+
+  NamedTypeRef getNamedTypeRef(String name, String packageImport) {
+    final uri = Uri.parse(packageImport);
+    if (uri.scheme != 'package') {
+      throw Exception('Invalid package import: $packageImport');
+    }
+    final srcId = xxh3String(Uint8List.fromList(packageImport.codeUnits));
+    final declarationRef = graph.lookupIdentifierByProvider(name, srcId);
+    if (declarationRef == null) {
+      throw Exception('Identifier $name not found in $packageImport');
+    }
+    switch (declarationRef.type) {
+      case TopLevelIdentifierType.$class:
+      case TopLevelIdentifierType.$enum:
+      case TopLevelIdentifierType.$mixin:
+      case TopLevelIdentifierType.$typeAlias:
+        return NamedTypeRefImpl(name, declarationRef);
+      default:
+        throw Exception('$name does not refer to a named type');
+    }
   }
 
   LibraryElement libraryForDirective(DirectiveElement directive) {

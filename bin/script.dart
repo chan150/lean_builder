@@ -6,7 +6,7 @@ void main(List<String> args) async {
 
   // Configuration
   final sourceFile = 'bin/lean_builder.dart';
-  final executableName = '.dart_tool/build/code_genie${Platform.isWindows ? '.exe' : ''}';
+  final executableName = '.dart_tool/lean_build/lean_build${Platform.isWindows ? '.exe' : ''}';
   final compileArgs = [
     'compile',
     'exe',
@@ -17,11 +17,11 @@ void main(List<String> args) async {
     '--verbosity=warning', // Reduces output noise
     '--target-os=${Platform.operatingSystem}', // Specify current OS only
   ];
-  // Check if we need to recompile
-  final shouldCompile = await shouldRecompile(sourceFile, executableName);
+
+  final executableFile = File(executableName);
 
   // Compile if needed
-  if (shouldCompile) {
+  if (!executableFile.existsSync()) {
     print('⏳ Compiling $sourceFile to executable...');
 
     final result = await Process.run('dart', compileArgs);
@@ -44,39 +44,4 @@ void main(List<String> args) async {
   process.stderr.pipe(stderr);
   final exitCode = await process.exitCode;
   print('\n✅ Executable finished with exit code: $exitCode');
-}
-
-Future<bool> shouldRecompile(String sourceFile, String executableName) async {
-  final executable = File(executableName);
-  final sourceFileObj = File(sourceFile);
-  final pubspecFile = File('pubspec.yaml');
-
-  // Verify source file exists
-  if (!sourceFileObj.existsSync()) {
-    print('❌ Source file $sourceFile does not exist.');
-    exit(1);
-  }
-
-  // If executable doesn't exist, we need to compile
-  if (!executable.existsSync()) {
-    print('🔄 Executable not found, compiling...');
-    return true;
-  }
-
-  final execLastModified = executable.lastModifiedSync();
-
-  // Check source file modification time
-  if (sourceFileObj.lastModifiedSync().isAfter(execLastModified)) {
-    print('🔄 Source code is newer than executable, recompiling...');
-    return true;
-  }
-
-  // Check pubspec.yaml modification time
-  if (pubspecFile.existsSync() && pubspecFile.lastModifiedSync().isAfter(execLastModified)) {
-    print('🔄 pubspec.yaml has changed, recompiling...');
-    return true;
-  }
-
-  print('✅ Executable is up to date, skipping compilation.');
-  return false;
 }

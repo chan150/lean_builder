@@ -14,7 +14,7 @@ void main() {
 
   setUpAll(() {
     final packageToPath = {PackageFileResolver.dartSdk: 'path/to/sdk', 'root': 'path/to/root'};
-    fileResolver = PackageFileResolverImpl(packageToPath, packageToPath.map((k, v) => MapEntry(v, k)), '', 'root');
+    fileResolver = PackageFileResolverImpl(packageToPath, packagesHash: '', rootPackage: 'root');
   });
 
   setUp(() {
@@ -25,14 +25,14 @@ void main() {
 
   test('should resolve simple class element', () {
     final asset = StringSrc('class Foo {}');
-    scanner!.scanFile(asset);
+    scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     expect(library.getClass('Foo'), isNotNull);
   });
 
   test('should resolve abstract class element', () {
     final asset = StringSrc('abstract class Foo {}');
-    scanner!.scanFile(asset);
+    scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
@@ -49,7 +49,7 @@ void main() {
 
   test('should resolve final class element', () {
     final asset = StringSrc('final class Foo {}');
-    scanner!.scanFile(asset);
+    scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
@@ -65,7 +65,7 @@ void main() {
 
   test('should resolve base class element', () {
     final asset = StringSrc('base class Foo {}');
-    scanner!.scanFile(asset);
+    scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
@@ -81,7 +81,7 @@ void main() {
 
   test('should resolve interface class element', () {
     final asset = StringSrc('interface class Foo {}');
-    scanner!.scanFile(asset);
+    scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
@@ -97,7 +97,7 @@ void main() {
 
   test('should resolve mixin class element', () {
     final asset = StringSrc('mixin class Foo {}');
-    scanner!.scanFile(asset);
+    scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
@@ -113,7 +113,7 @@ void main() {
 
   test('should resolve sealed class element', () {
     final asset = StringSrc('sealed class Foo {}');
-    scanner!.scanFile(asset);
+    scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
@@ -133,7 +133,7 @@ void main() {
         mixin Baz {}
         class Foo = Bar with Baz;
     ''');
-    scanner!.scanFile(asset);
+    scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
@@ -149,7 +149,7 @@ void main() {
 
   test('should resolve abstract interface class element', () {
     final asset = StringSrc('abstract interface class Foo {}');
-    scanner!.scanFile(asset);
+    scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
@@ -166,7 +166,7 @@ void main() {
 
   test('should resolve abstract final class element', () {
     final asset = StringSrc('abstract final class Foo {}');
-    scanner!.scanFile(asset);
+    scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
@@ -183,7 +183,7 @@ void main() {
 
   test('should resolve abstract mixin class element', () {
     final asset = StringSrc('abstract mixin class Foo {}');
-    scanner!.scanFile(asset);
+    scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
@@ -203,7 +203,7 @@ void main() {
         class Bar {}
         class Foo extends Bar {}
     ''');
-    scanner!.scanFile(asset);
+    scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
@@ -216,7 +216,7 @@ void main() {
          class Baz {}
          class Foo implements Bar, Baz {}
     ''');
-    scanner!.scanFile(asset);
+    scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
@@ -229,7 +229,7 @@ void main() {
         mixin Baz {}
         class Foo with Bar, Baz {}
     ''');
-    scanner!.scanFile(asset);
+    scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('Foo');
     expect(classElement, isNotNull);

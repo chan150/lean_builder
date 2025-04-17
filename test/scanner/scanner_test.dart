@@ -1,3 +1,4 @@
+import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 import 'package:lean_builder/src/scanner/assets_graph.dart';
 import 'package:lean_builder/src/scanner/directive_statement.dart';
 import 'package:lean_builder/src/scanner/scan_results.dart';
@@ -5,16 +6,15 @@ import 'package:lean_builder/src/scanner/top_level_scanner.dart';
 import 'package:test/expect.dart';
 import 'package:test/scaffolding.dart';
 
-import '../utils/mock_package_file_resolver.dart';
 import 'string_asset_src.dart';
 
 main() {
   late TopLevelScanner scanner;
   late AssetsGraph assetsGraph;
   setUp(() {
-    final mockPackageFileResolver = MockPackageFileResolver({'test': 'path/to/test'});
-    assetsGraph = AssetsGraph(mockPackageFileResolver.packagesHash);
-    scanner = TopLevelScanner(assetsGraph, mockPackageFileResolver);
+    final fileResolver = PackageFileResolverImpl({'test': 'path/to/test'},  packagesHash: '', rootPackage: 'root');
+    assetsGraph = AssetsGraph(fileResolver.packagesHash);
+    scanner = TopLevelScanner(assetsGraph, fileResolver);
   });
 
   test('TopLevelScanner should scan a file with const variables', () {
@@ -27,7 +27,7 @@ main() {
     const List<String> constants = ['A', 'B'];
     const Map<int, List<int>> kValue = _kValue; 
     ''');
-    scanner.scanFile(file);
+    scanner.scan(file);
     final expected = [
       ['_privateConst', file.id, TopLevelIdentifierType.$variable.value],
       ['kPi', file.id, TopLevelIdentifierType.$variable.value],
@@ -45,7 +45,7 @@ main() {
     // void add(){}
     /* constant constInt = 42; */
     ''');
-    scanner.scanFile(file);
+    scanner.scan(file);
     expect(assetsGraph.identifiers.isEmpty, true);
   });
 
@@ -62,7 +62,7 @@ main() {
       abstract void abstractMethod();
     }
     ''');
-    scanner.scanFile(file);
+    scanner.scan(file);
     expect(assetsGraph.identifiers.length, 1);
   });
 
@@ -71,7 +71,7 @@ main() {
     enum Enum { red, green, blue }
     enum EnumWithImpl implements Logger { red, green, blue }
     ''');
-    scanner.scanFile(file);
+    scanner.scan(file);
     final expected = [
       ['Enum', file.id, TopLevelIdentifierType.$enum.value],
       ['EnumWithImpl', file.id, TopLevelIdentifierType.$enum.value],
@@ -100,7 +100,7 @@ main() {
     typedef JsonProcessor = void Function(JsonMap data);
     typedef Transformer<T, U> = U Function(T Function(T) processor, T input);
     ''');
-    scanner.scanFile(file);
+    scanner.scan(file);
     final expected = [
       ['JsonMap', file.id, TopLevelIdentifierType.$typeAlias.value],
       ['Record', file.id, TopLevelIdentifierType.$typeAlias.value],
@@ -130,7 +130,7 @@ main() {
     extension type const TypeExt(double? offset) {}
     extension type TypeExt2(double? offset) {}
     ''');
-    scanner.scanFile(file);
+    scanner.scan(file);
     final expected = [
       ['StringExt', file.id, TopLevelIdentifierType.$extension.value],
       ['ListExt', file.id, TopLevelIdentifierType.$extension.value],
@@ -149,7 +149,7 @@ main() {
       void log2(String msg) {}
     }
     ''');
-    scanner.scanFile(file);
+    scanner.scan(file);
     final expected = [
       ['Logger', file.id, TopLevelIdentifierType.$mixin.value],
       ['Logger2', file.id, TopLevelIdentifierType.$mixin.value],
@@ -173,7 +173,7 @@ main() {
       mixin class GenericMixin<T> {}
       class AliasedClass<T> = GenericClass<T> with GenericMixin<T>;
     ''');
-    scanner.scanFile(file);
+    scanner.scan(file);
     final expected = [
       ['Shape', file.id, TopLevelIdentifierType.$class.value],
       ['Rectangle', file.id, TopLevelIdentifierType.$class.value],
@@ -209,7 +209,7 @@ main() {
     Future<List<Map<String, dynamic>>> processSourceReport() async => [];
  ''');
 
-    scanner.scanFile(file);
+    scanner.scan(file);
     final expected = [
       ['noReturn', file.id, TopLevelIdentifierType.$function.value],
       ['printMsg', file.id, TopLevelIdentifierType.$function.value],
@@ -245,7 +245,7 @@ main() {
         ({String name, int age}) namedRecord({String name = '', int age = 0}) => (name: name, age: age);
   ''');
 
-    scanner.scanFile(file);
+    scanner.scan(file);
     final expected = [
       ['syncGenerator', file.id, TopLevelIdentifierType.$function.value],
       ['nativeFunction', file.id, TopLevelIdentifierType.$function.value],
@@ -262,17 +262,17 @@ main() {
   });
 
   test('Should parse simple import', () {
-    final file = StringSrc("import 'path.dart';", uriString: 'path.dart');
-    scanner.scanFile(file);
-    final imports = assetsGraph.importsOf(file.id);
+    final src = StringSrc("import 'path.dart';", uriString: 'path.dart');
+    scanner.scan(src);
+    final imports = assetsGraph.importsOf(src.id);
     expect(imports.length, 1);
     final importArr = imports.first;
-    expect(importArr, [DirectiveStatement.import, file.id, 'path.dart', null, null]);
+    expect(importArr, [DirectiveStatement.import, src.id, 'path.dart', null, null]);
   });
 
   test('Should parse simple import with alias', () {
     final file = StringSrc("import 'path.dart' as i;", uriString: 'path.dart');
-    scanner.scanFile(file);
+    scanner.scan(file);
     final imports = assetsGraph.importsOf(file.id);
     expect(imports.length, 1);
     expect(imports.first, [DirectiveStatement.import, file.id, 'path.dart', null, null, 'i']);
@@ -280,7 +280,7 @@ main() {
 
   test('Should parse simple deferred import', () {
     final file = StringSrc("import 'path.dart' deferred as i;", uriString: 'path.dart');
-    scanner.scanFile(file);
+    scanner.scan(file);
     final imports = assetsGraph.importsOf(file.id);
     expect(imports.length, 1);
     expect(imports.first, [DirectiveStatement.import, file.id, 'path.dart', null, null, 'i', 1]);
@@ -288,7 +288,7 @@ main() {
 
   test('Should parse simple import with show', () {
     final file = StringSrc("import 'path.dart' show A, B;", uriString: 'path.dart');
-    scanner.scanFile(file);
+    scanner.scan(file);
     final imports = assetsGraph.importsOf(file.id);
     expect(imports.length, 1);
     expect(imports.first, [
@@ -302,7 +302,7 @@ main() {
 
   test('Should parse simple import with hide', () {
     final file = StringSrc("import 'path.dart' hide A, B;", uriString: 'path.dart');
-    scanner.scanFile(file);
+    scanner.scan(file);
     final imports = assetsGraph.importsOf(file.id);
     expect(imports.first, [
       DirectiveStatement.import,
@@ -315,7 +315,7 @@ main() {
 
   test('Should parse simple import with show and hide', () {
     final file = StringSrc("import 'path.dart' show A, B hide C, D;", uriString: 'path.dart');
-    scanner.scanFile(file);
+    scanner.scan(file);
     final imports = assetsGraph.importsOf(file.id);
     expect(imports.length, 1);
     expect(imports.first, [
@@ -329,14 +329,14 @@ main() {
 
   test('Should parse simple export', () {
     final file = StringSrc("export 'path.dart';", uriString: 'path.dart');
-    scanner.scanFile(file);
+    scanner.scan(file);
     final exports = assetsGraph.exportsOf(file.id);
     expect(exports.first, [DirectiveStatement.export, file.id, 'path.dart', null, null]);
   });
 
   test('Should parse simple export with show', () {
     final file = StringSrc("export 'path.dart' show A, B;", uriString: 'path.dart');
-    scanner.scanFile(file);
+    scanner.scan(file);
     final exports = assetsGraph.exportsOf(file.id);
     expect(exports.first, [
       DirectiveStatement.export,
@@ -349,7 +349,7 @@ main() {
 
   test('Should parse simple export with hide', () {
     final file = StringSrc("export 'path.dart' hide A, B;", uriString: 'path.dart');
-    scanner.scanFile(file);
+    scanner.scan(file);
     final exports = assetsGraph.exportsOf(file.id);
     expect(exports.first, [
       DirectiveStatement.export,
@@ -362,7 +362,7 @@ main() {
 
   test('Should parse simple export with show and hide', () {
     final file = StringSrc("export 'path.dart' show A, B hide C, D;", uriString: 'path.dart');
-    scanner.scanFile(file);
+    scanner.scan(file);
     final exports = assetsGraph.exportsOf(file.id);
     expect(exports.first, [
       DirectiveStatement.export,
@@ -375,7 +375,7 @@ main() {
 
   test('Should parse simple part', () {
     final file = StringSrc("part 'path.dart';", uriString: 'path.dart');
-    scanner.scanFile(file);
+    scanner.scan(file);
     final imports = assetsGraph.importsOf(file.id);
     final exports = assetsGraph.exportsOf(file.id);
     final parts = assetsGraph.partsOf(file.id);
@@ -386,7 +386,7 @@ main() {
 
   test('Should parse part of', () {
     final file = StringSrc("part of 'path.dart';");
-    scanner.scanFile(file);
+    scanner.scan(file);
     expect(assetsGraph.partOfOf(file.id), isNotNull);
   });
 
@@ -395,7 +395,7 @@ main() {
       @Annotation()
       class MyClass {}
     ''');
-    scanner.scanFile(file);
+    scanner.scan(file);
     expect(assetsGraph.identifiers.first, ['MyClass', file.id, TopLevelIdentifierType.$class.value]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
@@ -405,7 +405,7 @@ main() {
       @Annotation('arg1', arg2: 42)
       class MyClass {}
     ''');
-    scanner.scanFile(file);
+    scanner.scan(file);
     expect(assetsGraph.identifiers.first, ['MyClass', file.id, TopLevelIdentifierType.$class.value]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
@@ -415,7 +415,7 @@ main() {
       @annotation
       class MyClass {}
     ''');
-    scanner.scanFile(file);
+    scanner.scan(file);
     expect(assetsGraph.identifiers.first, ['MyClass', file.id, TopLevelIdentifierType.$class.value]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
@@ -425,7 +425,7 @@ main() {
       @Annotation()
       const myVar = 42;
     ''');
-    scanner.scanFile(file);
+    scanner.scan(file);
     expect(assetsGraph.identifiers.first, ['myVar', file.id, TopLevelIdentifierType.$variable.value]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
@@ -435,7 +435,7 @@ main() {
       @Annotation.named()
       const myVar = 42;
     ''');
-    scanner.scanFile(file);
+    scanner.scan(file);
     expect(assetsGraph.identifiers.first, ['myVar', file.id, TopLevelIdentifierType.$variable.value]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
@@ -446,7 +446,7 @@ main() {
       @prefix.Annotation.named()
       class MyClass {}
     ''');
-    scanner.scanFile(file);
+    scanner.scan(file);
     expect(assetsGraph.identifiers.first, ['MyClass', file.id, TopLevelIdentifierType.$class.value]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
@@ -457,7 +457,7 @@ main() {
       @Annotation2()
       class MyClass {}
     ''');
-    scanner.scanFile(file);
+    scanner.scan(file);
     expect(assetsGraph.identifiers.first, ['MyClass', file.id, TopLevelIdentifierType.$class.value]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
@@ -470,7 +470,7 @@ main() {
       @annotation
       void myFunction() {}
     ''');
-    scanner.scanFile(file);
+    scanner.scan(file);
     expect(assetsGraph.identifiers.first, ['myFunction', file.id, TopLevelIdentifierType.$function.value]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
@@ -484,7 +484,7 @@ main() {
         void myMethod() {}
       }
     ''');
-    scanner.scanFile(file);
+    scanner.scan(file);
     expect(assetsGraph.identifiers.first, ['MyClass', file.id, TopLevelIdentifierType.$class.value]);
     expect(assetsGraph.assets[file.id]?[2], 0);
   });
@@ -493,7 +493,7 @@ main() {
     final file = StringSrc('''
       void myFunction(@Annotation() int arg) {}
     ''');
-    scanner.scanFile(file);
+    scanner.scan(file);
     expect(assetsGraph.identifiers.first, ['myFunction', file.id, TopLevelIdentifierType.$function.value]);
     expect(assetsGraph.assets[file.id]?[2], 0);
   });

@@ -404,7 +404,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
 
     if (typename == TypeRef.voidType.name) return TypeRef.voidType;
     if (typename == TypeRef.dynamicType.name) return TypeRef.dynamicType;
-    if (typename == TypeRef.invalidType.name) return TypeRef.neverType;
+    if (typename == TypeRef.neverType.name) return TypeRef.neverType;
 
     final typeArgs = <TypeRef>[];
     for (final typeArg in [...?annotation.typeArguments?.arguments]) {

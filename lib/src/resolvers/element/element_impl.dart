@@ -29,6 +29,11 @@ abstract class ElementImpl implements Element {
     _metadata.add(annotation);
   }
 
+  @override
+  ElementAnnotation? getAnnotation(String name) {
+    return metadata.firstWhereOrNull((e) => e.name == name);
+  }
+
   void Function()? metadataResolveCallback;
 
   @override

@@ -128,6 +128,41 @@ class AssetsGraph extends AssetsScanResults {
     return null;
   }
 
+  DeclarationRef? lookupIdentifierByProvider(String name, String providerSrc) {
+    if (!assets.containsKey(providerSrc)) return null;
+    final possibleSrcs = Map<String, List<dynamic>>.fromEntries(
+      identifiers
+          .where((e) => e[GraphIndex.identifierName] == name)
+          .map((e) => MapEntry(e[GraphIndex.identifierSrc], e)),
+    );
+
+    // First check if the identifier is declared directly in this file
+    for (final entry in possibleSrcs.entries) {
+      if (entry.key == providerSrc) {
+        return DeclarationRef(
+          identifier: name,
+          srcId: providerSrc,
+          providerId: providerSrc,
+          type: TopLevelIdentifierType.fromValue(entry.value[GraphIndex.identifierType]),
+          srcUri: uriForAsset(providerSrc),
+        );
+      }
+    }
+    // trace exports
+    final visitedSrcs = <String>{};
+    final src = _traceExportsOf(providerSrc, name, possibleSrcs.keys, visitedSrcs);
+    if (src != null) {
+      return DeclarationRef(
+        identifier: name,
+        srcId: src,
+        providerId: providerSrc,
+        type: TopLevelIdentifierType.fromValue(possibleSrcs[src]![GraphIndex.identifierType]),
+        srcUri: uriForAsset(src),
+      );
+    }
+    return null;
+  }
+
   String? _traceExportsOf(String srcId, String identifier, Iterable<String> possibleSrcs, Set<String> visitedSrcs) {
     if (visitedSrcs.contains(srcId)) return null;
     visitedSrcs.add(srcId);

@@ -15,7 +15,7 @@ class TopLevelScanner {
 
   TopLevelScanner(this.results, this.fileResolver);
 
-  void scanFile(AssetSrc asset) {
+  void scan(AssetSrc asset) {
     try {
       if (results.isVisited(asset.id)) return;
       final bytes = asset.readAsBytesSync();

@@ -8,28 +8,27 @@ import 'package:lean_builder/src/scanner/top_level_scanner.dart';
 import 'package:test/test.dart';
 
 import '../scanner/string_asset_src.dart';
-import '../utils/mock_package_file_resolver.dart';
-import 'dart_core_assets.dart';
+import '../utils/test_utils.dart';
 
 void main() {
-  late PackageFileResolver fileResolver;
+  PackageFileResolverImpl? fileResolver;
   TopLevelScanner? scanner;
   ElementResolver? resolver;
 
-  setUpAll(() {
-    final packageToPath = {PackageFileResolver.dartSdk: 'path/to/sdk', 'root': 'path/to/root'};
-    fileResolver = MockPackageFileResolver(packageToPath);
-  });
-
   setUp(() {
+    final packageToPath = {
+      PackageFileResolver.dartSdk: PackageFileResolver.dartSdkPath.toString(),
+      'root': 'path/to/root',
+    };
+    fileResolver = PackageFileResolverImpl(packageToPath, packagesHash: '', rootPackage: 'root');
     final AssetsGraph graph = AssetsGraph('hash');
-    scanner = TopLevelScanner(graph, fileResolver);
-    resolver = ElementResolver(graph, fileResolver, SrcParser());
+    scanner = TopLevelScanner(graph, fileResolver!);
+    resolver = ElementResolver(graph, fileResolver!, SrcParser());
   });
 
   test('should resolve simple enum element', () {
     final asset = StringSrc('enum Foo {item;}');
-    scanner!.scanFile(asset);
+    scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final enumElement = library.getEnum('Foo');
     expect(enumElement, isNotNull);
@@ -40,7 +39,7 @@ void main() {
      class Bar {}
      enum Foo implements Bar {item;}
     ''');
-    scanner!.scanFile(asset);
+    scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final enumElement = library.getEnum('Foo');
     expect(enumElement, isNotNull);
@@ -52,7 +51,7 @@ void main() {
      class Bar {}
      enum Foo with Bar {enum1;}
     ''');
-    scanner!.scanFile(asset);
+    scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final enumElement = library.getEnum('Foo');
     expect(enumElement, isNotNull);
@@ -65,7 +64,7 @@ void main() {
       mixin Baz {}
       enum Foo with Baz implements Bar { enum1 }
     ''');
-    scanner!.scanFile(asset);
+    scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final enumElement = library.getEnum('Foo');
     expect(enumElement, isNotNull);
@@ -74,26 +73,35 @@ void main() {
   });
 
   test('should resolve enum with annotations', () {
-    final asset = StringSrc('''
+    final annotationAsset = StringSrc('''
       class Bar {
         const Bar();
       }
+    ''', uriString: 'package:bar/bar.dart');
+
+    final asset = StringSrc('''
+      import 'package:bar/bar.dart';
       @Bar()
       enum Foo { enum1 }
     ''');
-    scanner!.scanFile(asset);
+
+    fileResolver!.registerAsset(asset);
+    fileResolver!.registerAsset(annotationAsset, relativeTo: asset);
+    scanner!.scan(annotationAsset);
+    scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
+    final annotationLibrary = resolver!.resolveLibrary(annotationAsset);
     final enumElement = library.getEnum('Foo');
     expect(enumElement, isNotNull);
     expect(enumElement!.metadata.length, 1);
-    expect(enumElement.metadata[0].type, library.getClass('Bar')!.thisType);
+    expect(enumElement.metadata[0].type, annotationLibrary.getClass('Bar')!.thisType);
   });
 
   test('should resolve enum with fields', () {
     final asset = StringSrc('''
       enum Foo { enum1, enum2 }
     ''');
-    scanner!.scanFile(asset);
+    scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final enumElement = library.getEnum('Foo');
     expect(enumElement, isNotNull);
@@ -106,7 +114,7 @@ void main() {
     final asset = StringSrc('''
       enum Foo { item1; }
     ''');
-    scanner!.scanFile(asset);
+    scanner!.scan(asset);
 
     final library = resolver!.resolveLibrary(asset);
     final enumElement = library.getEnum('Foo');
@@ -122,8 +130,8 @@ void main() {
         const Foo(this.value); 
       }
     ''');
-    scanner!.scanFile(asset);
-    includeDartCoreAssets(scanner!);
+    scanner!.scanAndRegister(asset);
+    scanDartCoreAssets(scanner!);
     final library = resolver!.resolveLibrary(asset);
     final enumElement = library.getEnum('Foo');
     expect(enumElement, isNotNull);
@@ -139,14 +147,13 @@ void main() {
     final asset = StringSrc('''
       enum Foo { 
         enum1(1, name: 'name', value: 2); 
-        
         final int value;
         final String name;  
         const Foo(this.value, {this.name}); 
       }
     ''');
-    scanner!.scanFile(asset);
-    includeDartCoreAssets(scanner!);
+    scanner!.scanAndRegister(asset);
+    scanDartCoreAssets(scanner!);
     final library = resolver!.resolveLibrary(asset);
     final enumElement = library.getEnum('Foo');
     expect(enumElement, isNotNull);

@@ -24,6 +24,9 @@ sealed class TypeRef {
   /// Return `true` if this type represents the type 'Never'
   bool get isNever;
 
+  /// Return `true` if this type represents the type 'Invalid'
+  bool get isInvalid;
+
   /// Return `true` if this type represents the type 'Future' defined in the
   /// dart:async library.
   bool get isDartAsyncFuture;
@@ -122,6 +125,8 @@ abstract class NamedTypeRef extends TypeRef {
 
   /// then identifier that points to declaration of this type
   String get identifier;
+
+  bool refersTo(TypeRef other);
 }
 
 abstract class TypeRefImpl extends TypeRef {
@@ -203,6 +208,9 @@ abstract class TypeRefImpl extends TypeRef {
   bool get isNever => false;
 
   @override
+  bool get isInvalid => false;
+
+  @override
   bool operator ==(Object other) => identical(this, other) || other is TypeRefImpl && runtimeType == other.runtimeType;
 
   @override
@@ -240,6 +248,9 @@ class NonElementTypeRef extends TypeRefImpl {
 
   @override
   bool get isNever => name == 'Never';
+
+  @override
+  bool get isInvalid => name == 'Invalid';
 }
 
 class NamedTypeRefImpl extends TypeRefImpl implements NamedTypeRef {
@@ -365,6 +376,14 @@ class NamedTypeRefImpl extends TypeRefImpl implements NamedTypeRef {
 
   @override
   int get hashCode => name.hashCode ^ src.srcId.hashCode ^ const ListEquality().hash(typeArguments);
+
+  @override
+  bool refersTo(TypeRef other) {
+    if (other is NamedTypeRef) {
+      return name == other.name && src.srcId == other.src.srcId;
+    }
+    return false;
+  }
 }
 
 class FunctionTypeRef extends TypeRefImpl {

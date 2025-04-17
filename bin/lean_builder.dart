@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:dart_style/dart_style.dart';
 import 'package:lean_builder/src/resolvers/element/element.dart';
 import 'package:lean_builder/src/resolvers/element_resolver.dart';
 import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
@@ -37,6 +38,7 @@ void main(List<String> args) async {
   final actualIsolateCount = isolateCount.clamp(1, assets.length);
   final chunkSize = (assets.length / actualIsolateCount).ceil();
   final chunks = <List<ScannedAsset>>[];
+  final formatter = DartFormatter(languageVersion: DartFormatter.latestLanguageVersion);
 
   for (int i = 0; i < assets.length; i += chunkSize) {
     final end = (i + chunkSize < assets.length) ? i + chunkSize : assets.length;
@@ -45,19 +47,32 @@ void main(List<String> args) async {
 
   final futures = <Future>[];
   for (final chunk in chunks) {
-    final future = Isolate.run(() {
+    final future = Isolate.run(() async {
       int count = 0;
       final chunkStopWatch = Stopwatch()..start();
       final chunkResolver = ElementResolver(assetsGraph, fileResolver, parser);
+
+      final annotationType = chunkResolver.getNamedTypeRef('Genix', 'package:lean_builder/test/annotation.dart');
       for (final asset in chunk) {
         if (asset.hasAnnotation) {
           final assetFile = fileResolver.assetSrcFor(asset.uri);
           count++;
           final library =
               chunkResolver.resolveLibrary(assetFile, preResolveTopLevelMetadata: true) as LibraryElementImpl;
-          final element = library.classes.firstOrNull;
+          final element = library.resolvedElements.firstOrNull;
           if (element != null) {
-            print(element.methods);
+            print(
+              element.metadata.any((a) {
+                return annotationType.refersTo(a.type);
+              }),
+            );
+            // print('${element.name} ${element.metadata}');
+            // final targetUri = element.librarySrc.uri.replace(
+            //   path: element.librarySrc.uri.path.replaceFirst('.dart', '.g.dart'),
+            // );
+            // String content = element.library.compilationUnit.toSource();
+            // content = content.replaceAll('@JsonSerializable()', '');
+            // await File.fromUri(targetUri).writeAsString(formatter.format(content, uri: targetUri));
           }
         }
       }

@@ -14,7 +14,7 @@ void main() {
 
   setUpAll(() {
     final packageToPath = {PackageFileResolver.dartSdk: 'path/to/sdk', 'root': 'path/to/root'};
-    fileResolver = PackageFileResolverImpl(packageToPath, packageToPath.map((k, v) => MapEntry(v, k)), '', 'root');
+    fileResolver = PackageFileResolverImpl(packageToPath, packagesHash: '', rootPackage: 'root');
   });
 
   setUp(() {
@@ -25,7 +25,7 @@ void main() {
 
   test('should resolve simple mixin element', () {
     final asset = StringSrc('mixin Foo {}');
-    scanner!.scanFile(asset);
+    scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final mixinElement = library.getMixin('Foo');
     expect(mixinElement, isNotNull);
@@ -35,7 +35,7 @@ void main() {
 
   test('should resolve base mixin element', () {
     final asset = StringSrc('base mixin Foo {}');
-    scanner!.scanFile(asset);
+    scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final mixinElement = library.getMixin('Foo');
     expect(mixinElement, isNotNull);
@@ -49,7 +49,7 @@ void main() {
       class Baz {}
       mixin Foo on Bar, Baz {}
     ''');
-    scanner!.scanFile(asset);
+    scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final mixinElement = library.getMixin('Foo');
     expect(mixinElement, isNotNull);

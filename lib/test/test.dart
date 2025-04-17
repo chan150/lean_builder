@@ -1,31 +1,12 @@
+import 'package:lean_builder/test/annotation.dart';
 import 'package:lean_builder/test/test2.dart' as test2;
 import 'package:lean_builder/test/test2.dart';
-import 'package:meta/meta.dart';
 
 typedef TypedType = void Function(int x, bool y);
 
 abstract base class X {}
 
-class Genix<T> {
-  final ObjectArg objectArg;
-  final String? str2;
-
-  const Genix(this.objectArg) : str2 = 'str2';
-
-  const Genix.named(this.objectArg) : str2 = null;
-
-  static const test2.SuperX named2 = test2.SuperX(superStr: 'SuperStr2');
-}
-
-const genix$ = Genix<int>(ObjectArg('Arg'));
-const genixNamed = Genix.named(ObjectArg('Arg'));
 const String constArg = 'Hello';
-
-class ObjectArg {
-  const ObjectArg(this.arg);
-
-  final String arg;
-}
 
 const constVar = 'Hello';
 
@@ -50,7 +31,7 @@ enum ColorEnumWithArgs {
   bool get isRed => value == 'red';
 }
 
-@Genix<String>(ObjectArg('arg'))
+@Genix<String>(String)
 class AnnotatedClass {
   AnnotatedClass(this._namex);
 

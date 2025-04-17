@@ -1,7 +1,7 @@
 part of 'element.dart';
 
 const String _metaPackageUri = 'package:meta/meta.dart';
-
+const String _metaMetaPackageUri = 'package:meta/meta_meta.dart';
 const String _coreAnnotationsUri = 'dart:core/annotations.dart';
 
 abstract class ElementAnnotation {
@@ -116,19 +116,19 @@ class ElementAnnotationImpl implements ElementAnnotation {
 
   late final String _srcName = declarationRef.srcUri.toString();
 
-  bool _isMeta(String name) {
-    return _srcName == _metaPackageUri && name == this.name;
-  }
+  bool _isMeta(String name) => _belongsToPackage(_metaPackageUri, name);
 
-  bool _isCore(String name) {
-    return _srcName == _coreAnnotationsUri && name == this.name;
+  bool _isCore(String name) => _belongsToPackage(_coreAnnotationsUri, name);
+
+  bool _belongsToPackage(String srcName, String name) {
+    return _srcName == srcName && name == this.name;
   }
 
   @override
   bool get isAlwaysThrows => _isMeta('alwaysThrows');
 
   @override
-  bool get isDeprecated => _isMeta('deprecated') || _isCore('Deprecated');
+  bool get isDeprecated => _isCore('deprecated') || _isCore('Deprecated');
 
   @override
   bool get isDoNotStore => _isMeta('doNotStore');
@@ -161,7 +161,7 @@ class ElementAnnotationImpl implements ElementAnnotation {
   bool get isOptionalTypeArgs => _isMeta('optionalTypeArgs');
 
   @override
-  bool get isOverride => _isMeta('override');
+  bool get isOverride => _isCore('override');
 
   @override
   bool get isProtected => _isMeta('protected');
@@ -188,10 +188,12 @@ class ElementAnnotationImpl implements ElementAnnotation {
   bool get isImmutable => _isMeta('immutable');
 
   @override
-  bool get isTarget => _isMeta('Target');
+  bool get isTarget {
+    return _belongsToPackage(_metaMetaPackageUri, 'Target');
+  }
 
   @override
   String toString() {
-    return 'ElementAnnotationImpl{type: $type, name: $name}';
+    return '@$name';
   }
 }
