@@ -34,6 +34,8 @@ abstract class Element {
 
   AssetSrc get librarySrc;
 
+  String? get documentationComment;
+
   /// Whether the element has an annotation of the form `@alwaysThrows`.
   bool get hasAlwaysThrows;
 
@@ -141,6 +143,8 @@ abstract class InterfaceElement extends InstanceElement with TypeParameterizedEl
   FieldElement? getField(String name);
 
   bool hasMethod(String name);
+
+  bool hasPropertyAccessor(String name);
 
   bool hasField(String name);
 

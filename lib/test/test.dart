@@ -29,10 +29,8 @@ class ObjectArg {
 
 const constVar = 'Hello';
 
-@genix$
-@Genix<String>(ObjectArg('arg'))
+// @Genix<String>(ObjectArg('arg'))
 enum ColorEnumWithArgs {
-  @deprecated
   red(constVar),
   green('green'),
   blue.named('blue', 200);
@@ -52,14 +50,17 @@ enum ColorEnumWithArgs {
   bool get isRed => value == 'red';
 }
 
-// @test2.SuperX()
-// @genix$
-// @Genix$(String, superStr: 'SuperStr2')
-// @Genix$.named(String)
+@Genix<String>(ObjectArg('arg'))
 class AnnotatedClass {
-  const AnnotatedClass(this.fieldType);
+  AnnotatedClass(this._namex);
 
-  final test2.FieldType fieldType;
+  String _namex = 'Hello';
+
+  String get name => 0 == 1 ? '' : "43";
+
+  set name(String value) {
+    _namex = value;
+  }
 
   // final Target target;
   // final Future futre;

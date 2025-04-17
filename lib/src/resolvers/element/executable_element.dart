@@ -14,54 +14,55 @@ abstract class FunctionTypedElement implements TypeParameterizedElement {
 }
 
 abstract class ExecutableElement implements FunctionTypedElement {
-  bool get hasImplicitReturnType;
-
+  /// Whether the executable element is abstract.
+  ///
+  /// Executable elements are abstract if they are not external, and have no
+  /// body.
   bool get isAbstract;
 
+  /// Whether the executable element has body marked as being asynchronous.
   bool get isAsynchronous;
 
+  /// Whether the executable element is external.
+  ///
+  /// Executable elements are external if they are explicitly marked as such
+  /// using the 'external' keyword.
   bool get isExternal;
 
+  /// Whether the executable element has a body marked as being a generator.
   bool get isGenerator;
 
+  /// Whether the executable element is an operator.
+  ///
+  /// The test may be based on the name of the executable element, in which
+  /// case the result will be correct when the name is legal.
   bool get isOperator;
 
+  /// Whether the element is a static element.
+  ///
+  /// A static element is an element that is not associated with a particular
+  /// instance, but rather with an entire library or class.
   bool get isStatic;
 
+  /// Whether the executable element has a body marked as being synchronous.
   bool get isSynchronous;
+
+  /// Whether the executable element did not have an explicit return type
+  /// specified for it in the original source.
+  bool get hasImplicitReturnType;
 }
 
 abstract class PropertyAccessorElement implements ExecutableElement {
-  PropertyAccessorElement? get correspondingGetter;
-
-  PropertyAccessorElement? get correspondingSetter;
-
+  /// Whether this accessor is a getter.
   bool get isGetter;
 
+  /// Whether this accessor is a setter.
   bool get isSetter;
-
-  // /// The field or top-level variable associated with this accessor.
-  // ///
-  // /// If this accessor was explicitly defined (is not synthetic) then the
-  // /// variable associated with it will be synthetic.
-  // PropertyInducingElement get variable;
 }
 
 abstract class FunctionElement implements ExecutableElement {
-  /// The name of the method that can be implemented by a class to allow its
-  /// instances to be invoked as if they were a function.
-  static final String kCallMethodName = "call";
-
-  /// The name of the synthetic function defined for libraries that are
-  /// deferred.
-  static final String kLoadLibraryName = "loadLibrary";
-
   /// The name of the function used as an entry point.
   static const String kMainFunctionName = "main";
-
-  /// The name of the method that will be invoked if an attempt is made to
-  /// invoke an undefined method on an object.
-  static final String kNoSuchMethodName = "noSuchMethod";
 
   /// Whether the function is an entry point, i.e. a top-level function and
   /// has the name `main`.

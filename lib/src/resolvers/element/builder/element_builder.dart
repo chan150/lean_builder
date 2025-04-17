@@ -1,4 +1,5 @@
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:lean_builder/src/resolvers/constant/const_evaluator.dart';
 import 'package:lean_builder/src/resolvers/constant/constant.dart';
@@ -26,6 +27,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     library.addElement(extensionType);
 
     visitElementScoped(extensionType, () {
+      node.documentationComment?.accept(this);
       node.typeParameters?.visitChildren(this);
       if (preResolveTopLevelMetadata) {
         node.metadata.accept(this);
@@ -64,6 +66,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       isMixinApplication: true,
     );
     visitElementScoped(clazzElement, () {
+      node.documentationComment?.accept(this);
       node.typeParameters?.visitChildren(this);
       if (preResolveTopLevelMetadata) {
         node.metadata.accept(this);
@@ -132,6 +135,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     final typeAliasElm = TypeAliasElementImpl(name: node.name.lexeme, library: library);
     library.addElement(typeAliasElm);
     visitElementScoped(typeAliasElm, () {
+      node.documentationComment?.accept(this);
       node.typeParameters?.visitChildren(this);
       if (preResolveTopLevelMetadata) {
         node.metadata.accept(this);
@@ -153,6 +157,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     if (library.hasElement(node.name.lexeme)) return;
     final funcElement = FunctionElementImpl(name: node.name.lexeme, enclosingElement: library);
     visitElementScoped(funcElement, () {
+      node.documentationComment?.accept(this);
       node.typeParameters?.visitChildren(this);
       node.parameters.visitChildren(this);
       if (preResolveTopLevelMetadata) {
@@ -193,11 +198,11 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     library.addElement(classElement);
 
     visitElementScoped(classElement, () {
+      node.documentationComment?.accept(this);
       node.typeParameters?.visitChildren(this);
-      for (final field in node.members.whereType<FieldDeclaration>()) {
-        field.accept(this);
+      for (final member in node.members.whereType<FieldDeclaration>()) {
+        member.accept(this);
       }
-
       if (preResolveTopLevelMetadata) {
         node.metadata.accept(this);
         classElement.didResolveMetadata = true;
@@ -235,6 +240,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     libraryElement.addElement(mixinElement);
 
     visitElementScoped(mixinElement, () {
+      node.documentationComment?.accept(this);
       node.typeParameters?.visitChildren(this);
 
       for (final member in node.members) {
@@ -273,6 +279,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     );
 
     visitElementScoped(enumElement, () {
+      node.documentationComment?.accept(this);
       node.typeParameters?.visitChildren(this);
       for (final member in node.members.whereType<FieldDeclaration>()) {
         member.accept(this);
@@ -310,7 +317,9 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       isExternal: false,
       type: enumElement.thisType,
     );
-    visitElementScoped(fieldEle, () => node.metadata.accept(this));
+    visitElementScoped(fieldEle, () {
+      node.documentationComment?.accept(this);
+    });
     final args = node.arguments;
     if (args != null) {
       fieldEle.setConstantComputeValue(() {
@@ -453,6 +462,11 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
   }
 
   @override
+  void visitPropertyAccess(PropertyAccess node) {
+    print(node);
+  }
+
+  @override
   void visitAnnotation(Annotation node) {
     final currentElement = currentElementAs<ElementImpl>();
     final name = node.name;
@@ -551,6 +565,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     );
     libraryElement.addElement(funcElement);
     visitElementScoped(funcElement, () {
+      node.documentationComment?.accept(this);
       node.functionExpression.typeParameters?.visitChildren(this);
       node.functionExpression.parameters?.visitChildren(this);
       if (preResolveTopLevelMetadata) {
@@ -735,6 +750,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       isOptionalPositional: node.isOptionalPositional,
       isSuperFormal: isSuperFormal,
     );
+
     parameterElement.type = type ?? TypeRef.neverType;
     _registerMetadataResolver(parameterElement, node.metadata);
     return parameterElement;
@@ -762,6 +778,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
         });
       }
       visitElementScoped(topLevelVar, () {
+        node.documentationComment?.accept(this);
         if (preResolveTopLevelMetadata) {
           node.metadata.accept(this);
           topLevelVar.didResolveMetadata = true;
@@ -777,9 +794,10 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
   @override
   void visitMethodDeclaration(MethodDeclaration node) {
     final interfaceElement = currentElementAs<InterfaceElementImpl>();
-    final methodElement = MethodElementImpl(
+    final name = node.name.lexeme;
+    MethodElementImpl methodElement = MethodElementImpl(
       isStatic: node.isStatic,
-      name: node.name.lexeme,
+      name: name,
       enclosingElement: interfaceElement,
       isAbstract: node.isAbstract,
       isAsynchronous: node.body.isAsynchronous,
@@ -788,9 +806,18 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       isOperator: node.isOperator,
       isSynchronous: node.body.isSynchronous,
     );
-    interfaceElement.addMethod(methodElement);
 
+    final accessKeyword = node.propertyKeyword;
+    if (accessKeyword != null) {
+      methodElement = methodElement.toPropertyAccessorElement(
+        isGetter: accessKeyword.keyword == Keyword.GET,
+        isSetter: accessKeyword.keyword == Keyword.SET,
+      );
+    }
+
+    interfaceElement.addMethod(methodElement);
     visitElementScoped(methodElement, () {
+      node.documentationComment?.accept(this);
       node.typeParameters?.visitChildren(this);
       node.parameters?.visitChildren(this);
     });
@@ -803,6 +830,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       parameters: methodElement.parameters,
       isNullable: false,
     );
+
     _registerMetadataResolver(methodElement, node.metadata);
   }
 
@@ -829,8 +857,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       enclosingElement: interfaceElement,
       isConst: node.constKeyword != null,
       isFactory: node.factoryKeyword != null,
-      isDefaultConstructor: false,
-      isGenerative: node.body.isGenerator,
+      isGenerator: node.body.isGenerator,
       superConstructor: superConstructor,
     );
 
@@ -838,6 +865,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     constructorElement.returnType = interfaceElement.thisType;
 
     visitElementScoped(constructorElement, () {
+      node.documentationComment?.accept(this);
       node.parameters.visitChildren(this);
     });
 
@@ -860,5 +888,14 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       constructorElement.redirectedConstructor = ConstructorElementRef(resolvedType, identifierRef.name);
     }
     _registerMetadataResolver(constructorElement, node.metadata);
+  }
+
+  @override
+  void visitComment(Comment node) {
+    final buffer = StringBuffer();
+    for (final token in node.tokens) {
+      buffer.writeln(token.lexeme);
+    }
+    currentElementAs<ElementImpl>().documentationComment = buffer.toString();
   }
 }

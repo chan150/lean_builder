@@ -55,11 +55,9 @@ void main(List<String> args) async {
           count++;
           final library =
               chunkResolver.resolveLibrary(assetFile, preResolveTopLevelMetadata: true) as LibraryElementImpl;
-          final element = library.enums.firstOrNull;
+          final element = library.classes.firstOrNull;
           if (element != null) {
-            for (final e in element.fields) {
-              print('Metadata:${e.type} ${e.metadata}');
-            }
+            print(element.methods);
           }
         }
       }

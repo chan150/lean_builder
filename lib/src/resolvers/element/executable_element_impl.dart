@@ -5,16 +5,18 @@ abstract class ExecutableElementImpl extends ElementImpl
     implements ExecutableElement {
   ExecutableElementImpl({
     required this.name,
-    this.isAbstract = false,
-    this.isAsynchronous = false,
-    this.isExternal = false,
-    this.isGenerator = false,
-    this.isOperator = false,
-    this.isStatic = false,
-    this.isSynchronous = true,
-    this.hasImplicitReturnType = false,
+    required this.isAbstract,
+    required this.isAsynchronous,
+    required this.isExternal,
+    required this.isGenerator,
+    required this.isOperator,
+    required this.isStatic,
+    required this.isSynchronous,
     required this.enclosingElement,
   });
+
+  @override
+  bool get hasImplicitReturnType => returnType == TypeRef.invalidType;
 
   @override
   final String name;
@@ -42,9 +44,6 @@ abstract class ExecutableElementImpl extends ElementImpl
 
   @override
   final Element enclosingElement;
-
-  @override
-  final bool hasImplicitReturnType;
 
   @override
   LibraryElement get library => enclosingElement.library;
@@ -95,13 +94,13 @@ abstract class ExecutableElementImpl extends ElementImpl
 class FunctionElementImpl extends ExecutableElementImpl implements FunctionElement {
   FunctionElementImpl({
     required super.name,
-    super.isAbstract,
-    super.isAsynchronous,
-    super.isExternal,
-    super.isGenerator,
-    super.isOperator,
-    super.isStatic,
-    super.isSynchronous,
+    super.isAbstract = false,
+    super.isAsynchronous = false,
+    super.isExternal = false,
+    super.isGenerator = false,
+    super.isOperator = false,
+    super.isStatic = false,
+    super.isSynchronous = false,
     required super.enclosingElement,
   });
 
@@ -112,15 +111,53 @@ class FunctionElementImpl extends ExecutableElementImpl implements FunctionEleme
 class MethodElementImpl extends ExecutableElementImpl implements MethodElement {
   MethodElementImpl({
     required super.name,
-    super.isAbstract,
-    super.isAsynchronous,
-    super.isExternal,
-    super.isGenerator,
-    super.isOperator,
-    super.isStatic,
-    super.isSynchronous,
+    required super.isAbstract,
+    required super.isAsynchronous,
+    required super.isExternal,
+    required super.isGenerator,
+    required super.isOperator,
+    required super.isStatic,
+    required super.isSynchronous,
     required super.enclosingElement,
   });
+
+  PropertyAccessorElementImpl toPropertyAccessorElement({required bool isGetter, required bool isSetter}) {
+    return PropertyAccessorElementImpl(
+      name: name,
+      isAbstract: isAbstract,
+      isAsynchronous: isAsynchronous,
+      isExternal: isExternal,
+      isGenerator: isGenerator,
+      isOperator: isOperator,
+      isStatic: isStatic,
+      isSynchronous: isSynchronous,
+      enclosingElement: enclosingElement,
+      isGetter: isGetter,
+      isSetter: isSetter,
+    );
+  }
+}
+
+class PropertyAccessorElementImpl extends MethodElementImpl implements PropertyAccessorElement {
+  PropertyAccessorElementImpl({
+    required super.name,
+    required super.isAbstract,
+    required super.isAsynchronous,
+    required super.isExternal,
+    required super.isGenerator,
+    required super.isOperator,
+    required super.isStatic,
+    required super.isSynchronous,
+    required super.enclosingElement,
+    required this.isGetter,
+    required this.isSetter,
+  });
+
+  @override
+  final bool isGetter;
+
+  @override
+  final bool isSetter;
 }
 
 class ConstructorElementImpl extends ExecutableElementImpl implements ConstructorElement {
@@ -128,23 +165,26 @@ class ConstructorElementImpl extends ExecutableElementImpl implements Constructo
     required super.name,
     required super.enclosingElement,
     required this.isConst,
-    required this.isDefaultConstructor,
     required this.isFactory,
-    required this.isGenerative,
+    required super.isGenerator,
     this.superConstructor,
-  }) : super(isAsynchronous: false);
+  }) : super(
+         isAsynchronous: false,
+         isExternal: false,
+         isOperator: false,
+         isStatic: false,
+         isSynchronous: true,
+         isAbstract: false,
+       );
 
   @override
   final bool isConst;
 
   @override
-  final bool isDefaultConstructor;
+  bool get isDefaultConstructor => name.isEmpty && parameters.every((e) => e.isOptional);
 
   @override
   final bool isFactory;
-
-  @override
-  final bool isGenerative;
 
   @override
   ConstructorElementRef? get redirectedConstructor => _redirectedConstructor;
@@ -157,6 +197,9 @@ class ConstructorElementImpl extends ExecutableElementImpl implements Constructo
   set redirectedConstructor(ConstructorElementRef? constructor) {
     _redirectedConstructor = constructor;
   }
+
+  @override
+  bool get isGenerative => !isFactory;
 }
 
 class ConstructorElementRef {

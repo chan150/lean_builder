@@ -4,17 +4,13 @@ typedef ConstantValueCompute = Constant? Function();
 
 abstract class ElementImpl implements Element {
   @override
-  String toString() => name;
+  String? get documentationComment => _documentationComment;
 
-  @override
-  String get identifier => '${library.src}#$name';
+  String? _documentationComment;
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) || other is Element && runtimeType == other.runtimeType && identifier == other.identifier;
-
-  @override
-  int get hashCode => name.hashCode ^ library.hashCode;
+  set documentationComment(String? documentationComment) {
+    _documentationComment = documentationComment;
+  }
 
   bool didResolveMetadata = false;
 
@@ -97,6 +93,19 @@ abstract class ElementImpl implements Element {
 
   @override
   bool get hasVisibleForOverriding => metadata.any((m) => m.isVisibleForOverriding);
+
+  @override
+  String get identifier => '${library.src}#$name';
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is Element && runtimeType == other.runtimeType && identifier == other.identifier;
+
+  @override
+  int get hashCode => name.hashCode ^ library.hashCode;
+
+  @override
+  String toString() => name;
 }
 
 class LibraryElementImpl extends ElementImpl implements LibraryElement {
@@ -316,7 +325,7 @@ class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixi
   InterfaceElementImpl({required this.name, required this.library});
 
   @override
-  List<FieldElement> get fields => _fields;
+  List<FieldElement> get fields => List.unmodifiable(_fields);
 
   @override
   List<MethodElement> get methods {
@@ -324,12 +333,16 @@ class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixi
       library.resolver.resolveMethods(this);
       _didResolveMethods = true;
     }
-    return _methods;
+    return List.unmodifiable(_methods.whereNot((e) => e is PropertyAccessorElementImpl));
   }
 
   @override
-  bool hasField(String name) {
-    return _fields.any((e) => e.name == name);
+  List<PropertyAccessorElement> get accessors {
+    if (!_didResolveMethods) {
+      library.resolver.resolveMethods(this);
+      _didResolveMethods = true;
+    }
+    return List.unmodifiable(_methods.whereType<PropertyAccessorElement>());
   }
 
   @override
@@ -344,6 +357,25 @@ class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixi
       }
     }
     return false;
+  }
+
+  @override
+  bool hasPropertyAccessor(String name) {
+    if (_didResolveMethods) {
+      return _methods.any((e) => e.name == name && e is PropertyAccessorElement);
+    }
+    final interfaceDec = library.getNamedUnitMember(name)!;
+    for (final method in interfaceDec.childEntities.whereType<MethodDeclaration>()) {
+      if (method.name.lexeme == name && method.propertyKeyword != null) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @override
+  bool hasField(String name) {
+    return _fields.any((e) => e.name == name);
   }
 
   @override
@@ -413,9 +445,6 @@ class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixi
 
   @override
   NamedTypeRef get thisType => _thisType!;
-
-  @override
-  List<PropertyAccessorElement> get accessors => throw UnimplementedError();
 
   @override
   FieldElement? getField(String name) {

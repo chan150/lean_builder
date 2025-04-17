@@ -17,7 +17,7 @@ class SuperX {
 }
 
 class RedirectedClass extends AnnotatedClass {
-  const RedirectedClass() : super(FieldType.instance);
-  const RedirectedClass.red() : super(FieldType.instance);
-  const RedirectedClass.named() : super(FieldType.instance);
+  RedirectedClass() : super('');
+  RedirectedClass.red() : super('');
+  RedirectedClass.named() : super('');
 }
