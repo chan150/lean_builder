@@ -6,19 +6,19 @@ typedef TypedType = void Function(int x, bool y);
 
 abstract base class X {}
 
-class Genix$ {
+class Genix<T> {
   final ObjectArg objectArg;
   final String? str2;
 
-  const Genix$(this.objectArg) : str2 = 'str2';
+  const Genix(this.objectArg) : str2 = 'str2';
 
-  const Genix$.named(this.objectArg) : str2 = null;
+  const Genix.named(this.objectArg) : str2 = null;
 
   static const test2.SuperX named2 = test2.SuperX(superStr: 'SuperStr2');
 }
 
-const genix$ = Genix$(ObjectArg('Arg'));
-const genixNamed = Genix$.named(ObjectArg('Arg'));
+const genix$ = Genix<int>(ObjectArg('Arg'));
+const genixNamed = Genix.named(ObjectArg('Arg'));
 const String constArg = 'Hello';
 
 class ObjectArg {
@@ -29,31 +29,10 @@ class ObjectArg {
 
 const constVar = 'Hello';
 
-@immutable
-// @internal
-// @factory
-// @Deprecated('This is deprecated')
-// @deprecated
-@alwaysThrows
-// @visibleForOverriding
-// @UseResult('Just because')
-// @useResult
-@sealed
-// @reopen
-// @redeclare
-// @nonVirtual
-// @isTestGroup
-// @isTest
-// @protected
-// @literal
-// @optionalTypeArgs
-// @constVar
-// @override
-// @mustBeConst
-// @mustBeOverridden
-// @mustCallSuper
-@doNotStore
+@genix$
+@Genix<String>(ObjectArg('arg'))
 enum ColorEnumWithArgs {
+  @deprecated
   red(constVar),
   green('green'),
   blue.named('blue', 200);

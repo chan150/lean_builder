@@ -53,11 +53,12 @@ void main(List<String> args) async {
         if (asset.hasAnnotation) {
           final assetFile = fileResolver.assetSrcFor(asset.uri);
           count++;
-          final library = chunkResolver.resolveLibrary(assetFile) as LibraryElementImpl;
-          final element = library.resolvedElements.firstOrNull;
+          final library =
+              chunkResolver.resolveLibrary(assetFile, preResolveTopLevelMetadata: true) as LibraryElementImpl;
+          final element = library.enums.firstOrNull;
           if (element != null) {
-            for (final e in element.metadata) {
-              print('Metadata: ${e.declarationRef.identifier} ${e.constant} ${e.isImmutable}');
+            for (final e in element.fields) {
+              print('Metadata:${e.type} ${e.metadata}');
             }
           }
         }

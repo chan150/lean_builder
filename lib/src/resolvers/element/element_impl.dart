@@ -16,8 +16,14 @@ abstract class ElementImpl implements Element {
   @override
   int get hashCode => name.hashCode ^ library.hashCode;
 
+  bool didResolveMetadata = false;
+
   @override
   List<ElementAnnotation> get metadata {
+    if (!didResolveMetadata) {
+      metadataResolveCallback?.call();
+      didResolveMetadata = true;
+    }
     return _metadata;
   }
 
@@ -26,6 +32,8 @@ abstract class ElementImpl implements Element {
   void addMetadata(ElementAnnotation annotation) {
     _metadata.add(annotation);
   }
+
+  void Function()? metadataResolveCallback;
 
   @override
   AssetSrc get librarySrc => library.src;

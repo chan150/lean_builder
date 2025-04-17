@@ -11,7 +11,9 @@ import 'package:lean_builder/src/scanner/scan_results.dart';
 class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
   final ElementResolver _resolver;
 
-  ElementBuilder(this._resolver, LibraryElement rootLibrary) {
+  final bool preResolveTopLevelMetadata;
+
+  ElementBuilder(this._resolver, LibraryElement rootLibrary, {this.preResolveTopLevelMetadata = false}) {
     pushElement(rootLibrary);
   }
 
@@ -25,7 +27,10 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
 
     visitElementScoped(extensionType, () {
       node.typeParameters?.visitChildren(this);
-      node.metadata.accept(this);
+      if (preResolveTopLevelMetadata) {
+        node.metadata.accept(this);
+        extensionType.didResolveMetadata = true;
+      }
       for (final member in node.members) {
         if (member is! MethodDeclaration) {
           member.accept(this);
@@ -37,6 +42,10 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       extensionType.name,
       library.buildDeclarationRef(extensionType.name, TopLevelIdentifierType.$class),
     );
+
+    if (!preResolveTopLevelMetadata) {
+      _registerMetadataResolver(extensionType, node.metadata);
+    }
   }
 
   @override
@@ -56,11 +65,26 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     );
     visitElementScoped(clazzElement, () {
       node.typeParameters?.visitChildren(this);
-      node.metadata.accept(this);
+      if (preResolveTopLevelMetadata) {
+        node.metadata.accept(this);
+        clazzElement.didResolveMetadata = true;
+      }
     });
     _resolveSuperTypeRef(clazzElement, node.superclass);
     _resolveInterfaceTypeRefs(clazzElement, withClause: node.withClause, implementsClause: node.implementsClause);
     library.addElement(clazzElement);
+
+    if (!preResolveTopLevelMetadata) {
+      _registerMetadataResolver(clazzElement, node.metadata);
+    }
+  }
+
+  void _registerMetadataResolver(ElementImpl elm, NodeList<Annotation> meta) {
+    elm.metadataResolveCallback = () {
+      visitElementScoped(elm, () {
+        meta.accept(this);
+      });
+    };
   }
 
   void _resolveSuperTypeRef(InterfaceElementImpl element, NamedType? type) {
@@ -109,11 +133,18 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     library.addElement(typeAliasElm);
     visitElementScoped(typeAliasElm, () {
       node.typeParameters?.visitChildren(this);
-      node.metadata.accept(this);
+      if (preResolveTopLevelMetadata) {
+        node.metadata.accept(this);
+        typeAliasElm.didResolveMetadata = true;
+      }
     });
     final targetType = node.functionType != null ? node.functionType! : node.type;
     final type = resolveTypeRef((targetType), typeAliasElm);
     typeAliasElm.aliasedType = type;
+
+    if (!preResolveTopLevelMetadata) {
+      _registerMetadataResolver(typeAliasElm, node.metadata);
+    }
   }
 
   @override
@@ -124,7 +155,10 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     visitElementScoped(funcElement, () {
       node.typeParameters?.visitChildren(this);
       node.parameters.visitChildren(this);
-      node.metadata.accept(this);
+      if (preResolveTopLevelMetadata) {
+        node.metadata.accept(this);
+        funcElement.didResolveMetadata = true;
+      }
     });
     final typeAliasElm = TypeAliasElementImpl(name: node.name.lexeme, library: library);
     library.addElement(typeAliasElm);
@@ -134,6 +168,10 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       typeParameters: funcElement.typeParameters,
       returnType: resolveTypeRef(node.returnType, funcElement),
     );
+
+    if (!preResolveTopLevelMetadata) {
+      _registerMetadataResolver(typeAliasElm, node.metadata);
+    }
   }
 
   @override
@@ -156,9 +194,13 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
 
     visitElementScoped(classElement, () {
       node.typeParameters?.visitChildren(this);
-      node.metadata.accept(this);
       for (final field in node.members.whereType<FieldDeclaration>()) {
         field.accept(this);
+      }
+
+      if (preResolveTopLevelMetadata) {
+        node.metadata.accept(this);
+        classElement.didResolveMetadata = true;
       }
     });
 
@@ -174,6 +216,10 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       }
     });
     _resolveInterfaceTypeRefs(classElement, withClause: node.withClause, implementsClause: node.implementsClause);
+
+    if (!preResolveTopLevelMetadata) {
+      _registerMetadataResolver(classElement, node.metadata);
+    }
   }
 
   @override
@@ -190,7 +236,16 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
 
     visitElementScoped(mixinElement, () {
       node.typeParameters?.visitChildren(this);
-      node.metadata.accept(this);
+
+      for (final member in node.members) {
+        if (member is! MethodDeclaration) {
+          member.accept(this);
+        }
+      }
+      if (preResolveTopLevelMetadata) {
+        node.metadata.accept(this);
+        mixinElement.didResolveMetadata = true;
+      }
     });
     mixinElement.thisType = NamedTypeRefImpl(
       mixinElement.name,
@@ -198,6 +253,10 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       typeArguments: mixinElement.typeParameters,
     );
     _resolveInterfaceTypeRefs(mixinElement, implementsClause: node.implementsClause, onClause: node.onClause);
+
+    if (!preResolveTopLevelMetadata) {
+      _registerMetadataResolver(mixinElement, node.metadata);
+    }
   }
 
   @override
@@ -215,7 +274,6 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
 
     visitElementScoped(enumElement, () {
       node.typeParameters?.visitChildren(this);
-      node.metadata.accept(this);
       for (final member in node.members.whereType<FieldDeclaration>()) {
         member.accept(this);
       }
@@ -223,8 +281,16 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
         member.accept(this);
       }
       node.constants.accept(this);
+      if (preResolveTopLevelMetadata) {
+        node.metadata.accept(this);
+        enumElement.didResolveMetadata = true;
+      }
     });
     _resolveInterfaceTypeRefs(enumElement, implementsClause: node.implementsClause, withClause: node.withClause);
+
+    if (!preResolveTopLevelMetadata) {
+      _registerMetadataResolver(enumElement, node.metadata);
+    }
   }
 
   @override
@@ -260,6 +326,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       });
     }
     enumElement.addField(fieldEle);
+    _registerMetadataResolver(fieldEle, node.metadata);
   }
 
   @override
@@ -357,11 +424,6 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     final interfaceElement = currentElementAs<InterfaceElementImpl>();
     final fieldType = resolveTypeRef(node.fields.type, interfaceElement);
 
-    final metadata = visitWithHolder(interfaceElement.library, (holder) {
-      node.metadata.accept(this);
-      return holder.metadata;
-    });
-
     // Process each variable in the field declaration
     for (final variable in node.fields.variables) {
       final fieldEle = FieldElementImpl(
@@ -386,9 +448,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
         });
       }
       interfaceElement.addField(fieldEle);
-      if (metadata != null) {
-        fieldEle.metadata.addAll(metadata);
-      }
+      _registerMetadataResolver(fieldEle, variable.metadata);
     }
   }
 
@@ -400,13 +460,18 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       if (name is SimpleIdentifier) name.name,
       if (name is PrefixedIdentifier) ...[name.prefix.name, name.identifier.name],
     ]);
+
     final (lib, targetNode, decRef) = _resolver.astNodeFor(identifier, currentElement.library);
     final constantEvaluator = ConstantEvaluator(_resolver, lib, this);
     if (targetNode is ClassDeclaration || targetNode is ConstructorDeclaration) {
       final classDeclaration = targetNode.thisOrAncestorOfType<ClassDeclaration>()!;
       final className = classDeclaration.name.lexeme;
+      final typeArgs = <TypeRef>[];
+      for (final typeArg in [...?node.typeArguments?.arguments]) {
+        typeArgs.add(resolveTypeRef(typeArg, currentElement));
+      }
       final elem = ElementAnnotationImpl(
-        type: NamedTypeRefImpl(className, decRef),
+        type: NamedTypeRefImpl(className, decRef, typeArguments: typeArgs),
         declarationRef: decRef,
         constantValueCompute: () {
           final ConstructorDeclaration constructor;
@@ -452,8 +517,12 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
             initializer.methodName.name,
         ];
         final identifier = _resolver.resolveIdentifier(lib, parts);
-        final (_, _, loc) = _resolver.astNodeFor(identifier, lib);
-        typeRef = NamedTypeRefImpl(identifier.topLevelTarget, loc);
+        final (_, _, declarationRef) = _resolver.astNodeFor(identifier, lib);
+        final typeArgs = <TypeRef>[];
+        for (final typeArg in [...?initializer.typeArguments?.arguments]) {
+          typeArgs.add(resolveTypeRef(typeArg, currentElement));
+        }
+        typeRef = NamedTypeRefImpl(identifier.topLevelTarget, declarationRef, typeArguments: typeArgs);
       }
       final elem = ElementAnnotationImpl(
         type: typeRef,
@@ -484,7 +553,10 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     visitElementScoped(funcElement, () {
       node.functionExpression.typeParameters?.visitChildren(this);
       node.functionExpression.parameters?.visitChildren(this);
-      node.metadata.accept(this);
+      if (preResolveTopLevelMetadata) {
+        node.metadata.accept(this);
+        funcElement.didResolveMetadata = true;
+      }
     });
     final returnType = resolveTypeRef((node.returnType), funcElement);
     funcElement.returnType = returnType;
@@ -494,6 +566,10 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       parameters: funcElement.parameters,
       isNullable: false,
     );
+
+    if (!preResolveTopLevelMetadata) {
+      _registerMetadataResolver(funcElement, node.metadata);
+    }
   }
 
   @override
@@ -660,9 +736,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       isSuperFormal: isSuperFormal,
     );
     parameterElement.type = type ?? TypeRef.neverType;
-    visitElementScoped(parameterElement, () {
-      node.metadata.accept(this);
-    });
+    _registerMetadataResolver(parameterElement, node.metadata);
     return parameterElement;
   }
 
@@ -688,8 +762,14 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
         });
       }
       visitElementScoped(topLevelVar, () {
-        node.metadata.accept(this);
+        if (preResolveTopLevelMetadata) {
+          node.metadata.accept(this);
+          topLevelVar.didResolveMetadata = true;
+        }
       });
+      if (!preResolveTopLevelMetadata) {
+        _registerMetadataResolver(topLevelVar, node.metadata);
+      }
       library.addElement(topLevelVar);
     }
   }
@@ -713,8 +793,8 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     visitElementScoped(methodElement, () {
       node.typeParameters?.visitChildren(this);
       node.parameters?.visitChildren(this);
-      node.metadata.accept(this);
     });
+
     final returnType = resolveTypeRef((node.returnType), methodElement);
     methodElement.returnType = returnType;
     methodElement.type = FunctionTypeRef(
@@ -723,6 +803,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       parameters: methodElement.parameters,
       isNullable: false,
     );
+    _registerMetadataResolver(methodElement, node.metadata);
   }
 
   @override
@@ -758,7 +839,6 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
 
     visitElementScoped(constructorElement, () {
       node.parameters.visitChildren(this);
-      node.metadata.accept(this);
     });
 
     final redirectedConstructor = node.redirectedConstructor;
@@ -779,5 +859,6 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       constructorElement.returnType = resolvedType;
       constructorElement.redirectedConstructor = ConstructorElementRef(resolvedType, identifierRef.name);
     }
+    _registerMetadataResolver(constructorElement, node.metadata);
   }
 }

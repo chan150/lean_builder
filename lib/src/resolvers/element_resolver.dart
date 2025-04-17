@@ -28,9 +28,9 @@ class ElementResolver {
 
   ElementResolver(this.graph, this.fileResolver, this.parser);
 
-  LibraryElement resolveLibrary(AssetSrc src) {
+  LibraryElement resolveLibrary(AssetSrc src, {bool preResolveTopLevelMetadata = false}) {
     final library = libraryFor(src);
-    final visitor = ElementBuilder(this, library);
+    final visitor = ElementBuilder(this, library, preResolveTopLevelMetadata: preResolveTopLevelMetadata);
     for (final child in library.compilationUnit.childEntities.whereType<AnnotatedNode>()) {
       if (child.metadata.isNotEmpty) {
         child.accept(visitor);
@@ -53,10 +53,8 @@ class ElementResolver {
       if (_resolvedTypeRefs.containsKey(ref.identifier)) {
         return _resolvedTypeRefs[ref.identifier];
       }
-
       final importingLibrary = ref.src.importingLibrary;
       if (importingLibrary == null) return null;
-
       final lock = _elementResolveLocks.putIfAbsent(ref.identifier, () => Lock());
       return await lock.synchronized(() async {
         final importingLib = libraryFor(importingLibrary);
@@ -82,79 +80,76 @@ class ElementResolver {
     });
   }
 
-  (LibraryElementImpl, AstNode, DeclarationRef loc) astNodeFor(
-    IdentifierRef identifier,
-    LibraryElement enclosingLibrary,
-  ) {
+  (LibraryElementImpl, AstNode, DeclarationRef) astNodeFor(IdentifierRef identifier, LibraryElement enclosingLibrary) {
     final enclosingAsset = enclosingLibrary.src;
     final unitId = '${enclosingAsset.id}#${identifier.toString()}';
     if (_parsedUnitCache.containsKey(unitId)) {
       return _parsedUnitCache[unitId]!;
     }
 
-    final loc =
+    final declarationRef =
         identifier.location ??
         getDeclarationRef(identifier.topLevelTarget, enclosingAsset, importPrefix: identifier.importPrefix);
 
-    assert(loc != null, 'Identifier $identifier not found in ${enclosingAsset.uri}');
-    final srcUri = uriForAsset(loc!.srcId);
+    assert(declarationRef != null, 'Identifier $identifier not found in ${enclosingAsset.uri}');
+    final srcUri = uriForAsset(declarationRef!.srcId);
     final assetFile = fileResolver.assetSrcFor(srcUri, relativeTo: enclosingAsset);
 
     final library = libraryFor(assetFile);
     final compilationUnit = library.compilationUnit;
 
-    if (loc.type == TopLevelIdentifierType.$variable) {
+    if (declarationRef.type == TopLevelIdentifierType.$variable) {
       final unit = compilationUnit.declarations.whereType<TopLevelVariableDeclaration>().firstWhere(
-        (e) => e.variables.variables.any((v) => v.name.lexeme == loc.identifier),
-        orElse: () => throw Exception('Identifier  ${loc.identifier} not found in $srcUri'),
+        (e) => e.variables.variables.any((v) => v.name.lexeme == declarationRef.identifier),
+        orElse: () => throw Exception('Identifier  ${declarationRef.identifier} not found in $srcUri'),
       );
-      return _parsedUnitCache[unitId] = (library, unit, loc);
-    } else if (loc.type == TopLevelIdentifierType.$function) {
+      return _parsedUnitCache[unitId] = (library, unit, declarationRef);
+    } else if (declarationRef.type == TopLevelIdentifierType.$function) {
       final unit = compilationUnit.declarations.whereType<FunctionDeclaration>().firstWhere(
-        (e) => e.name.lexeme == loc.identifier,
-        orElse: () => throw Exception('Identifier  ${loc.identifier} not found in $srcUri'),
+        (e) => e.name.lexeme == declarationRef.identifier,
+        orElse: () => throw Exception('Identifier  ${declarationRef.identifier} not found in $srcUri'),
       );
-      return _parsedUnitCache[unitId] = (library, unit, loc);
-    } else if (loc.type == TopLevelIdentifierType.$typeAlias) {
+      return _parsedUnitCache[unitId] = (library, unit, declarationRef);
+    } else if (declarationRef.type == TopLevelIdentifierType.$typeAlias) {
       final unit = compilationUnit.declarations.whereType<TypeAlias>().firstWhere(
-        (e) => e.name.lexeme == loc.identifier,
-        orElse: () => throw Exception('Identifier  ${loc.identifier} not found in $srcUri'),
+        (e) => e.name.lexeme == declarationRef.identifier,
+        orElse: () => throw Exception('Identifier  ${declarationRef.identifier} not found in $srcUri'),
       );
-      return _parsedUnitCache[unitId] = (library, unit, loc);
+      return _parsedUnitCache[unitId] = (library, unit, declarationRef);
     }
 
     final unit = compilationUnit.declarations.whereType<NamedCompilationUnitMember>().firstWhereOrNull(
-      (e) => e.name.lexeme == loc.identifier,
+      (e) => e.name.lexeme == declarationRef.identifier,
     );
 
     if (unit == null) {
-      throw Exception('Identifier  ${loc.identifier} not found in $srcUri');
+      throw Exception('Identifier  ${declarationRef.identifier} not found in $srcUri');
     } else if (identifier.isPrefixed) {
       final targetIdentifier = identifier.name;
 
       for (final member in unit.childEntities) {
         if (member is FieldDeclaration) {
           if (member.fields.variables.any((v) => v.name.lexeme == targetIdentifier)) {
-            return _parsedUnitCache[unitId] = (library, member, loc);
+            return _parsedUnitCache[unitId] = (library, member, declarationRef);
           }
         } else if (member is ConstructorDeclaration) {
           if ((member.name?.lexeme ?? '') == targetIdentifier) {
-            return _parsedUnitCache[unitId] = (library, member, loc);
+            return _parsedUnitCache[unitId] = (library, member, declarationRef);
           }
         } else if (member is MethodDeclaration) {
           if (member.name.lexeme == targetIdentifier) {
-            return _parsedUnitCache[unitId] = (library, member, loc);
+            return _parsedUnitCache[unitId] = (library, member, declarationRef);
           }
         } else if (member is EnumConstantDeclaration) {
           if (member.name.lexeme == targetIdentifier) {
-            return _parsedUnitCache[unitId] = (library, member, loc);
+            return _parsedUnitCache[unitId] = (library, member, declarationRef);
           }
         }
       }
       throw Exception('Identifier $targetIdentifier (${identifier.toString()}) not found in $srcUri');
     }
 
-    return _parsedUnitCache[unitId] = (library, unit, loc);
+    return _parsedUnitCache[unitId] = (library, unit, declarationRef);
   }
 
   Uri uriForAsset(String id) {

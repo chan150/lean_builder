@@ -1,5 +1,9 @@
 part of 'element.dart';
 
+const String _metaPackageUri = 'package:meta/meta.dart';
+
+const String _coreAnnotationsUri = 'dart:core/annotations.dart';
+
 abstract class ElementAnnotation {
   String get name;
 
@@ -112,13 +116,13 @@ class ElementAnnotationImpl implements ElementAnnotation {
 
   late final String _srcName = declarationRef.srcUri.toString();
 
-  bool get _isMetaPackage => _srcName == 'package:meta/meta.dart';
+  bool _isMeta(String name) {
+    return _srcName == _metaPackageUri && name == this.name;
+  }
 
-  bool get _isCoreAnnotation => _srcName == 'dart:core/annotations.dart';
-
-  bool _isMeta(String name) => _isMetaPackage && name == this.name;
-
-  bool _isCore(String name) => _isCoreAnnotation && name == this.name;
+  bool _isCore(String name) {
+    return _srcName == _coreAnnotationsUri && name == this.name;
+  }
 
   @override
   bool get isAlwaysThrows => _isMeta('alwaysThrows');
@@ -185,4 +189,9 @@ class ElementAnnotationImpl implements ElementAnnotation {
 
   @override
   bool get isTarget => _isMeta('Target');
+
+  @override
+  String toString() {
+    return 'ElementAnnotationImpl{type: $type, name: $name}';
+  }
 }
