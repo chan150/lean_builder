@@ -6,23 +6,17 @@ void main(List<String> args) async {
 
   // Configuration
   final sourceFile = 'bin/lean_builder.dart';
-  final executableName = '.dart_tool/lean_build/lean_build${Platform.isWindows ? '.exe' : ''}';
-  final compileArgs = [
-    'compile',
-    'exe',
-    sourceFile,
-    '-o',
-    executableName,
-    // Add optimization flags for faster compilation
-    '--verbosity=warning', // Reduces output noise
-    '--target-os=${Platform.operatingSystem}', // Specify current OS only
-  ];
+  final snapshotPath = '.dart_tool/lean_build/lean_build';
 
-  final executableFile = File(executableName);
+  // Create directory if needed
+  await Directory(snapshotPath).create(recursive: true);
 
-  // Compile if needed
-  if (!executableFile.existsSync()) {
-    print('⏳ Compiling $sourceFile to executable...');
+  // Compile AOT snapshot if needed
+  final snapshotFile = File(snapshotPath);
+  if (!snapshotFile.existsSync()) {
+    print('⏳ Compiling $sourceFile to AOT snapshot...');
+
+    final compileArgs = ['compile', 'exe', sourceFile, '-o', snapshotPath];
 
     final result = await Process.run('dart', compileArgs);
 
@@ -32,16 +26,17 @@ void main(List<String> args) async {
       exit(1);
     }
 
-    // Make the file executable
-    await Process.run('chmod', ['+x', executableName]);
-    print('✅ Compilation completed in ${stopwatch.elapsed.inMilliseconds}ms');
+    print('✅ AOT snapshot compiled in ${stopwatch.elapsed.inMilliseconds}ms');
   }
+  final dartExecutable = Platform.resolvedExecutable;
+  final sdkDir = path.dirname(dartExecutable);
+  // Run the AOT snapshot
+  print('\nRunning the AOT snapshot:');
 
-  // Run the executable
-  print('\n🚀 Running the executable:');
-  final process = await Process.start('./$executableName', args);
+  final process = await Process.start(snapshotPath, [...args]);
+
   process.stdout.pipe(stdout);
   process.stderr.pipe(stderr);
   final exitCode = await process.exitCode;
-  print('\n✅ Executable finished with exit code: $exitCode');
+  print('\n✅ AOT snapshot execution finished with exit code: $exitCode');
 }

@@ -126,7 +126,7 @@ abstract class NamedTypeRef extends TypeRef {
   /// then identifier that points to declaration of this type
   String get identifier;
 
-  bool refersTo(TypeRef other);
+  bool isExactly(TypeRef other);
 }
 
 abstract class TypeRefImpl extends TypeRef {
@@ -378,7 +378,7 @@ class NamedTypeRefImpl extends TypeRefImpl implements NamedTypeRef {
   int get hashCode => name.hashCode ^ src.srcId.hashCode ^ const ListEquality().hash(typeArguments);
 
   @override
-  bool refersTo(TypeRef other) {
+  bool isExactly(TypeRef other) {
     if (other is NamedTypeRef) {
       return name == other.name && src.srcId == other.src.srcId;
     }

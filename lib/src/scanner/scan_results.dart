@@ -387,6 +387,10 @@ enum TopLevelIdentifierType {
 
   final int value;
 
+  bool get representsNamedType {
+    return this == $class || this == $mixin || this == $extension || this == $enum || this == $typeAlias;
+  }
+
   const TopLevelIdentifierType(this.value);
 
   static TopLevelIdentifierType fromValue(int value) {

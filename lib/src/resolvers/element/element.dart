@@ -122,7 +122,7 @@ abstract class InstanceElement extends Element implements TypeParameterizedEleme
 
   List<MethodElement> get methods;
 
-  TypeRef get thisType;
+  NamedTypeRef get thisType;
 }
 
 abstract class InterfaceElement extends InstanceElement with TypeParameterizedElementMixin {

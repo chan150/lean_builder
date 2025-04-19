@@ -5,22 +5,12 @@
 import 'dart:io';
 
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
-
-
 bool hasExpectedPartDirective(CompilationUnit unit, String part) =>
     unit.directives.whereType<PartDirective>().any((e) => e.uri.stringValue == part);
-
-/// Returns a URL representing [element].
-String urlOfElement(Element element) =>
-    element.kind == ElementKind.DYNAMIC
-        ? 'dart:core#dynamic'
-        // using librarySource.uri – in case the element is in a part
-        : normalizeUrl(element.librarySource!.uri).replace(fragment: element.name).toString();
 
 Uri normalizeUrl(Uri url) => switch (url.scheme) {
   'dart' => normalizeDartUrl(url),

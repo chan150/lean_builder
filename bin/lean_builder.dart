@@ -9,6 +9,7 @@ import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
 import 'package:lean_builder/src/scanner/assets_graph.dart';
 import 'package:lean_builder/src/scanner/isolate_scanner.dart';
 import 'package:lean_builder/src/utils.dart';
+import 'package:xxh3/xxh3.dart' as xxh3;
 
 void main(List<String> args) async {
   final stopWatch = Stopwatch()..start();
@@ -29,7 +30,7 @@ void main(List<String> args) async {
   stopWatch.reset();
 
   final parser = SrcParser();
-  final resolver = ElementResolver(assetsGraph, fileResolver, parser);
+  // final resolver = ElementResolver(assetsGraph, fileResolver, parser);
   print('Resolving assets inside $rootPackageName');
   final assets = assetsGraph.getAssetsForPackage(rootPackageName).where((e) => e.hasAnnotation).toList();
   // final packageAssets = assetsGraph.getAssetsForPackage(rootPackageName);
@@ -52,7 +53,8 @@ void main(List<String> args) async {
       final chunkStopWatch = Stopwatch()..start();
       final chunkResolver = ElementResolver(assetsGraph, fileResolver, parser);
 
-      final annotationType = chunkResolver.getNamedTypeRef('Genix', 'package:lean_builder/test/annotation.dart');
+      final genixTypeChecker = chunkResolver.typeCheckerFor('GenixBase', 'package:lean_builder/test/annotation.dart');
+
       for (final asset in chunk) {
         if (asset.hasAnnotation) {
           final assetFile = fileResolver.assetSrcFor(asset.uri);
@@ -61,11 +63,10 @@ void main(List<String> args) async {
               chunkResolver.resolveLibrary(assetFile, preResolveTopLevelMetadata: true) as LibraryElementImpl;
           final element = library.resolvedElements.firstOrNull;
           if (element != null) {
-            print(
-              element.metadata.any((a) {
-                return annotationType.refersTo(a.type);
-              }),
-            );
+            for (final meta in element.metadata) {
+              print('Metadata: ${meta.type} ${genixTypeChecker.isAssignableFromType(meta.type)}');
+            }
+
             // print('${element.name} ${element.metadata}');
             // final targetUri = element.librarySrc.uri.replace(
             //   path: element.librarySrc.uri.path.replaceFirst('.dart', '.g.dart'),

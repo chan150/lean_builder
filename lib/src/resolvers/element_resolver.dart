@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:typed_data';
 
 import 'package:analyzer/dart/ast/ast.dart';
@@ -5,6 +6,7 @@ import 'package:lean_builder/src/resolvers/element/element.dart';
 import 'package:lean_builder/src/resolvers/file_asset.dart';
 import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
+import 'package:lean_builder/src/resolvers/type/type_checker.dart';
 import 'package:lean_builder/src/resolvers/type/type_ref.dart';
 import 'package:lean_builder/src/resolvers/element/builder/element_builder.dart';
 import 'package:lean_builder/src/scanner/assets_graph.dart';
@@ -23,11 +25,12 @@ class ElementResolver {
   final AssetsGraph graph;
   final SrcParser parser;
   final PackageFileResolver fileResolver;
-  final Map<String, LibraryElementImpl> _libraryCache = {};
-  final Map<String, (LibraryElementImpl, AstNode, DeclarationRef)> _parsedUnitCache = {};
-  final Map<String, Lock> _elementResolveLocks = {};
-  final Map<String, Element?> _resolvedTypeRefs = {};
-  final Map<String, Constant> evaluatedConstants = {};
+  final _libraryCache = HashMap<String, LibraryElementImpl>();
+  final _resolvedUnitsCache = HashMap<String, (LibraryElementImpl, AstNode, DeclarationRef)>();
+  final _elementResolveLocks = HashMap<String, Lock>();
+  final _resolvedTypeRefs = HashMap<String, Element?>();
+  final evaluatedConstants = HashMap<String, Constant>();
+  final _typeCheckersCache = HashMap<String, TypeChecker>();
 
   ElementResolver(this.graph, this.fileResolver, this.parser);
 
@@ -40,6 +43,16 @@ class ElementResolver {
       }
     }
     return library;
+  }
+
+  TypeChecker typeCheckerFor(String name, String packageImport) {
+    final reqId = '$packageImport#$name';
+    if (_typeCheckersCache.containsKey(reqId)) {
+      return _typeCheckersCache[reqId]!;
+    }
+    final typeRef = getNamedTypeRef(name, packageImport);
+    final typeChecker = TypeChecker.fromTypeRef(this, typeRef);
+    return _typeCheckersCache[reqId] = typeChecker;
   }
 
   NamedTypeRef getNamedTypeRef(String name, String packageImport) {
@@ -107,8 +120,8 @@ class ElementResolver {
   (LibraryElementImpl, AstNode, DeclarationRef) astNodeFor(IdentifierRef identifier, LibraryElement enclosingLibrary) {
     final enclosingAsset = enclosingLibrary.src;
     final unitId = '${enclosingAsset.id}#${identifier.toString()}';
-    if (_parsedUnitCache.containsKey(unitId)) {
-      return _parsedUnitCache[unitId]!;
+    if (_resolvedUnitsCache.containsKey(unitId)) {
+      return _resolvedUnitsCache[unitId]!;
     }
 
     final declarationRef =
@@ -127,19 +140,19 @@ class ElementResolver {
         (e) => e.variables.variables.any((v) => v.name.lexeme == declarationRef.identifier),
         orElse: () => throw Exception('Identifier  ${declarationRef.identifier} not found in $srcUri'),
       );
-      return _parsedUnitCache[unitId] = (library, unit, declarationRef);
+      return _resolvedUnitsCache[unitId] = (library, unit, declarationRef);
     } else if (declarationRef.type == TopLevelIdentifierType.$function) {
       final unit = compilationUnit.declarations.whereType<FunctionDeclaration>().firstWhere(
         (e) => e.name.lexeme == declarationRef.identifier,
         orElse: () => throw Exception('Identifier  ${declarationRef.identifier} not found in $srcUri'),
       );
-      return _parsedUnitCache[unitId] = (library, unit, declarationRef);
+      return _resolvedUnitsCache[unitId] = (library, unit, declarationRef);
     } else if (declarationRef.type == TopLevelIdentifierType.$typeAlias) {
       final unit = compilationUnit.declarations.whereType<TypeAlias>().firstWhere(
         (e) => e.name.lexeme == declarationRef.identifier,
         orElse: () => throw Exception('Identifier  ${declarationRef.identifier} not found in $srcUri'),
       );
-      return _parsedUnitCache[unitId] = (library, unit, declarationRef);
+      return _resolvedUnitsCache[unitId] = (library, unit, declarationRef);
     }
 
     final unit = compilationUnit.declarations.whereType<NamedCompilationUnitMember>().firstWhereOrNull(
@@ -154,26 +167,26 @@ class ElementResolver {
       for (final member in unit.childEntities) {
         if (member is FieldDeclaration) {
           if (member.fields.variables.any((v) => v.name.lexeme == targetIdentifier)) {
-            return _parsedUnitCache[unitId] = (library, member, declarationRef);
+            return _resolvedUnitsCache[unitId] = (library, member, declarationRef);
           }
         } else if (member is ConstructorDeclaration) {
           if ((member.name?.lexeme ?? '') == targetIdentifier) {
-            return _parsedUnitCache[unitId] = (library, member, declarationRef);
+            return _resolvedUnitsCache[unitId] = (library, member, declarationRef);
           }
         } else if (member is MethodDeclaration) {
           if (member.name.lexeme == targetIdentifier) {
-            return _parsedUnitCache[unitId] = (library, member, declarationRef);
+            return _resolvedUnitsCache[unitId] = (library, member, declarationRef);
           }
         } else if (member is EnumConstantDeclaration) {
           if (member.name.lexeme == targetIdentifier) {
-            return _parsedUnitCache[unitId] = (library, member, declarationRef);
+            return _resolvedUnitsCache[unitId] = (library, member, declarationRef);
           }
         }
       }
       throw Exception('Identifier $targetIdentifier (${identifier.toString()}) not found in $srcUri');
     }
 
-    return _parsedUnitCache[unitId] = (library, unit, declarationRef);
+    return _resolvedUnitsCache[unitId] = (library, unit, declarationRef);
   }
 
   Uri uriForAsset(String id) {

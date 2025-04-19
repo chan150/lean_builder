@@ -31,7 +31,12 @@ enum ColorEnumWithArgs {
   bool get isRed => value == 'red';
 }
 
-@Genix<String>(String)
+class SuperGenix extends Genix<String> {
+  const SuperGenix(super.arg);
+}
+
+@SuperGenix('XXX')
+@Genix<String>('Hello')
 class AnnotatedClass {
   AnnotatedClass(this._namex);
 
