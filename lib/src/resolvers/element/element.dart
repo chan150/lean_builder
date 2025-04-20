@@ -14,8 +14,6 @@ part 'executable_element.dart';
 
 part 'element_impl.dart';
 
-part 'executable_element_impl.dart';
-
 part 'directive_element.dart';
 
 abstract class Element {

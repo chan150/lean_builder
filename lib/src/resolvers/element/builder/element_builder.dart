@@ -7,14 +7,15 @@ import 'package:lean_builder/src/resolvers/element/element.dart';
 import 'package:lean_builder/src/resolvers/element_resolver.dart';
 import 'package:lean_builder/src/resolvers/type/type_ref.dart';
 import 'package:lean_builder/src/resolvers/element/builder/element_stack.dart';
+import 'package:lean_builder/src/scanner/assets_graph.dart';
 import 'package:lean_builder/src/scanner/scan_results.dart';
 
 class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
-  final ElementResolver _resolver;
+  final ElementResolver resolver;
 
   final bool preResolveTopLevelMetadata;
 
-  ElementBuilder(this._resolver, LibraryElement rootLibrary, {this.preResolveTopLevelMetadata = false}) {
+  ElementBuilder(this.resolver, LibraryElement rootLibrary, {this.preResolveTopLevelMetadata = false}) {
     pushElement(rootLibrary);
   }
 
@@ -22,16 +23,15 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
   void visitExtensionTypeDeclaration(ExtensionTypeDeclaration node) {
     final library = currentLibrary();
     if (library.hasElement(node.name.lexeme)) return;
-    final extensionType = ExtensionTypeImpl(name: node.name.lexeme, library: library);
+    final extensionTypeElement = ExtensionTypeImpl(name: node.name.lexeme, library: library);
 
-    library.addElement(extensionType);
-
-    visitElementScoped(extensionType, () {
+    library.addElement(extensionTypeElement);
+    visitElementScoped(extensionTypeElement, () {
       node.documentationComment?.accept(this);
       node.typeParameters?.visitChildren(this);
       if (preResolveTopLevelMetadata) {
         node.metadata.accept(this);
-        extensionType.didResolveMetadata = true;
+        extensionTypeElement.didResolveMetadata = true;
       }
       for (final member in node.members) {
         if (member is! MethodDeclaration) {
@@ -39,14 +39,14 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
         }
       }
     });
-    _resolveInterfaceTypeRefs(extensionType, implementsClause: node.implementsClause);
-    extensionType.thisType = NamedTypeRefImpl(
-      extensionType.name,
-      library.buildDeclarationRef(extensionType.name, TopLevelIdentifierType.$class),
+    _resolveInterfaceTypeRefs(extensionTypeElement, implementsClause: node.implementsClause);
+    extensionTypeElement.thisType = NamedTypeRefImpl(
+      extensionTypeElement.name,
+      library.buildDeclarationRef(extensionTypeElement.name, TopLevelIdentifierType.$class),
     );
 
     if (!preResolveTopLevelMetadata) {
-      _registerMetadataResolver(extensionType, node.metadata);
+      registerMetadataResolver(extensionTypeElement, node.metadata);
     }
   }
 
@@ -78,11 +78,11 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     library.addElement(clazzElement);
 
     if (!preResolveTopLevelMetadata) {
-      _registerMetadataResolver(clazzElement, node.metadata);
+      registerMetadataResolver(clazzElement, node.metadata);
     }
   }
 
-  void _registerMetadataResolver(ElementImpl elm, NodeList<Annotation> meta) {
+  void registerMetadataResolver(ElementImpl elm, NodeList<Annotation> meta) {
     elm.metadataResolveCallback = () {
       visitElementScoped(elm, () {
         meta.accept(this);
@@ -147,7 +147,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     typeAliasElm.aliasedType = type;
 
     if (!preResolveTopLevelMetadata) {
-      _registerMetadataResolver(typeAliasElm, node.metadata);
+      registerMetadataResolver(typeAliasElm, node.metadata);
     }
   }
 
@@ -175,7 +175,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     );
 
     if (!preResolveTopLevelMetadata) {
-      _registerMetadataResolver(typeAliasElm, node.metadata);
+      registerMetadataResolver(typeAliasElm, node.metadata);
     }
   }
 
@@ -223,7 +223,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     _resolveInterfaceTypeRefs(classElement, withClause: node.withClause, implementsClause: node.implementsClause);
 
     if (!preResolveTopLevelMetadata) {
-      _registerMetadataResolver(classElement, node.metadata);
+      registerMetadataResolver(classElement, node.metadata);
     }
   }
 
@@ -261,7 +261,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     _resolveInterfaceTypeRefs(mixinElement, implementsClause: node.implementsClause, onClause: node.onClause);
 
     if (!preResolveTopLevelMetadata) {
-      _registerMetadataResolver(mixinElement, node.metadata);
+      registerMetadataResolver(mixinElement, node.metadata);
     }
   }
 
@@ -296,7 +296,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     _resolveInterfaceTypeRefs(enumElement, implementsClause: node.implementsClause, withClause: node.withClause);
 
     if (!preResolveTopLevelMetadata) {
-      _registerMetadataResolver(enumElement, node.metadata);
+      registerMetadataResolver(enumElement, node.metadata);
     }
   }
 
@@ -323,7 +323,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     final args = node.arguments;
     if (args != null) {
       fieldEle.setConstantComputeValue(() {
-        final constEvaluator = ConstantEvaluator(_resolver, enumElement.library, this);
+        final constEvaluator = ConstantEvaluator(resolver, enumElement.library, this);
         final enumNode = node.thisOrAncestorOfType<EnumDeclaration>()!;
         final constructorName = args.constructorSelector?.name;
         final constructor = enumNode.members.whereType<ConstructorDeclaration>().firstWhere(
@@ -335,7 +335,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       });
     }
     enumElement.addField(fieldEle);
-    _registerMetadataResolver(fieldEle, node.metadata);
+    registerMetadataResolver(fieldEle, node.metadata);
   }
 
   @override
@@ -412,7 +412,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     }
 
     final importPrefix = annotation.importPrefix;
-    final identifierLocation = _resolver.getDeclarationRef(
+    final identifierLocation = resolver.getDeclarationRef(
       typename,
       enclosingEle.library.src,
       importPrefix: importPrefix?.name.lexeme,
@@ -452,12 +452,12 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       fieldEle.initializer = variable.initializer;
       if (fieldEle.hasInitializer && fieldEle.isConst) {
         fieldEle.setConstantComputeValue(() {
-          final constEvaluator = ConstantEvaluator(_resolver, interfaceElement.library, this);
+          final constEvaluator = ConstantEvaluator(resolver, interfaceElement.library, this);
           return constEvaluator.evaluate(variable.initializer!);
         });
       }
       interfaceElement.addField(fieldEle);
-      _registerMetadataResolver(fieldEle, variable.metadata);
+      registerMetadataResolver(fieldEle, variable.metadata);
     }
   }
 
@@ -470,13 +470,13 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
   void visitAnnotation(Annotation node) {
     final currentElement = currentElementAs<ElementImpl>();
     final name = node.name;
-    final identifier = _resolver.resolveIdentifier(currentElement.library, [
+    final identifier = resolver.resolveIdentifier(currentElement.library, [
       if (name is SimpleIdentifier) name.name,
       if (name is PrefixedIdentifier) ...[name.prefix.name, name.identifier.name],
     ]);
 
-    final (lib, targetNode, decRef) = _resolver.astNodeFor(identifier, currentElement.library);
-    final constantEvaluator = ConstantEvaluator(_resolver, lib, this);
+    final (lib, targetNode, decRef) = resolver.astNodeFor(identifier, currentElement.library);
+    final constantEvaluator = ConstantEvaluator(resolver, lib, this);
     if (targetNode is ClassDeclaration || targetNode is ConstructorDeclaration) {
       final classDeclaration = targetNode.thisOrAncestorOfType<ClassDeclaration>()!;
       final className = classDeclaration.name.lexeme;
@@ -530,8 +530,8 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
           ] else if (target == null)
             initializer.methodName.name,
         ];
-        final identifier = _resolver.resolveIdentifier(lib, parts);
-        final (_, _, declarationRef) = _resolver.astNodeFor(identifier, lib);
+        final identifier = resolver.resolveIdentifier(lib, parts);
+        final (_, _, declarationRef) = resolver.astNodeFor(identifier, lib);
         final typeArgs = <TypeRef>[];
         for (final typeArg in [...?initializer.typeArguments?.arguments]) {
           typeArgs.add(resolveTypeRef(typeArg, currentElement));
@@ -583,7 +583,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     );
 
     if (!preResolveTopLevelMetadata) {
-      _registerMetadataResolver(funcElement, node.metadata);
+      registerMetadataResolver(funcElement, node.metadata);
     }
   }
 
@@ -606,7 +606,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     if (param != null && node.defaultValue != null) {
       param.initializer = node.defaultValue;
       param.setConstantComputeValue(() {
-        final constEvaluator = ConstantEvaluator(_resolver, executableElement.library, this);
+        final constEvaluator = ConstantEvaluator(resolver, executableElement.library, this);
         return constEvaluator.evaluate(node.defaultValue!);
       });
     }
@@ -633,7 +633,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     required String constructorName,
     required SuperFormalParameter superParam,
   }) {
-    final (lib, clazzNode as ClassDeclaration, _) = _resolver.astNodeFor(ref, library);
+    final (lib, clazzNode as ClassDeclaration, _) = resolver.astNodeFor(ref, library);
 
     final constructorNode = clazzNode.members.whereType<ConstructorDeclaration>().firstWhere(
       (e) => (e.name?.lexeme ?? '') == constructorName,
@@ -712,7 +712,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
 
     if (initializer != null) {
       parameterElement.setConstantComputeValue(() {
-        final constEvaluator = ConstantEvaluator(_resolver, library, this);
+        final constEvaluator = ConstantEvaluator(resolver, library, this);
         return constEvaluator.evaluate(initializer);
       });
     }
@@ -752,14 +752,14 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     );
 
     parameterElement.type = type ?? TypeRef.neverType;
-    _registerMetadataResolver(parameterElement, node.metadata);
+    registerMetadataResolver(parameterElement, node.metadata);
     return parameterElement;
   }
 
   @override
   void visitTopLevelVariableDeclaration(TopLevelVariableDeclaration node) {
     final library = currentLibrary();
-    final constantEvaluator = ConstantEvaluator(_resolver, library, this);
+    final constantEvaluator = ConstantEvaluator(resolver, library, this);
     final type = resolveTypeRef((node.variables.type), library);
     for (final variable in node.variables.variables) {
       final topLevelVar = TopLevelVariableElementImpl(
@@ -785,7 +785,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
         }
       });
       if (!preResolveTopLevelMetadata) {
-        _registerMetadataResolver(topLevelVar, node.metadata);
+        registerMetadataResolver(topLevelVar, node.metadata);
       }
       library.addElement(topLevelVar);
     }
@@ -831,7 +831,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       isNullable: false,
     );
 
-    _registerMetadataResolver(methodElement, node.metadata);
+    registerMetadataResolver(methodElement, node.metadata);
   }
 
   @override
@@ -872,12 +872,12 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     final redirectedConstructor = node.redirectedConstructor;
     if (redirectedConstructor != null) {
       final redType = redirectedConstructor.type;
-      final identifierRef = _resolver.resolveIdentifier(interfaceElement.library, [
+      final identifierRef = resolver.resolveIdentifier(interfaceElement.library, [
         if (redType.importPrefix != null) redType.importPrefix!.name.lexeme,
         redType.name2.lexeme,
       ]);
 
-      final declarationRef = _resolver.getDeclarationRef(
+      final declarationRef = resolver.getDeclarationRef(
         identifierRef.topLevelTarget,
         constructorElement.library.src,
         importPrefix: identifierRef.importPrefix,
@@ -887,14 +887,17 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       constructorElement.returnType = resolvedType;
       constructorElement.redirectedConstructor = ConstructorElementRef(resolvedType, identifierRef.name);
     }
-    _registerMetadataResolver(constructorElement, node.metadata);
+    registerMetadataResolver(constructorElement, node.metadata);
   }
 
   @override
   void visitComment(Comment node) {
     final buffer = StringBuffer();
-    for (final token in node.tokens) {
-      buffer.writeln(token.lexeme);
+    for (var i = 0; i < node.tokens.length; i++) {
+      buffer.write(node.tokens[i].lexeme);
+      if (i < node.tokens.length - 1) {
+        buffer.writeln();
+      }
     }
     currentElementAs<ElementImpl>().documentationComment = buffer.toString();
   }

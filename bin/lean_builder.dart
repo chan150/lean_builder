@@ -9,7 +9,6 @@ import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
 import 'package:lean_builder/src/scanner/assets_graph.dart';
 import 'package:lean_builder/src/scanner/isolate_scanner.dart';
 import 'package:lean_builder/src/utils.dart';
-import 'package:xxh3/xxh3.dart' as xxh3;
 
 void main(List<String> args) async {
   final stopWatch = Stopwatch()..start();
@@ -53,7 +52,7 @@ void main(List<String> args) async {
       final chunkStopWatch = Stopwatch()..start();
       final chunkResolver = ElementResolver(assetsGraph, fileResolver, parser);
 
-      final genixTypeChecker = chunkResolver.typeCheckerFor('GenixBase', 'package:lean_builder/test/annotation.dart');
+      final genixTypeChecker = chunkResolver.typeCheckerFor('AnnotatedClass', 'package:lean_builder/test/test.dart');
 
       for (final asset in chunk) {
         if (asset.hasAnnotation) {
@@ -61,11 +60,20 @@ void main(List<String> args) async {
           count++;
           final library =
               chunkResolver.resolveLibrary(assetFile, preResolveTopLevelMetadata: true) as LibraryElementImpl;
+
+          print(library.src.uri);
+          for (final directive in library.directives) {
+            if (directive is LibraryDirectiveElement) {
+              print(directive.name);
+              print(directive.documentationComment);
+              print(directive.metadata);
+            }
+          }
           final element = library.resolvedElements.firstOrNull;
           if (element != null) {
-            for (final meta in element.metadata) {
-              print('Metadata: ${meta.type} ${genixTypeChecker.isAssignableFromType(meta.type)}');
-            }
+            // for (final meta in element.metadata) {
+            //   print('Metadata: ${meta.type} ${genixTypeChecker.isAssignableFromType(meta.type)}');
+            // }
 
             // print('${element.name} ${element.metadata}');
             // final targetUri = element.librarySrc.uri.replace(

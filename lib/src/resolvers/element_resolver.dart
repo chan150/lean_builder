@@ -2,15 +2,16 @@ import 'dart:collection';
 import 'dart:typed_data';
 
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:lean_builder/src/resolvers/element/builder/directives_builder.dart';
 import 'package:lean_builder/src/resolvers/element/element.dart';
 import 'package:lean_builder/src/resolvers/file_asset.dart';
 import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
+import 'package:lean_builder/src/resolvers/source_based_cache.dart';
 import 'package:lean_builder/src/resolvers/type/type_checker.dart';
 import 'package:lean_builder/src/resolvers/type/type_ref.dart';
 import 'package:lean_builder/src/resolvers/element/builder/element_builder.dart';
 import 'package:lean_builder/src/scanner/assets_graph.dart';
-import 'package:lean_builder/src/scanner/directive_statement.dart';
 import 'package:lean_builder/src/scanner/identifier_ref.dart';
 import 'package:lean_builder/src/scanner/scan_results.dart';
 import 'package:collection/collection.dart';
@@ -19,18 +20,18 @@ import 'package:xxh3/xxh3.dart';
 
 import 'constant/constant.dart';
 
-typedef ResolvePredicate<T> = bool Function(T member);
+typedef ElementPredicate<T> = bool Function(T element);
 
 class ElementResolver {
   final AssetsGraph graph;
   final SrcParser parser;
   final PackageFileResolver fileResolver;
   final _libraryCache = HashMap<String, LibraryElementImpl>();
-  final _resolvedUnitsCache = HashMap<String, (LibraryElementImpl, AstNode, DeclarationRef)>();
-  final _elementResolveLocks = HashMap<String, Lock>();
-  final _resolvedTypeRefs = HashMap<String, Element?>();
-  final evaluatedConstants = HashMap<String, Constant>();
   final _typeCheckersCache = HashMap<String, TypeChecker>();
+  final _resolvedUnitsCache = SourceBasedCache<(LibraryElementImpl, AstNode, DeclarationRef)>();
+  final _elementResolveLocks = SourceBasedCache<Lock>();
+  final _resolvedTypeRefs = SourceBasedCache<Element?>();
+  final evaluatedConstantsCache = SourceBasedCache<Constant>();
 
   ElementResolver(this.graph, this.fileResolver, this.parser);
 
@@ -46,13 +47,13 @@ class ElementResolver {
   }
 
   TypeChecker typeCheckerFor(String name, String packageImport) {
-    final reqId = '$packageImport#$name';
-    if (_typeCheckersCache.containsKey(reqId)) {
-      return _typeCheckersCache[reqId]!;
+    final key = '$packageImport#$name';
+    if (_typeCheckersCache.containsKey(key)) {
+      return _typeCheckersCache[key]!;
     }
     final typeRef = getNamedTypeRef(name, packageImport);
     final typeChecker = TypeChecker.fromTypeRef(this, typeRef);
-    return _typeCheckersCache[reqId] = typeChecker;
+    return _typeCheckersCache[key] = typeChecker;
   }
 
   NamedTypeRef getNamedTypeRef(String name, String packageImport) {
@@ -87,12 +88,14 @@ class ElementResolver {
 
   Future<Element?> elementOf(TypeRef ref) async {
     if (ref is NamedTypeRef) {
-      if (_resolvedTypeRefs.containsKey(ref.identifier)) {
-        return _resolvedTypeRefs[ref.identifier];
+      final key = _resolvedTypeRefs.keyFor(ref.src.srcId, ref.name);
+
+      if (_resolvedTypeRefs.contains(key)) {
+        return _resolvedTypeRefs[key];
       }
       final importingLibrary = ref.src.importingLibrary;
       if (importingLibrary == null) return null;
-      final lock = _elementResolveLocks.putIfAbsent(ref.identifier, () => Lock());
+      final lock = _elementResolveLocks.putIfAbsent(key, () => Lock());
       return await lock.synchronized(() async {
         final importingLib = libraryFor(importingLibrary);
         final identifier = IdentifierRef(ref.name, importPrefix: ref.importPrefix);
@@ -101,8 +104,8 @@ class ElementResolver {
         unit.accept(visitor);
         final element = library.getElement(ref.name);
         if (element != null) {
-          _resolvedTypeRefs[ref.identifier] = element;
-          _elementResolveLocks.remove(ref.identifier);
+          _resolvedTypeRefs.cacheKey(key, element);
+          _elementResolveLocks.remove(key);
         }
         return element;
       });
@@ -119,9 +122,9 @@ class ElementResolver {
 
   (LibraryElementImpl, AstNode, DeclarationRef) astNodeFor(IdentifierRef identifier, LibraryElement enclosingLibrary) {
     final enclosingAsset = enclosingLibrary.src;
-    final unitId = '${enclosingAsset.id}#${identifier.toString()}';
-    if (_resolvedUnitsCache.containsKey(unitId)) {
-      return _resolvedUnitsCache[unitId]!;
+    final cacheKey = _resolvedUnitsCache.keyFor(enclosingAsset.id, identifier.toString());
+    if (_resolvedUnitsCache.contains(cacheKey)) {
+      return _resolvedUnitsCache[cacheKey]!;
     }
 
     final declarationRef =
@@ -140,19 +143,19 @@ class ElementResolver {
         (e) => e.variables.variables.any((v) => v.name.lexeme == declarationRef.identifier),
         orElse: () => throw Exception('Identifier  ${declarationRef.identifier} not found in $srcUri'),
       );
-      return _resolvedUnitsCache[unitId] = (library, unit, declarationRef);
+      return _resolvedUnitsCache.cacheKey(cacheKey, (library, unit, declarationRef));
     } else if (declarationRef.type == TopLevelIdentifierType.$function) {
       final unit = compilationUnit.declarations.whereType<FunctionDeclaration>().firstWhere(
         (e) => e.name.lexeme == declarationRef.identifier,
         orElse: () => throw Exception('Identifier  ${declarationRef.identifier} not found in $srcUri'),
       );
-      return _resolvedUnitsCache[unitId] = (library, unit, declarationRef);
+      return _resolvedUnitsCache.cacheKey(cacheKey, (library, unit, declarationRef));
     } else if (declarationRef.type == TopLevelIdentifierType.$typeAlias) {
       final unit = compilationUnit.declarations.whereType<TypeAlias>().firstWhere(
         (e) => e.name.lexeme == declarationRef.identifier,
         orElse: () => throw Exception('Identifier  ${declarationRef.identifier} not found in $srcUri'),
       );
-      return _resolvedUnitsCache[unitId] = (library, unit, declarationRef);
+      return _resolvedUnitsCache.cacheKey(cacheKey, (library, unit, declarationRef));
     }
 
     final unit = compilationUnit.declarations.whereType<NamedCompilationUnitMember>().firstWhereOrNull(
@@ -167,26 +170,26 @@ class ElementResolver {
       for (final member in unit.childEntities) {
         if (member is FieldDeclaration) {
           if (member.fields.variables.any((v) => v.name.lexeme == targetIdentifier)) {
-            return _resolvedUnitsCache[unitId] = (library, member, declarationRef);
+            return _resolvedUnitsCache.cacheKey(cacheKey, (library, member, declarationRef));
           }
         } else if (member is ConstructorDeclaration) {
           if ((member.name?.lexeme ?? '') == targetIdentifier) {
-            return _resolvedUnitsCache[unitId] = (library, member, declarationRef);
+            return _resolvedUnitsCache.cacheKey(cacheKey, (library, member, declarationRef));
           }
         } else if (member is MethodDeclaration) {
           if (member.name.lexeme == targetIdentifier) {
-            return _resolvedUnitsCache[unitId] = (library, member, declarationRef);
+            return _resolvedUnitsCache.cacheKey(cacheKey, (library, member, declarationRef));
           }
         } else if (member is EnumConstantDeclaration) {
           if (member.name.lexeme == targetIdentifier) {
-            return _resolvedUnitsCache[unitId] = (library, member, declarationRef);
+            return _resolvedUnitsCache.cacheKey(cacheKey, (library, member, declarationRef));
           }
         }
       }
       throw Exception('Identifier $targetIdentifier (${identifier.toString()}) not found in $srcUri');
     }
 
-    return _resolvedUnitsCache[unitId] = (library, unit, declarationRef);
+    return _resolvedUnitsCache.cacheKey(cacheKey, (library, unit, declarationRef));
   }
 
   Uri uriForAsset(String id) {
@@ -194,71 +197,14 @@ class ElementResolver {
   }
 
   void resolveDirectives(LibraryElementImpl library) {
-    final directives = graph.directives[library.src.id];
-    if (directives == null) return;
-
-    final libraryDir = graph.assets[library.src.id]?[3];
-    if (libraryDir != null) {}
-
+    final builder = DirectivesBuilder(this, library);
+    final directives = library.compilationUnit.directives;
     for (final directive in directives) {
-      final type = directive[GraphIndex.directiveType] as int;
-
-      if (type == DirectiveStatement.import) {
-        final element = ImportElement(
-          library: library,
-          uri: uriForAsset(directive[GraphIndex.directiveSrc]),
-          srcId: directive[GraphIndex.directiveSrc],
-          stringUri: directive[GraphIndex.directiveStringUri],
-          shownNames: directive[GraphIndex.directiveShow],
-          hiddenNames: directive[GraphIndex.directiveHide],
-          prefix: directive.elementAtOrNull(GraphIndex.directivePrefix),
-          isDeferred: directive.elementAtOrNull(GraphIndex.directiveDeferred) == 1,
-        );
-        library.addElement(element);
-      } else if (type == DirectiveStatement.export) {
-        final element = ExportElement(
-          library: library,
-          uri: uriForAsset(directive[GraphIndex.directiveSrc]),
-          srcId: directive[GraphIndex.directiveSrc],
-          stringUri: directive[GraphIndex.directiveStringUri],
-          shownNames: directive[GraphIndex.directiveShow],
-          hiddenNames: directive[GraphIndex.directiveHide],
-        );
-        library.addElement(element);
-      } else if (type == DirectiveStatement.part) {
-        final element = PartElement(
-          uri: uriForAsset(directive[GraphIndex.directiveSrc]),
-          srcId: directive[GraphIndex.directiveSrc],
-          stringUri: directive[GraphIndex.directiveStringUri],
-          library: library,
-        );
-        library.addElement(element);
-      } else if (type == DirectiveStatement.partOf) {
-        final element = PartOfElement(
-          uri: uriForAsset(directive[GraphIndex.directiveSrc]),
-          library: library,
-          srcId: directive[GraphIndex.directiveSrc],
-          stringUri: directive[GraphIndex.directiveStringUri],
-        );
-        library.addElement(element);
-      } else if (type == DirectiveStatement.partOfLibrary) {
-        final thisSrc = library.src.id;
-        final partOf = graph.partOfOf(thisSrc);
-        assert(partOf != null && partOf[GraphIndex.directiveType] == DirectiveStatement.partOfLibrary);
-        final actualSrc = partOf![GraphIndex.directiveSrc];
-        final element = PartOfElement(
-          referencesLibraryDirective: true,
-          uri: uriForAsset(actualSrc),
-          library: library,
-          srcId: directive[GraphIndex.directiveSrc],
-          stringUri: directive[GraphIndex.directiveStringUri],
-        );
-        library.addElement(element);
-      }
+      directive.accept(builder);
     }
   }
 
-  void resolveMethods(InterfaceElement elem, {ResolvePredicate<MethodDeclaration>? predicate}) {
+  void resolveMethods(InterfaceElement elem, {ElementPredicate<MethodDeclaration>? predicate}) {
     final elementBuilder = ElementBuilder(this, elem.library);
     final declarations = elem.library.compilationUnit.declarations;
     final namedUnit = declarations.whereType<NamedCompilationUnitMember>();
@@ -274,7 +220,7 @@ class ElementResolver {
     });
   }
 
-  void resolveTypeAliases(LibraryElementImpl library, {ResolvePredicate<TypeAlias>? predicate}) {
+  void resolveTypeAliases(LibraryElementImpl library, {ElementPredicate<TypeAlias>? predicate}) {
     final unit = library.compilationUnit;
     final visitor = ElementBuilder(this, library);
     for (final typeAlias in unit.declarations.filterAs<TypeAlias>(predicate)) {
@@ -282,7 +228,7 @@ class ElementResolver {
     }
   }
 
-  void resolveMixins(LibraryElementImpl library, {ResolvePredicate<MixinDeclaration>? predicate}) {
+  void resolveMixins(LibraryElementImpl library, {ElementPredicate<MixinDeclaration>? predicate}) {
     final unit = library.compilationUnit;
     final visitor = ElementBuilder(this, library);
     for (final mixin in unit.declarations.filterAs<MixinDeclaration>(predicate)) {
@@ -290,7 +236,7 @@ class ElementResolver {
     }
   }
 
-  void resolveEnums(LibraryElementImpl library, {ResolvePredicate<EnumDeclaration>? predicate}) {
+  void resolveEnums(LibraryElementImpl library, {ElementPredicate<EnumDeclaration>? predicate}) {
     final unit = library.compilationUnit;
     final visitor = ElementBuilder(this, library);
     for (final enumDeclaration in unit.declarations.filterAs<EnumDeclaration>(predicate)) {
@@ -298,7 +244,7 @@ class ElementResolver {
     }
   }
 
-  void resolveFunctions(LibraryElementImpl library, {ResolvePredicate<FunctionDeclaration>? predicate}) {
+  void resolveFunctions(LibraryElementImpl library, {ElementPredicate<FunctionDeclaration>? predicate}) {
     final unit = library.compilationUnit;
     final visitor = ElementBuilder(this, library);
     for (final function in unit.declarations.filterAs<FunctionDeclaration>(predicate)) {
@@ -306,7 +252,7 @@ class ElementResolver {
     }
   }
 
-  void resolveClasses(LibraryElementImpl library, {ResolvePredicate<NamedCompilationUnitMember>? predicate}) {
+  void resolveClasses(LibraryElementImpl library, {ElementPredicate<NamedCompilationUnitMember>? predicate}) {
     final unit = library.compilationUnit;
     final visitor = ElementBuilder(this, library);
     for (final classDeclaration in unit.declarations.filterAs<ClassDeclaration>(predicate)) {
@@ -338,46 +284,8 @@ class ElementResolver {
 }
 
 extension IterableFilterExt<E> on Iterable<E> {
-  Iterable<T> filterAs<T>([ResolvePredicate<T>? predicate]) {
+  Iterable<T> filterAs<T>([ElementPredicate<T>? predicate]) {
     if (predicate == null) return whereType<T>();
     return whereType<T>().where(predicate);
-  }
-}
-
-class IdentifierRef {
-  final String name;
-  final String? prefix;
-  final String? importPrefix;
-  final DeclarationRef? location;
-
-  IdentifierRef(this.name, {this.prefix, this.importPrefix, this.location});
-
-  bool get isPrefixed => prefix != null;
-
-  String get topLevelTarget => prefix != null ? prefix! : name;
-
-  factory IdentifierRef.from(Identifier identifier, {String? importPrefix}) {
-    if (identifier is PrefixedIdentifier) {
-      return IdentifierRef(identifier.identifier.name, prefix: identifier.prefix.name, importPrefix: importPrefix);
-    } else {
-      return IdentifierRef(identifier.name, importPrefix: importPrefix);
-    }
-  }
-
-  factory IdentifierRef.fromType(NamedType type) {
-    return IdentifierRef(type.name2.lexeme, importPrefix: type.importPrefix?.name.lexeme);
-  }
-
-  @override
-  String toString() {
-    final buffer = StringBuffer();
-    if (prefix != null) {
-      buffer.write('$prefix.');
-    }
-    buffer.write(name);
-    if (importPrefix != null) {
-      buffer.write('@$importPrefix');
-    }
-    return buffer.toString();
   }
 }

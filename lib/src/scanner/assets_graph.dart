@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:analyzer/dart/ast/ast.dart';
 import 'package:lean_builder/src/resolvers/file_asset.dart';
 import 'package:lean_builder/src/scanner/directive_statement.dart';
 import 'package:lean_builder/src/scanner/scan_results.dart';
@@ -249,5 +250,43 @@ class ScannedAsset {
   @override
   String toString() {
     return 'PackageAsset{path: $uri, hasAnnotation: $hasAnnotation}';
+  }
+}
+
+class IdentifierRef {
+  final String name;
+  final String? prefix;
+  final String? importPrefix;
+  final DeclarationRef? location;
+
+  IdentifierRef(this.name, {this.prefix, this.importPrefix, this.location});
+
+  bool get isPrefixed => prefix != null;
+
+  String get topLevelTarget => prefix != null ? prefix! : name;
+
+  factory IdentifierRef.from(Identifier identifier, {String? importPrefix}) {
+    if (identifier is PrefixedIdentifier) {
+      return IdentifierRef(identifier.identifier.name, prefix: identifier.prefix.name, importPrefix: importPrefix);
+    } else {
+      return IdentifierRef(identifier.name, importPrefix: importPrefix);
+    }
+  }
+
+  factory IdentifierRef.fromType(NamedType type) {
+    return IdentifierRef(type.name2.lexeme, importPrefix: type.importPrefix?.name.lexeme);
+  }
+
+  @override
+  String toString() {
+    final buffer = StringBuffer();
+    if (prefix != null) {
+      buffer.write('$prefix.');
+    }
+    buffer.write(name);
+    if (importPrefix != null) {
+      buffer.write('@$importPrefix');
+    }
+    return buffer.toString();
   }
 }

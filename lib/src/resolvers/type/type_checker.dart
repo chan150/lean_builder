@@ -6,6 +6,7 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:lean_builder/src/resolvers/element/element.dart';
 import 'package:lean_builder/src/resolvers/element_resolver.dart';
 import 'package:lean_builder/src/resolvers/type/type_ref.dart';
+import 'package:lean_builder/src/scanner/assets_graph.dart';
 
 /// The abstractions are borrowed from the source_gen package
 /// An abstraction around doing static type checking at compile/build time.

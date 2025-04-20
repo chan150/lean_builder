@@ -41,12 +41,6 @@ class DirectiveElementImpl extends ElementImpl implements DirectiveElement {
     _referencedLibrary = library.resolver.libraryForDirective(this);
     return _referencedLibrary!;
   }
-
-  @override
-  String? get _documentationComment {
-    // todo: find away to link resolved directives to their source
-    throw UnimplementedError('Directive comments are not supported yet');
-  }
 }
 
 class ImportElement extends DirectiveElementImpl {
@@ -97,4 +91,11 @@ class PartOfElement extends DirectiveElementImpl {
   });
 
   final bool referencesLibraryDirective;
+}
+
+class LibraryDirectiveElement extends DirectiveElementImpl {
+  LibraryDirectiveElement({required super.library, required super.uri, required super.srcId, required super.stringUri});
+
+  @override
+  String get name => stringUri;
 }

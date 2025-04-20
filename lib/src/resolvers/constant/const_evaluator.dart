@@ -1,7 +1,3 @@
-// Copyright (c) 2019, the Dart project authors. Please see the AUTHORS file
-// for details. All rights reserved. Use of this source code is governed by a
-// BSD-style license that can be found in the LICENSE file.
-
 import 'dart:collection';
 
 import 'package:analyzer/dart/ast/ast.dart';
@@ -12,12 +8,13 @@ import 'package:lean_builder/src/resolvers/element_resolver.dart';
 import 'package:lean_builder/src/resolvers/type/type_ref.dart';
 import 'package:lean_builder/src/resolvers/element/builder/element_builder.dart';
 import 'package:lean_builder/src/resolvers/element/builder/element_stack.dart';
+import 'package:lean_builder/src/scanner/assets_graph.dart';
 import 'package:lean_builder/src/scanner/scan_results.dart';
 import 'package:collection/collection.dart';
 
 import 'constant.dart';
 
-/// some implementations of this classes is copied over from analyzer package
+// some implementations of this classes is borrowed from analyzer package
 
 class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementStack<Constant> {
   final ElementResolver _resolver;
@@ -31,13 +28,13 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
   }
 
   Constant? evaluate(AstNode node) {
-    final reqId = "${_library.src.id}:${node.hashCode}";
-    if (_resolver.evaluatedConstants.containsKey(reqId)) {
-      return _resolver.evaluatedConstants[reqId];
+    final key = _resolver.evaluatedConstantsCache.keyFor(_library.src.id, '${node.hashCode}');
+    if (_resolver.evaluatedConstantsCache.contains(key)) {
+      return _resolver.evaluatedConstantsCache[key];
     }
     final constant = node.accept(this);
     if (constant != null && !identical(constant, Constant.invalid)) {
-      _resolver.evaluatedConstants[reqId] = constant;
+      _resolver.evaluatedConstantsCache.cacheKey(key, constant);
     }
     return constant;
   }
