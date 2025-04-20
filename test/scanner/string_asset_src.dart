@@ -1,9 +1,10 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:xxh3/xxh3.dart';
 import 'package:lean_builder/src/resolvers/file_asset.dart';
 
-class StringSrc implements AssetSrc {
-  StringSrc(this.content, {this.uriString = 'package:root/path.dart'});
+class StringAsset implements Asset {
+  StringAsset(this.content, {this.uriString = 'package:root/path.dart'});
 
   final String uriString;
 
@@ -21,7 +22,7 @@ class StringSrc implements AssetSrc {
   }
 
   @override
-  String readAsStringSync() {
+  String readAsStringSync({Encoding encoding = utf8}) {
     return content;
   }
 

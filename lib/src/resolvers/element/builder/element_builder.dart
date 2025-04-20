@@ -4,14 +4,14 @@ import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:lean_builder/src/resolvers/constant/const_evaluator.dart';
 import 'package:lean_builder/src/resolvers/constant/constant.dart';
 import 'package:lean_builder/src/resolvers/element/element.dart';
-import 'package:lean_builder/src/resolvers/element_resolver.dart';
+import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/resolvers/type/type_ref.dart';
 import 'package:lean_builder/src/resolvers/element/builder/element_stack.dart';
 import 'package:lean_builder/src/scanner/assets_graph.dart';
 import 'package:lean_builder/src/scanner/scan_results.dart';
 
 class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
-  final ElementResolver resolver;
+  final Resolver resolver;
 
   final bool preResolveTopLevelMetadata;
 

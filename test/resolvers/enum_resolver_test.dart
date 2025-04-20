@@ -1,6 +1,6 @@
 import 'package:lean_builder/src/resolvers/constant/constant.dart';
 import 'package:lean_builder/src/resolvers/element/element.dart';
-import 'package:lean_builder/src/resolvers/element_resolver.dart';
+import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
 import 'package:lean_builder/src/scanner/assets_graph.dart';
@@ -13,7 +13,7 @@ import '../utils/test_utils.dart';
 void main() {
   PackageFileResolverImpl? fileResolver;
   TopLevelScanner? scanner;
-  ElementResolver? resolver;
+  Resolver? resolver;
 
   setUp(() {
     final packageToPath = {
@@ -23,11 +23,11 @@ void main() {
     fileResolver = PackageFileResolverImpl(packageToPath, packagesHash: '', rootPackage: 'root');
     final AssetsGraph graph = AssetsGraph('hash');
     scanner = TopLevelScanner(graph, fileResolver!);
-    resolver = ElementResolver(graph, fileResolver!, SrcParser());
+    resolver = Resolver(graph, fileResolver!, SrcParser());
   });
 
   test('should resolve simple enum element', () {
-    final asset = StringSrc('enum Foo {item;}');
+    final asset = StringAsset('enum Foo {item;}');
     scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final enumElement = library.getEnum('Foo');
@@ -35,7 +35,7 @@ void main() {
   });
 
   test('should resolve enum with implements clause', () {
-    final asset = StringSrc('''
+    final asset = StringAsset('''
      class Bar {}
      enum Foo implements Bar {item;}
     ''');
@@ -47,7 +47,7 @@ void main() {
   });
 
   test('should resolve enum with mixin clause', () {
-    final asset = StringSrc('''
+    final asset = StringAsset('''
      class Bar {}
      enum Foo with Bar {enum1;}
     ''');
@@ -59,7 +59,7 @@ void main() {
   });
 
   test('should resolve enum with mixin and implements clause', () {
-    final asset = StringSrc('''
+    final asset = StringAsset('''
       class Bar {}
       mixin Baz {}
       enum Foo with Baz implements Bar { enum1 }
@@ -73,13 +73,13 @@ void main() {
   });
 
   test('should resolve enum with annotations', () {
-    final annotationAsset = StringSrc('''
+    final annotationAsset = StringAsset('''
       class Bar {
         const Bar();
       }
     ''', uriString: 'package:bar/bar.dart');
 
-    final asset = StringSrc('''
+    final asset = StringAsset('''
       import 'package:bar/bar.dart';
       @Bar()
       enum Foo { enum1 }
@@ -98,7 +98,7 @@ void main() {
   });
 
   test('should resolve enum with fields', () {
-    final asset = StringSrc('''
+    final asset = StringAsset('''
       enum Foo { enum1, enum2 }
     ''');
     scanner!.scan(asset);
@@ -111,7 +111,7 @@ void main() {
   });
 
   test('should resolve enum with no arguments', () {
-    final asset = StringSrc('''
+    final asset = StringAsset('''
       enum Foo { item1; }
     ''');
     scanner!.scan(asset);
@@ -123,7 +123,7 @@ void main() {
   });
 
   test('should resolve enum with arguments', () {
-    final asset = StringSrc('''
+    final asset = StringAsset('''
       enum Foo { 
         enum1(1);
         final int value; 
@@ -144,7 +144,7 @@ void main() {
   });
 
   test('should resolve enum with named and optional positional arguments', () {
-    final asset = StringSrc('''
+    final asset = StringAsset('''
       enum Foo { 
         enum1(1, name: 'name', value: 2); 
         final int value;

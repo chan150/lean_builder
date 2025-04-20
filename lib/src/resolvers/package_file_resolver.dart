@@ -29,7 +29,7 @@ abstract class PackageFileResolver {
 
   String pathFor(String package);
 
-  AssetSrc assetSrcFor(Uri uri, {AssetSrc? relativeTo});
+  Asset assetSrcFor(Uri uri, {Asset? relativeTo});
 
   /// Returns the set of available packages
   Set<String> get packages;
@@ -178,16 +178,16 @@ class PackageFileResolverImpl implements PackageFileResolver {
     return uri;
   }
 
-  final _assetCache = <String, AssetSrc>{};
+  final _assetCache = <String, Asset>{};
 
   @visibleForTesting
-  void registerAsset(AssetSrc asset, {AssetSrc? relativeTo}) {
+  void registerAsset(Asset asset, {Asset? relativeTo}) {
     final reqId = '${asset.uri}@${relativeTo?.uri}';
     _assetCache[reqId] = asset;
   }
 
   @override
-  AssetSrc assetSrcFor(Uri uri, {AssetSrc? relativeTo}) {
+  Asset assetSrcFor(Uri uri, {Asset? relativeTo}) {
     final reqId = '$uri@${relativeTo?.uri}';
     if (_assetCache.containsKey(reqId)) {
       return _assetCache[reqId]!;
@@ -197,7 +197,7 @@ class PackageFileResolverImpl implements PackageFileResolver {
     final shortUri = toShortUri(absoluteUri);
     try {
       final hash = xxh3String(Uint8List.fromList(shortUri.toString().codeUnits));
-      final asset = AssetSrc(File.fromUri(absoluteUri), shortUri, hash);
+      final asset = Asset(File.fromUri(absoluteUri), shortUri, hash);
       return _assetCache[reqId] = asset;
     } catch (e) {
       throw AssetUriError(uri.toString(), e.toString());

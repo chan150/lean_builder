@@ -37,7 +37,7 @@ abstract class ElementImpl implements Element {
   void Function()? metadataResolveCallback;
 
   @override
-  AssetSrc get librarySrc => library.src;
+  Asset get librarySrc => library.src;
 
   @override
   bool get hasAlwaysThrows => metadata.any((m) => m.isAlwaysThrows);
@@ -120,7 +120,7 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   final CompilationUnit compilationUnit;
 
   @override
-  final ElementResolver resolver;
+  final Resolver resolver;
 
   final List<Element> resolvedElements = [];
 
@@ -150,7 +150,7 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   late final String name = src.shortUri.pathSegments.last;
 
   @override
-  final AssetSrc src;
+  final Asset src;
 
   @override
   Null get enclosingElement => null;
@@ -262,6 +262,26 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   }
 
   @override
+  Iterable<AnnotatedElement> annotatedWith(TypeChecker checker) sync* {
+    for (final element in resolvedElements) {
+      final annotation = checker.firstAnnotationOf(element);
+      if (annotation != null) {
+        yield AnnotatedElement(element, annotation);
+      }
+    }
+  }
+
+  @override
+  Iterable<AnnotatedElement> annotatedWithExact(TypeChecker checker) sync* {
+    for (final element in resolvedElements) {
+      final annotation = checker.firstAnnotationOfExact(element);
+      if (annotation != null) {
+        yield AnnotatedElement(element, annotation);
+      }
+    }
+  }
+
+  @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       super == other && other is LibraryElement && runtimeType == other.runtimeType && src.id == other.src.id;
@@ -288,6 +308,13 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
     }
     return _elementsOfType<DirectiveElement>();
   }
+}
+
+class AnnotatedElement {
+  final Element element;
+  final ElementAnnotation annotation;
+
+  AnnotatedElement(this.element, this.annotation);
 }
 
 mixin TypeParameterizedElementMixin on Element implements TypeParameterizedElement {

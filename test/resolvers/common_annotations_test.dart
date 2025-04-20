@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:lean_builder/src/resolvers/element/element.dart';
-import 'package:lean_builder/src/resolvers/element_resolver.dart';
+import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
 import 'package:lean_builder/src/scanner/assets_graph.dart';
@@ -15,18 +15,18 @@ import '../utils/test_utils.dart';
 void main() {
   PackageFileResolver? fileResolver;
   TopLevelScanner? scanner;
-  ElementResolver? resolver;
+  Resolver? resolver;
 
   setUp(() {
     fileResolver = PackageFileResolver.forCurrentRoot('root');
     final AssetsGraph graph = AssetsGraph('hash');
     scanner = TopLevelScanner(graph, fileResolver!);
-    resolver = ElementResolver(graph, fileResolver!, SrcParser());
+    resolver = Resolver(graph, fileResolver!, SrcParser());
   });
 
   // should resolve refs of core dart types
   test('should resolve core dart types', () {
-    final asset = StringSrc('''
+    final asset = StringAsset('''
       import 'package:meta/meta.dart';
       import 'package:meta/meta_meta.dart';
       

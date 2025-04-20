@@ -35,7 +35,6 @@ class SuperGenix extends Genix<String> {
   const SuperGenix(super.arg);
 }
 
-@SuperGenix('XXX')
 @Genix<String>('Hello')
 class AnnotatedClass {
   AnnotatedClass(this._namex);

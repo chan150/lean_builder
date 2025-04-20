@@ -13,7 +13,7 @@ import 'package:lean_builder/src/utils.dart';
 import 'package:xxh3/xxh3.dart';
 
 class ScanningTask {
-  final List<AssetSrc> assets;
+  final List<Asset> assets;
   final Map<String, dynamic> packageResolverData;
 
   ScanningTask(this.assets, this.packageResolverData);
@@ -74,13 +74,13 @@ class IsolateTLScanner {
     await file.writeAsString(jsonEncode(assetsGraph.toJson()));
   }
 
-  Future<void> scanWithIsolates(List<AssetSrc> assets, Map<String, dynamic> packageResolverData) async {
+  Future<void> scanWithIsolates(List<Asset> assets, Map<String, dynamic> packageResolverData) async {
     final isolateCount = Platform.numberOfProcessors - 1; // Leave one core free
     final actualIsolateCount = isolateCount.clamp(1, assets.length);
 
     // Calculate chunk size - each isolate gets roughly equal work
     final chunkSize = (assets.length / actualIsolateCount).ceil();
-    final chunks = <List<AssetSrc>>[];
+    final chunks = <List<Asset>>[];
 
     // Split assets into chunks
     for (int i = 0; i < assets.length; i += chunkSize) {
@@ -99,7 +99,7 @@ class IsolateTLScanner {
     await Future.wait(futures);
   }
 
-  Future<void> processChunkInIsolate(List<AssetSrc> chunk, Map<String, dynamic> packageResolverData) async {
+  Future<void> processChunkInIsolate(List<Asset> chunk, Map<String, dynamic> packageResolverData) async {
     // Create the receive port
     final receivePort = ReceivePort();
     final completer = Completer();

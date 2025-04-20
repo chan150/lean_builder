@@ -57,23 +57,23 @@ abstract class ScanResults {
 
   bool isVisited(String fileId);
 
-  void addDirective(AssetSrc asset, DirectiveStatement statement);
+  void addDirective(Asset asset, DirectiveStatement statement);
 
   void merge(ScanResults results);
 
-  void addAsset(AssetSrc asset, {bool isVisited = true});
+  void addAsset(Asset asset, {bool isVisited = true});
 
-  void addDeclaration(String identifier, AssetSrc declaringFile, TopLevelIdentifierType type);
+  void addDeclaration(String identifier, Asset declaringFile, TopLevelIdentifierType type);
 
   void removeAsset(String id);
 
-  void updateAssetInfo(AssetSrc asset, {required Uint8List content, bool hasAnnotation = false, String? libraryName});
+  void updateAssetInfo(Asset asset, {required Uint8List content, bool hasAnnotation = false, String? libraryName});
 
   bool isPart(String id);
 
   Set<String> importPrefixesOf(String id);
 
-  void addLibraryPartOf(String uriString, AssetSrc asset);
+  void addLibraryPartOf(String uriString, Asset asset);
 }
 
 class AssetsScanResults extends ScanResults {
@@ -193,7 +193,7 @@ class AssetsScanResults extends ScanResults {
   }
 
   @override
-  String addAsset(AssetSrc asset, {bool isVisited = true}) {
+  String addAsset(Asset asset, {bool isVisited = true}) {
     if (!assets.containsKey(asset.id)) {
       assets[asset.id] = [asset.shortUri.toString(), null, 0];
     }
@@ -202,7 +202,7 @@ class AssetsScanResults extends ScanResults {
   }
 
   @override
-  void addDirective(AssetSrc src, DirectiveStatement statement) {
+  void addDirective(Asset src, DirectiveStatement statement) {
     assert(assets.containsKey(src.id));
     final directiveSrcId = addAsset(statement.asset, isVisited: false);
     final srcDirectives = directives[src.id] ?? [];
@@ -242,7 +242,7 @@ class AssetsScanResults extends ScanResults {
   }
 
   @override
-  void addDeclaration(String identifier, AssetSrc declaringFile, TopLevelIdentifierType type) {
+  void addDeclaration(String identifier, Asset declaringFile, TopLevelIdentifierType type) {
     if (!assets.containsKey(declaringFile.id)) {
       throw Exception('Asset not found: $declaringFile');
     }
@@ -262,7 +262,7 @@ class AssetsScanResults extends ScanResults {
   }
 
   @override
-  void updateAssetInfo(AssetSrc asset, {required Uint8List content, bool hasAnnotation = false, String? libraryName}) {
+  void updateAssetInfo(Asset asset, {required Uint8List content, bool hasAnnotation = false, String? libraryName}) {
     assert(assets.containsKey(asset.id), 'Asset not found: $asset');
     final assetArr = assets[asset.id]!;
     assetArr[GraphIndex.assetDigest] = xxh3String(content);
@@ -335,7 +335,7 @@ class AssetsScanResults extends ScanResults {
   }
 
   @override
-  void addLibraryPartOf(String stringUri, AssetSrc asset) {
+  void addLibraryPartOf(String stringUri, Asset asset) {
     final fileDirectives = [...?directives[asset.id]];
     if (fileDirectives.isEmpty) {
       directives[asset.id] = [

@@ -4,7 +4,7 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:lean_builder/src/resolvers/element/element.dart';
-import 'package:lean_builder/src/resolvers/element_resolver.dart';
+import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/resolvers/type/type_ref.dart';
 import 'package:lean_builder/src/resolvers/element/builder/element_builder.dart';
 import 'package:lean_builder/src/resolvers/element/builder/element_stack.dart';
@@ -17,7 +17,7 @@ import 'constant.dart';
 // some implementations of this classes is borrowed from analyzer package
 
 class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementStack<Constant> {
-  final ElementResolver _resolver;
+  final Resolver _resolver;
 
   final ElementBuilder _elementResolverVisitor;
 

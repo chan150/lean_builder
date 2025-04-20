@@ -1,14 +1,14 @@
 import 'dart:io';
 import 'dart:isolate';
 
-import 'package:dart_style/dart_style.dart';
-import 'package:lean_builder/src/resolvers/element/element.dart';
-import 'package:lean_builder/src/resolvers/element_resolver.dart';
+import 'package:lean_builder/src/builder/build_step.dart';
+import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
 import 'package:lean_builder/src/scanner/assets_graph.dart';
 import 'package:lean_builder/src/scanner/isolate_scanner.dart';
 import 'package:lean_builder/src/utils.dart';
+import 'my_builder.dart';
 
 void main(List<String> args) async {
   final stopWatch = Stopwatch()..start();
@@ -29,115 +29,36 @@ void main(List<String> args) async {
   stopWatch.reset();
 
   final parser = SrcParser();
-  // final resolver = ElementResolver(assetsGraph, fileResolver, parser);
   print('Resolving assets inside $rootPackageName');
   final assets = assetsGraph.getAssetsForPackage(rootPackageName).where((e) => e.hasAnnotation).toList();
-  // final packageAssets = assetsGraph.getAssetsForPackage(rootPackageName);
-
   final isolateCount = Platform.numberOfProcessors - 1;
   final actualIsolateCount = isolateCount.clamp(1, assets.length);
   final chunkSize = (assets.length / actualIsolateCount).ceil();
   final chunks = <List<ScannedAsset>>[];
-  final formatter = DartFormatter(languageVersion: DartFormatter.latestLanguageVersion);
 
   for (int i = 0; i < assets.length; i += chunkSize) {
     final end = (i + chunkSize < assets.length) ? i + chunkSize : assets.length;
     chunks.add(assets.sublist(i, end));
   }
 
+  final builders = [MyBuilder()];
+
   final futures = <Future>[];
   for (final chunk in chunks) {
     final future = Isolate.run(() async {
-      int count = 0;
-      final chunkStopWatch = Stopwatch()..start();
-      final chunkResolver = ElementResolver(assetsGraph, fileResolver, parser);
-
-      final genixTypeChecker = chunkResolver.typeCheckerFor('AnnotatedClass', 'package:lean_builder/test/test.dart');
-
+      final chunkResolver = Resolver(assetsGraph, fileResolver, parser);
       for (final asset in chunk) {
-        if (asset.hasAnnotation) {
-          final assetFile = fileResolver.assetSrcFor(asset.uri);
-          count++;
-          final library =
-              chunkResolver.resolveLibrary(assetFile, preResolveTopLevelMetadata: true) as LibraryElementImpl;
+        final assetFile = fileResolver.assetSrcFor(asset.uri);
 
-          print(library.src.uri);
-          for (final directive in library.directives) {
-            if (directive is LibraryDirectiveElement) {
-              print(directive.name);
-              print(directive.documentationComment);
-              print(directive.metadata);
-            }
-          }
-          final element = library.resolvedElements.firstOrNull;
-          if (element != null) {
-            // for (final meta in element.metadata) {
-            //   print('Metadata: ${meta.type} ${genixTypeChecker.isAssignableFromType(meta.type)}');
-            // }
-
-            // print('${element.name} ${element.metadata}');
-            // final targetUri = element.librarySrc.uri.replace(
-            //   path: element.librarySrc.uri.path.replaceFirst('.dart', '.g.dart'),
-            // );
-            // String content = element.library.compilationUnit.toSource();
-            // content = content.replaceAll('@JsonSerializable()', '');
-            // await File.fromUri(targetUri).writeAsString(formatter.format(content, uri: targetUri));
-          }
+        for (final builder in builders) {
+          final buildStep = BuildStepImpl(assetFile, chunkResolver, allowedExtensions: builder.generatedExtensions);
+          final result = await builder.build(buildStep);
         }
       }
-      print('Chunk took: ${chunkStopWatch.elapsed.inMilliseconds} ms, count: $count');
     });
     futures.add(future);
   }
   await Future.wait(futures);
-
-  // for (final asset in assets) {
-  //   final assetFile = fileResolver.buildAssetUri(asset.uri);
-  //
-  //   if (asset.hasAnnotation) {
-  //     // count++;
-  //
-  //     final library = resolver.resolveLibrary(assetFile) as LibraryElementImpl;
-  //     final element = library.resolvedElements.firstOrNull;
-  //     if (element != null) {
-  //       for (final e in element.metadata) {
-  //         print('Metadata: ${e.type} ${e.constant}');
-  //       }
-  //       return;
-  //       for (final clazz in library.classes) {
-  //         print('Class: ${clazz.name} --------------------- *** ');
-  //         print(clazz.metadata);
-  //         for (final constructor in clazz.constructors) {
-  //           for (final param in constructor.parameters) {
-  //             print('${param.type} ${param.name}');
-  //           }
-  //
-  //           // final type = field.type;
-  //           // if (element is TypeAliasElement && type is NamedTypeRef) {
-  //           //   print(element.instantiate(type));
-  //           // }
-  //
-  //           // final type = field.type;
-  //           // if (type is NamedTypeRef) {
-  //           //   print(
-  //           //     'LocationOfType: ${assetsGraph.getUriForAsset(type.src.srcId)}  providedBy: ${assetsGraph.getUriForAsset(type.src.providerId)}',
-  //           //   );
-  //           // }
-  //         }
-  //
-  //         // for (final directive in library.directives) {
-  //         //   final subLib = directive.referencedLibrary;
-  //         //   print(subLib.classes.map((e) => e.name));
-  //         // }
-  //
-  //         // print('Params -----------');
-  //         // for (final param in [...?clazz.constructors.firstOrNull?.parameters]) {
-  //         //   print('${param.type} ${param.name} ');
-  //         // }
-  //       }
-  //       // print('Asset: took: ${assetStopWatch.elapsed.inMilliseconds} ms');
-  //     }
-  //   }
 
   print('Resolving took: ${stopWatch.elapsed.inMilliseconds} ms');
 }

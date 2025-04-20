@@ -5,7 +5,7 @@ import 'package:lean_builder/src/scanner/top_level_scanner.dart';
 
 extension TopLevelScannerExt on TopLevelScanner {
   // register the scanned asset in the assets cache so it's not resolved to FileAsset
-  void scanAndRegister(AssetSrc asset, {AssetSrc? relativeTo}) {
+  void scanAndRegister(Asset asset, {Asset? relativeTo}) {
     scan(asset);
     (fileResolver as PackageFileResolverImpl).registerAsset(asset, relativeTo: relativeTo);
   }

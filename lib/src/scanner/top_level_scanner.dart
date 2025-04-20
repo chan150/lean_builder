@@ -15,7 +15,7 @@ class TopLevelScanner {
 
   TopLevelScanner(this.results, this.fileResolver);
 
-  void scan(AssetSrc asset) {
+  void scan(Asset asset) {
     try {
       if (results.isVisited(asset.id)) return;
       final bytes = asset.readAsBytesSync();
@@ -132,7 +132,7 @@ class TopLevelScanner {
     return (nameToken?.next, name);
   }
 
-  Token? _tryParseFunction(Token token, AssetSrc asset) {
+  Token? _tryParseFunction(Token token, Asset asset) {
     Token? current = _skipLTGT(token);
     current = _skipParenthesis(current);
 
@@ -170,7 +170,7 @@ class TopLevelScanner {
     return current;
   }
 
-  void _tryParseConstVar(Token nextToken, AssetSrc asset) {
+  void _tryParseConstVar(Token nextToken, Asset asset) {
     Token? currentToken = nextToken;
     // Skip type information to get to the variable name
     while (currentToken != null && currentToken.type != TokenType.SEMICOLON) {
@@ -185,7 +185,7 @@ class TopLevelScanner {
     }
   }
 
-  (Token?, DirectiveStatement?) _tryParseDirective(TokenType keyword, Token next, AssetSrc enclosingAsset) {
+  (Token?, DirectiveStatement?) _tryParseDirective(TokenType keyword, Token next, Asset enclosingAsset) {
     bool isPartOf = keyword == Keyword.PART && next.type == Keyword.OF;
     String stringUri = '';
 
@@ -271,7 +271,7 @@ class TopLevelScanner {
     return (current, directive);
   }
 
-  Token? parseTypeDef(Token? token, AssetSrc asset) {
+  Token? parseTypeDef(Token? token, Asset asset) {
     final identifiers = <Token>[];
     int scopeTracker = 0;
     while (token != null && token.type != TokenType.EOF) {

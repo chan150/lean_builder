@@ -1,7 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-abstract class AssetSrc {
+abstract class Asset {
   String get id;
 
   Uri get shortUri;
@@ -10,14 +11,14 @@ abstract class AssetSrc {
 
   Uint8List readAsBytesSync();
 
-  String readAsStringSync();
+  String readAsStringSync({Encoding encoding = utf8});
 
   bool existsSync();
 
-  factory AssetSrc(File file, Uri shortUri, String id) = FileAssetSrc;
+  factory Asset(File file, Uri shortUri, String id) = FileAsset;
 }
 
-class FileAssetSrc implements AssetSrc {
+class FileAsset implements Asset {
   final File file;
 
   @override
@@ -26,7 +27,7 @@ class FileAssetSrc implements AssetSrc {
   @override
   final Uri shortUri;
 
-  FileAssetSrc(this.file, this.shortUri, this.id);
+  FileAsset(this.file, this.shortUri, this.id);
 
   @override
   Uri get uri => file.uri;
@@ -37,8 +38,8 @@ class FileAssetSrc implements AssetSrc {
   }
 
   @override
-  String readAsStringSync() {
-    return file.readAsStringSync();
+  String readAsStringSync({Encoding encoding = utf8}) {
+    return file.readAsStringSync(encoding: encoding);
   }
 
   @override

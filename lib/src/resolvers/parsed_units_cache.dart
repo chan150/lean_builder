@@ -7,15 +7,15 @@ class SrcParser {
 
   CompilationUnit? get(String key) => _cache[key];
 
-  CompilationUnit parse(AssetSrc src) {
-    return parseContent(src.readAsStringSync, key: src.id);
+  CompilationUnit parse(Asset src, {bool allowSyntaxErrors = false}) {
+    return parseContent(src.readAsStringSync, key: src.id, throwIfDiagnostics: !allowSyntaxErrors);
   }
 
-  CompilationUnit parseContent(String Function() content, {required String key}) {
+  CompilationUnit parseContent(String Function() content, {required String key, bool throwIfDiagnostics = false}) {
     if (_cache.containsKey(key)) {
       return _cache[key]!;
     }
-    final unit = parseString(content: content(), throwIfDiagnostics: false).unit;
+    final unit = parseString(content: content(), throwIfDiagnostics: throwIfDiagnostics).unit;
     _cache[key] = unit;
     return unit;
   }

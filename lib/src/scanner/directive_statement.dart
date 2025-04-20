@@ -9,7 +9,7 @@ class DirectiveStatement {
   static const int partOfLibrary = 5;
 
   final int type;
-  final AssetSrc asset;
+  final Asset asset;
   final List<String> show;
   final List<String> hide;
   final String? prefix;

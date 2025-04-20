@@ -1,4 +1,4 @@
-import 'package:lean_builder/src/resolvers/element_resolver.dart';
+import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
 import 'package:lean_builder/src/scanner/assets_graph.dart';
@@ -10,7 +10,7 @@ import '../scanner/string_asset_src.dart';
 void main() {
   late PackageFileResolver fileResolver;
   TopLevelScanner? scanner;
-  ElementResolver? resolver;
+  Resolver? resolver;
 
   setUpAll(() {
     final packageToPath = {PackageFileResolver.dartSdk: 'path/to/sdk', 'root': 'path/to/root'};
@@ -20,18 +20,18 @@ void main() {
   setUp(() {
     final AssetsGraph graph = AssetsGraph('hash');
     scanner = TopLevelScanner(graph, fileResolver);
-    resolver = ElementResolver(graph, fileResolver, SrcParser());
+    resolver = Resolver(graph, fileResolver, SrcParser());
   });
 
   test('should resolve simple class element', () {
-    final asset = StringSrc('class Foo {}');
+    final asset = StringAsset('class Foo {}');
     scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     expect(library.getClass('Foo'), isNotNull);
   });
 
   test('should resolve abstract class element', () {
-    final asset = StringSrc('abstract class Foo {}');
+    final asset = StringAsset('abstract class Foo {}');
     scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('Foo');
@@ -48,7 +48,7 @@ void main() {
   });
 
   test('should resolve final class element', () {
-    final asset = StringSrc('final class Foo {}');
+    final asset = StringAsset('final class Foo {}');
     scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('Foo');
@@ -64,7 +64,7 @@ void main() {
   });
 
   test('should resolve base class element', () {
-    final asset = StringSrc('base class Foo {}');
+    final asset = StringAsset('base class Foo {}');
     scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('Foo');
@@ -80,7 +80,7 @@ void main() {
   });
 
   test('should resolve interface class element', () {
-    final asset = StringSrc('interface class Foo {}');
+    final asset = StringAsset('interface class Foo {}');
     scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('Foo');
@@ -96,7 +96,7 @@ void main() {
   });
 
   test('should resolve mixin class element', () {
-    final asset = StringSrc('mixin class Foo {}');
+    final asset = StringAsset('mixin class Foo {}');
     scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('Foo');
@@ -112,7 +112,7 @@ void main() {
   });
 
   test('should resolve sealed class element', () {
-    final asset = StringSrc('sealed class Foo {}');
+    final asset = StringAsset('sealed class Foo {}');
     scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('Foo');
@@ -128,7 +128,7 @@ void main() {
   });
 
   test('should resolve mixin application class element', () {
-    final asset = StringSrc('''
+    final asset = StringAsset('''
         class Bar {}
         mixin Baz {}
         class Foo = Bar with Baz;
@@ -148,7 +148,7 @@ void main() {
   });
 
   test('should resolve abstract interface class element', () {
-    final asset = StringSrc('abstract interface class Foo {}');
+    final asset = StringAsset('abstract interface class Foo {}');
     scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('Foo');
@@ -165,7 +165,7 @@ void main() {
   });
 
   test('should resolve abstract final class element', () {
-    final asset = StringSrc('abstract final class Foo {}');
+    final asset = StringAsset('abstract final class Foo {}');
     scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('Foo');
@@ -182,7 +182,7 @@ void main() {
   });
 
   test('should resolve abstract mixin class element', () {
-    final asset = StringSrc('abstract mixin class Foo {}');
+    final asset = StringAsset('abstract mixin class Foo {}');
     scanner!.scan(asset);
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('Foo');
@@ -199,7 +199,7 @@ void main() {
   });
 
   test('should resolve class with super class', () {
-    final asset = StringSrc('''
+    final asset = StringAsset('''
         class Bar {}
         class Foo extends Bar {}
     ''');
@@ -211,7 +211,7 @@ void main() {
   });
 
   test('should resolve class with super interfaces', () {
-    final asset = StringSrc('''
+    final asset = StringAsset('''
          class Bar {}
          class Baz {}
          class Foo implements Bar, Baz {}
@@ -224,7 +224,7 @@ void main() {
   });
 
   test('should resolve class with mixins', () {
-    final asset = StringSrc('''
+    final asset = StringAsset('''
         mixin Bar {}
         mixin Baz {}
         class Foo with Bar, Baz {}

@@ -1,8 +1,9 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:lean_builder/src/resolvers/constant/constant.dart';
-import 'package:lean_builder/src/resolvers/element_resolver.dart';
+import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/resolvers/file_asset.dart';
 import 'package:lean_builder/src/resolvers/type/substitution.dart';
+import 'package:lean_builder/src/resolvers/type/type_checker.dart';
 import 'package:lean_builder/src/resolvers/type/type_ref.dart';
 import 'package:lean_builder/src/scanner/identifier_ref.dart';
 import 'package:lean_builder/src/scanner/scan_results.dart';
@@ -32,7 +33,7 @@ abstract class Element {
 
   ElementAnnotation? getAnnotation(String name);
 
-  AssetSrc get librarySrc;
+  Asset get librarySrc;
 
   String? get documentationComment;
 
@@ -152,7 +153,7 @@ abstract class InterfaceElement extends InstanceElement with TypeParameterizedEl
 }
 
 abstract class LibraryElement extends Element {
-  AssetSrc get src;
+  Asset get src;
 
   DeclarationRef buildDeclarationRef(String identifier, TopLevelIdentifierType type);
 
@@ -160,7 +161,7 @@ abstract class LibraryElement extends Element {
 
   List<ClassElementImpl> get classes;
 
-  ElementResolver get resolver;
+  Resolver get resolver;
 
   List<MixinElementImpl> get mixins;
 
@@ -183,6 +184,12 @@ abstract class LibraryElement extends Element {
   FunctionElement? getFunction(String name);
 
   TypeAliasElement? getTypeAlias(String name);
+
+  /// All of the resolved declarations in this library annotated with [checker].
+  Iterable<AnnotatedElement> annotatedWith(TypeChecker checker);
+
+  /// All of the resolved declarations in this library annotated with exactly [checker].
+  Iterable<AnnotatedElement> annotatedWithExact(TypeChecker checker);
 }
 
 abstract class VariableElement extends Element {

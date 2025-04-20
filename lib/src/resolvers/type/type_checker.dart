@@ -4,7 +4,7 @@
 
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:lean_builder/src/resolvers/element/element.dart';
-import 'package:lean_builder/src/resolvers/element_resolver.dart';
+import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/resolvers/type/type_ref.dart';
 import 'package:lean_builder/src/scanner/assets_graph.dart';
 
@@ -14,7 +14,7 @@ abstract class TypeChecker {
   const TypeChecker._();
 
   /// Create a new [TypeChecker] backed by a [TypeRef].
-  factory TypeChecker.fromTypeRef(ElementResolver resolver, NamedTypeRef type) = _TypeRefChecker;
+  factory TypeChecker.fromTypeRef(Resolver resolver, NamedTypeRef type) = _TypeRefChecker;
 
   /// Creates a new [TypeChecker] that delegates to other [checkers].
   ///
@@ -122,7 +122,7 @@ abstract class TypeChecker {
 // Checks a static type against another static type;
 class _TypeRefChecker extends TypeChecker {
   final NamedTypeRef _type;
-  final ElementResolver _resolver;
+  final Resolver _resolver;
 
   _TypeRefChecker(this._resolver, this._type) : super._();
 

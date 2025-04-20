@@ -17,7 +17,7 @@ class DeclarationRef {
   final Uri srcUri;
   final String providerId;
   final TopLevelIdentifierType type;
-  final AssetSrc? importingLibrary;
+  final Asset? importingLibrary;
   final String? importPrefix;
 
   @override

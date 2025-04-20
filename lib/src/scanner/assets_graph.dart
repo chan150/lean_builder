@@ -68,7 +68,7 @@ class AssetsGraph extends AssetsScanResults {
     return assets;
   }
 
-  DeclarationRef? getDeclarationRef(String identifier, AssetSrc importingSrc, {String? importPrefix}) {
+  DeclarationRef? getDeclarationRef(String identifier, Asset importingSrc, {String? importPrefix}) {
     DeclarationRef buildRef(MapEntry<String, int> srcEntry, {String? providerId}) {
       return DeclarationRef(
         identifier: identifier,
