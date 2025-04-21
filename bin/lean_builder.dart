@@ -2,12 +2,13 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:lean_builder/src/builder/build_step.dart';
+import 'package:lean_builder/src/builder/builder_impl.dart';
+import 'package:lean_builder/src/builder/output_writer.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
 import 'package:lean_builder/src/scanner/assets_graph.dart';
 import 'package:lean_builder/src/scanner/isolate_scanner.dart';
-import 'package:lean_builder/src/utils.dart';
 import 'my_builder.dart';
 
 void main(List<String> args) async {
@@ -17,48 +18,75 @@ void main(List<String> args) async {
   //   AssetsGraph.cacheFile.deleteSync(recursive: true);
   // }
 
-  // final rootPackageName = 'gen_benchmark';
+  final rootPackageName = 'gen_benchmark';
 
   final fileResolver = PackageFileResolver.forCurrentRoot(rootPackageName);
   final assetsGraph = AssetsGraph.init(fileResolver.packagesHash);
 
   final isoTlScanner = IsolateTLScanner(assetsGraph: assetsGraph, fileResolver: fileResolver);
-  await isoTlScanner.scanAssets();
+  final scannedAssets = await isoTlScanner.scanAssets();
+
+  final rootAssets = scannedAssets.where((e) => e.asset.packageName == rootPackageName);
+  final toProcess = List.of(rootAssets.where((e) => e.state == AssetState.deleted || e.hasTopLevelAnnotation));
+  if (toProcess.isEmpty) {
+    print('No assets to process');
+    return;
+  }
 
   print('Updating Graph took: ${stopWatch.elapsed.inMilliseconds} ms');
   stopWatch.reset();
 
   final parser = SrcParser();
   print('Resolving assets inside $rootPackageName');
-  final assets = assetsGraph.getAssetsForPackage(rootPackageName).where((e) => e.hasAnnotation).toList();
   final isolateCount = Platform.numberOfProcessors - 1;
-  final actualIsolateCount = isolateCount.clamp(1, assets.length);
-  final chunkSize = (assets.length / actualIsolateCount).ceil();
-  final chunks = <List<ScannedAsset>>[];
+  final actualIsolateCount = isolateCount.clamp(1, toProcess.length);
+  final chunkSize = (toProcess.length / actualIsolateCount).ceil();
+  final chunks = <List<ProcessableAsset>>[];
 
-  for (int i = 0; i < assets.length; i += chunkSize) {
-    final end = (i + chunkSize < assets.length) ? i + chunkSize : assets.length;
-    chunks.add(assets.sublist(i, end));
+  for (int i = 0; i < toProcess.length; i += chunkSize) {
+    final end = (i + chunkSize < toProcess.length) ? i + chunkSize : toProcess.length;
+    chunks.add(toProcess.sublist(i, end));
   }
 
-  final builders = [MyBuilder()];
+  final builders = [
+    SharedPartBuilder([MyGenerator()]),
+  ];
 
   final futures = <Future>[];
   for (final chunk in chunks) {
     final future = Isolate.run(() async {
       final chunkResolver = Resolver(assetsGraph, fileResolver, parser);
-      for (final asset in chunk) {
-        final assetFile = fileResolver.assetSrcFor(asset.uri);
-
-        for (final builder in builders) {
-          final buildStep = BuildStepImpl(assetFile, chunkResolver, allowedExtensions: builder.generatedExtensions);
-          final result = await builder.build(buildStep);
+      for (final entry in chunk) {
+        if (entry.state == AssetState.deleted) {
+          // delete all possible generated files
+          for (final builder in builders) {
+            for (final ext in builder.outputExtensions) {
+              final generatedAsset = File.fromUri(entry.asset.changeUriExtension(ext));
+              if (generatedAsset.existsSync()) {
+                print('Deleting ${generatedAsset.path}');
+                generatedAsset.deleteSync();
+              }
+            }
+          }
         }
+        final outputWriter = DeferredOutputWriter(entry.asset);
+        for (final builder in builders) {
+          final buildStep = BuildStepImpl(
+            entry.asset,
+            chunkResolver,
+            outputWriter,
+            allowedExtensions: builder.outputExtensions,
+          );
+          await builder.build(buildStep);
+        }
+        await outputWriter.flush();
       }
     });
     futures.add(future);
   }
-  await Future.wait(futures);
+  if (futures.isNotEmpty) {
+    await Future.wait(futures);
+  }
 
   print('Resolving took: ${stopWatch.elapsed.inMilliseconds} ms');
 }

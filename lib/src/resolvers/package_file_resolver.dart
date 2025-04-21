@@ -47,7 +47,7 @@ abstract class PackageFileResolver {
     return PackageFileResolverImpl(packageToPath, packagesHash: data['packagesHash'], rootPackage: data['rootPackage']);
   }
 
-  bool isRootPackage(String package);
+ String get rootPackage;
 
   Map<String, dynamic> toJson();
 }
@@ -59,6 +59,7 @@ class PackageFileResolverImpl implements PackageFileResolver {
 
   @override
   final String packagesHash;
+  @override
   final String rootPackage;
 
   static const _packageConfigPath = '.dart_tool/package_config.json';
@@ -196,8 +197,8 @@ class PackageFileResolverImpl implements PackageFileResolver {
     final absoluteUri = resolveFileUri(uri, relativeTo: relativeTo?.uri);
     final shortUri = toShortUri(absoluteUri);
     try {
-      final hash = xxh3String(Uint8List.fromList(shortUri.toString().codeUnits));
-      final asset = Asset(File.fromUri(absoluteUri), shortUri, hash);
+      final id = xxh3String(Uint8List.fromList(shortUri.toString().codeUnits));
+      final asset = Asset(file: File.fromUri(absoluteUri), shortUri: shortUri, id: id);
       return _assetCache[reqId] = asset;
     } catch (e) {
       throw AssetUriError(uri.toString(), e.toString());

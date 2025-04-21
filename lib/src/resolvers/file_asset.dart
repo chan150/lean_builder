@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:path/path.dart' as p;
 
 abstract class Asset {
   String get id;
@@ -15,7 +16,14 @@ abstract class Asset {
 
   bool existsSync();
 
-  factory Asset(File file, Uri shortUri, String id) = FileAsset;
+  factory Asset({required String id, required Uri shortUri, required File file}) = FileAsset;
+
+  Map<String, dynamic> toJson();
+
+  /// returns null if [shortUri] is not a package asset or it has empty segments
+  String? get packageName;
+
+  Uri changeUriExtension(String ext);
 }
 
 class FileAsset implements Asset {
@@ -27,7 +35,7 @@ class FileAsset implements Asset {
   @override
   final Uri shortUri;
 
-  FileAsset(this.file, this.shortUri, this.id);
+  FileAsset({required this.file, required this.shortUri, required this.id});
 
   @override
   Uri get uri => file.uri;
@@ -48,5 +56,30 @@ class FileAsset implements Asset {
   @override
   String toString() {
     return 'FileAsset{file: $file, pathHash: $id, packagePath: $shortUri}';
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {'id': id, 'shortUri': shortUri.toString(), 'uri': uri.toString()};
+  }
+
+  factory FileAsset.fromJson(Map<String, dynamic> json) {
+    return FileAsset(
+      file: File.fromUri(Uri.parse(json['uri'] as String)),
+      shortUri: Uri.parse(json['shortUri'] as String),
+      id: json['id'] as String,
+    );
+  }
+
+  @override
+  String? get packageName {
+    if (shortUri.scheme != 'package') return null;
+    final segments = shortUri.pathSegments;
+    return segments.firstOrNull;
+  }
+
+  @override
+  Uri changeUriExtension(String ext) {
+    return uri.replace(path: p.withoutExtension(uri.path) + ext);
   }
 }

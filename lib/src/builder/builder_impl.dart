@@ -1,11 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 
-import 'package:analyzer/dart/ast/ast.dart';
 import 'package:dart_style/dart_style.dart';
 import 'package:lean_builder/src/logger.dart';
 import 'package:lean_builder/src/resolvers/element/element.dart';
-import 'package:lean_builder/src/resolvers/file_asset.dart';
-import 'package:path/path.dart' as p;
 import 'build_step.dart';
 import 'builder.dart';
 import 'generator/generated_output.dart';
@@ -13,21 +11,10 @@ import 'generator/generator.dart';
 
 const defaultFileHeader = '// GENERATED CODE - DO NOT MODIFY BY HAND';
 
-const dartFormatWidth = '// dart format width=80';
-
 String _defaultFormatOutput(String code) =>
     DartFormatter(languageVersion: DartFormatter.latestLanguageVersion).format(code);
 
-String _defaultFormatUnit(String code) {
-  code = '$dartFormatWidth\n$code';
-  return _defaultFormatOutput(code);
-}
-
 final _headerLine = '// '.padRight(77, '*');
-
-const partIdRegExpLiteral = r'[A-Za-z_\d-]+';
-
-final _partIdRegExp = RegExp('^$partIdRegExpLiteral\$');
 
 /// A [Builder] wrapping on one or more [Generator]s.
 abstract class _Builder extends Builder {
@@ -46,7 +33,7 @@ abstract class _Builder extends Builder {
   /// additional outputs.
   ///
   /// this can not be empty
-  final Set<String> generatedExtensions;
+  final Set<String> outputExtensions;
 
   final String _header;
 
@@ -66,13 +53,13 @@ abstract class _Builder extends Builder {
   _Builder(
     this._generators, {
     required this.formatOutput,
-    this.generatedExtensions = const {'.g.dart'},
+    this.outputExtensions = const {'.g.dart'},
     String? header,
     bool? writeDescriptions,
     this.allowSyntaxErrors = false,
     BuilderOptions? options,
   }) : buildExtensions = validatedBuildExtensionsFrom(options != null ? Map.of(options.config) : null, {
-         '.dart': generatedExtensions,
+         '.dart': outputExtensions,
        }),
        _writeDescriptions = writeDescriptions ?? true,
        _header = (header ?? defaultFileHeader).trim();
@@ -106,7 +93,6 @@ abstract class _Builder extends Builder {
       if (createdUnit.isEmpty) {
         continue;
       }
-
       yield GeneratedOutput(gen, createdUnit);
     }
   }
@@ -120,6 +106,7 @@ abstract class _Builder extends Builder {
       contentBuffer.writeln(_header);
     }
 
+    final extension = buildStep.allowedExtensions.first;
     for (var item in generatedOutputs) {
       if (_writeDescriptions) {
         contentBuffer
@@ -134,41 +121,36 @@ abstract class _Builder extends Builder {
     }
 
     var content = contentBuffer.toString();
-
     try {
       content = formatOutput(content);
     } catch (e, stack) {
       Logger.severe(
         '''
-An error `${e.runtimeType}` occurred while formatting the generated source for
-  `${library.src.uri}`
-which was output to to extension
-  `${buildStep.allowedExtensions.first}`.
-This may indicate an issue in the generator, the input source code, or in the
-source formatter.''',
+          An error `${e.runtimeType}` occurred while formatting the generated source for `${library.src.uri}`
+          which was output to to extension `$extension`.
+          This may indicate an issue in the generator, the input source code, or in the source formatter.
+        ''',
         e,
         stack,
       );
     }
 
-    final extension = buildStep.allowedExtensions.first;
-    await buildStep.writeAsString(buildStep.asset, extension, content);
+    await writeOutput(buildStep, content, extension);
+  }
+
+  FutureOr<void> writeOutput(BuildStep buildStep, String content, String extension) {
+    return buildStep.writeAsString(extension, content);
   }
 
   @override
-  String toString() => 'Generating $generatedExtensions: ${_generators.join(', ')}';
+  String toString() => 'Generating $outputExtensions: ${_generators.join(', ')}';
 }
 
 class LibraryBuilder extends _Builder {
   /// Wrap [generator] as a [Builder] that generates Dart library files.
   ///
-  /// [generatedExtension] indicates what files will be created for each `.dart`
-  /// input.
-  /// Defaults to `.g.dart`, however this should usually be changed to
-  /// avoid conflicts with outputs from a [SharedPartBuilder].
-  /// If [generator] will create additional outputs through the [BuildStep] they
-  /// should be indicated in [additionalOutputExtensions].
-  ///
+  /// [outputExtensions] indicates what files will be created for each input
+
   /// [formatOutput] is called to format the generated code. Defaults to
   /// using the standard [DartFormatter] and writing a comment specifying the
   /// default format width of 80..
@@ -187,13 +169,47 @@ class LibraryBuilder extends _Builder {
   /// libraries.
   LibraryBuilder(
     Generator generator, {
-    super.formatOutput = _defaultFormatUnit,
-    super.generatedExtensions,
+    super.formatOutput = _defaultFormatOutput,
+    super.outputExtensions,
     super.writeDescriptions,
     super.header,
     super.allowSyntaxErrors,
     super.options,
-  }) : super([generator]);
+  }) : super([generator]) {
+    for (final ext in outputExtensions) {
+      if (ext == '.g.dart') {
+        throw ArgumentError('LibraryBuilder can not have a .g.dart extension');
+      }
+    }
+  }
+}
+
+class SharedPartBuilder extends _Builder {
+  /// A [Builder] that writes partial content, to the output writer
+  ///
+  /// [formatOutput] is called to format the generated code. Defaults to
+  /// [DartFormatter.format].
+  ///
+  /// [allowSyntaxErrors] indicates whether to allow syntax errors in input
+  /// libraries.
+  SharedPartBuilder(super._generators, {super.formatOutput = _defaultFormatOutput, super.allowSyntaxErrors})
+    : super(outputExtensions: {'.g.dart'}, header: '');
+
+  @override
+  Future<void> generateForLibrary(LibraryElement library, BuildStep buildStep) async {
+    if (!buildStep.hasValidPartDirectiveFor('.g.dart')) {
+      throw ArgumentError(
+        'The input library must have a part directive for the generated part '
+        'file. Please add a part directive () to the input library ${library.src.uri}',
+      );
+    }
+    return super.generateForLibrary(library, buildStep);
+  }
+
+  @override
+  FutureOr<void> writeOutput(BuildStep buildStep, String content, String extension) {
+    return buildStep.writeAsString(extension, content, isPart: true);
+  }
 }
 
 /// Returns a valid buildExtensions map created from [optionsMap] or
@@ -254,132 +270,3 @@ Map<String, Set<String>> validatedBuildExtensionsFrom(
 
   return result;
 }
-
-/// A [Builder] which generates content intended for `part of` files.
-///
-/// Generated files will be prefixed with a `partId` to ensure multiple
-/// [SharedPartBuilder]s can produce non conflicting `part of` files. When the
-/// `source_gen|combining_builder` is applied to the primary input these
-/// snippets will be concatenated into the final `.g.dart` output.
-///
-/// This builder can be used when multiple generators may need to output to the
-/// same part file but [PartBuilder] can't be used because the generators are
-/// not all defined in the same location. As a convention most codegen which
-/// generates code should use this approach to get content into a `.g.dart` file
-/// instead of having individual outputs for each building package.
-class SharedPartBuilder extends _Builder {
-  /// Wrap [generators] as a [Builder] that generates `part of` files.
-  ///
-  /// [partId] indicates what files will be created for each `.dart`
-  /// input. This extension should be unique as to not conflict with other
-  /// [SharedPartBuilder]s. The resulting file will be of the form
-  /// `<generatedExtension>.g.part`. If any generator in [generators] will
-  /// create additional outputs through the [BuildStep] they should be indicated
-  /// in [additionalOutputExtensions].
-  ///
-  /// [formatOutput] is called to format the generated code. Defaults to
-  /// [DartFormatter.format].
-  ///
-  /// [allowSyntaxErrors] indicates whether to allow syntax errors in input
-  /// libraries.
-  SharedPartBuilder(super.generators, String partId, {super.formatOutput = _defaultFormatUnit, super.allowSyntaxErrors})
-    : super(generatedExtensions: {'.$partId.g.part'}, header: '') {
-    if (!_partIdRegExp.hasMatch(partId)) {
-      throw ArgumentError.value(
-        partId,
-        'partId',
-        '`partId` can only contain letters, numbers, `_` and `.`. '
-            'It cannot start or end with `.`.',
-      );
-    }
-  }
-  //
-  // @override
-  // Future<void> generateForLibrary(LibraryElement library, BuildStep buildStep) {
-  //    if(!buildStep.hasValidPartDirectiveFor('.g.part')) {
-  //     throw ArgumentError(
-  //       'The input library must have a part directive for the generated part '
-  //       'file. Please add a part directive (${}) to the input library ${library.src.uri}',
-  //     );
-  //    }
-  //   // This is a no-op. The combining builder will handle the output.
-  // }
-}
-
-// @override
-// Future<void> generateForLibrary(LibraryElement library, BuildStep buildStep) async {
-//   final generatedOutputs = await _generate(library, _generators, buildStep).toList();
-//
-//   // Don't output useless files.
-//   //
-//   // NOTE: It is important to do this check _before_ checking for valid
-//   // library/part definitions because users expect some files to be skipped
-//   // therefore they do not have "library".
-//   if (generatedOutputs.isEmpty) return;
-//   final outputId = buildStep.allowedOutputs.first;
-//   final contentBuffer = StringBuffer();
-//
-//   if (_header.isNotEmpty) {
-//     contentBuffer.writeln(_header);
-//   }
-//
-//   if (!_isLibraryBuilder) {
-//     final asset = buildStep.inputId;
-//     final partOfUri = uriOfPartial(library, asset, outputId);
-//     contentBuffer.writeln();
-//
-//     if (this is PartBuilder) {
-//       contentBuffer
-//         ..write(languageOverrideForLibrary(library))
-//         ..writeln('part of \'$partOfUri\';');
-//       final part = computePartUrl(buildStep.inputId, outputId);
-//
-//       final libraryUnit = await buildStep.resolver.compilationUnitFor(buildStep.inputId);
-//       final hasLibraryPartDirectiveWithOutputUri = hasExpectedPartDirective(libraryUnit, part);
-//       if (!hasLibraryPartDirectiveWithOutputUri) {
-//         // log.warning(
-//         //   '$part must be included as a part directive in '
-//         //   'the input library with:\n    part \'$part\';',
-//         // );
-//         return;
-//       }
-//     } else {
-//       assert(this is SharedPartBuilder);
-//       // For shared-part builders, `part` statements will be checked by the
-//       // combining build step.
-//     }
-//   }
-//
-//   for (var item in generatedOutputs) {
-//     if (_writeDescriptions) {
-//       contentBuffer
-//         ..writeln()
-//         ..writeln(_headerLine)
-//         ..writeAll(LineSplitter.split(item.generatorDescription).map((line) => '// $line\n'))
-//         ..writeln(_headerLine)
-//         ..writeln();
-//     }
-//
-//     contentBuffer.writeln(item.output);
-//   }
-//
-//   var genPartContent = contentBuffer.toString();
-//
-//   try {
-//     genPartContent = formatOutput(genPartContent);
-//   } catch (e, stack) {
-//     log.severe(
-//       '''
-// An error `${e.runtimeType}` occurred while formatting the generated source for
-//   `${library.identifier}`
-// which was output to
-//   `${outputId.path}`.
-// This may indicate an issue in the generator, the input source code, or in the
-// source formatter.''',
-//       e,
-//       stack,
-//     );
-//   }
-//
-//   await buildStep.writeAsString(outputId, genPartContent);
-// }

@@ -3,14 +3,14 @@
 // BSD-style license that can be found in the LICENSE file.
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:lean_builder/src/resolvers/element/element.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/resolvers/file_asset.dart';
-import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
+
+import 'output_writer.dart';
 
 /// some of the abstractions are borrowed from the build package
 
@@ -26,6 +26,15 @@ abstract class BuildStep {
 
   LibraryElement get inputLibrary;
 
+  /// The [Resolver] for this build step.
+  Resolver get resolver;
+
+  /// The writing methods [writeAsBytes] and [writeAsString] will throw an
+  /// `InvalidOutputException` when attempting to write an asset not part of
+  /// the [allowedExtensions].
+  ///
+  Set<String> get allowedExtensions;
+
   /// Writes [bytes] to a binary file located at [id].
   ///
   /// Returns a [Future] that completes after writing the asset out.
@@ -38,7 +47,7 @@ abstract class BuildStep {
   /// are written.
   /// [extension] is the extension of the file to be written. It should be one of
   /// the extensions declared in the builder's `buildExtensions`.
-  Future<void> writeAsBytes(Asset asset, String extension, List<int> bytes);
+  FutureOr<void> writeAsBytes(List<int> bytes, String extension, {bool isPart = false});
 
   /// Writes [contents] to a text file located at [id] with [encoding].
   ///
@@ -53,28 +62,14 @@ abstract class BuildStep {
   ///
   /// [extension] is the extension of the file to be written. It should be one of
   /// the extensions declared in the builder's `buildExtensions`.
-  Future<void> writeAsString(Asset asset, String extension, String contents, {Encoding encoding = utf8});
-
-  /// The [Resolver] for this build step.
-  Resolver get resolver;
-
-  /// Returns assets that may be written in this build step.
-  ///
-  /// Allowed outputs are formed by matching the [inputId] against the builder's
-  /// `buildExtensions`, which declares a list of output extensions for this
-  /// input.
-  ///
-  /// The writing methods [writeAsBytes] and [writeAsString] will throw an
-  /// `InvalidOutputException` when attempting to write an asset not part of
-  /// the [allowedExtensions].
-  ///
-
-  Set<String> get allowedExtensions;
+  FutureOr<void> writeAsString(String contents, String extension, {Encoding encoding = utf8, bool isPart = false});
 
   /// Returns true if the input library has a part directive for the given
   /// extension.
   bool hasValidPartDirectiveFor(String extension);
 }
+
+class PartialOutputMerger {}
 
 class BuildStepImpl implements BuildStep {
   @override
@@ -83,7 +78,9 @@ class BuildStepImpl implements BuildStep {
   @override
   final Resolver resolver;
 
-  BuildStepImpl(this.asset, this.resolver, {required this.allowedExtensions});
+  final OutputWriter _outputWriter;
+
+  BuildStepImpl(this.asset, this.resolver, this._outputWriter, {required this.allowedExtensions});
 
   @override
   final Set<String> allowedExtensions;
@@ -92,19 +89,17 @@ class BuildStepImpl implements BuildStep {
   LibraryElement get inputLibrary => resolver.libraryFor(asset);
 
   @override
-  Future<void> writeAsBytes(Asset asset, String extension, List<int> bytes) async {
+  void writeAsBytes(List<int> bytes, String extension, {bool isPart = false}) async {
     final outputUri = _changeExtension(asset, extension);
     _validateOutput(outputUri);
-    final outputFile = File.fromUri(outputUri);
-    await outputFile.writeAsBytes(bytes);
+    _outputWriter.writeBytes(outputUri, bytes, isPart);
   }
 
   @override
-  Future<void> writeAsString(Asset asset, String extension, String contents, {Encoding encoding = utf8}) async {
+  void writeAsString(String extension, String contents, {Encoding encoding = utf8, bool isPart = false}) {
     final outputUri = _changeExtension(asset, extension);
     _validateOutput(outputUri);
-    final outputFile = File.fromUri(outputUri);
-    await outputFile.writeAsString(contents, encoding: encoding);
+    _outputWriter.writeString(outputUri, contents, isPart);
   }
 
   void _validateOutput(Uri uri) {

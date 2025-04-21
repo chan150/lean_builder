@@ -129,7 +129,7 @@ class _TypeRefChecker extends TypeChecker {
   final _resolvedTypesCache = <String, NamedTypeRef>{};
 
   @override
-  String toString() => _type.identifier;
+  String toString() => _type.name;
 
   @override
   bool isExactlyType(TypeRef typeRef) {

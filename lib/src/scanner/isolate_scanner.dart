@@ -9,7 +9,6 @@ import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 import 'package:lean_builder/src/scanner/assets_graph.dart';
 import 'package:lean_builder/src/scanner/scan_results.dart';
 import 'package:lean_builder/src/scanner/top_level_scanner.dart';
-import 'package:lean_builder/src/utils.dart';
 import 'package:xxh3/xxh3.dart';
 
 class ScanningTask {
@@ -29,11 +28,18 @@ Future<void> scannerWorker(SendPort sendPort) async {
       final fileResolver = PackageFileResolver.fromJson(message.packageResolverData);
       final resultsCollector = AssetsScanResults();
       final scanner = TopLevelScanner(resultsCollector, fileResolver);
+      final processableAssets = <ProcessableAsset>[];
       for (final asset in message.assets) {
-        scanner.scan(asset);
+        final (didScane, hasAnnotation) = scanner.scan(asset);
+        if (didScane) {
+          processableAssets.add(ProcessableAsset(asset, AssetState.inserted, hasAnnotation));
+        }
       }
       // Send results back to main isolate
-      sendPort.send(resultsCollector.toJson());
+      sendPort.send({
+        'results': resultsCollector.toJson(),
+        'assets': processableAssets.map((e) => e.toJson()).toList(),
+      });
     } else if (message == 'exit') {
       break;
     }
@@ -48,23 +54,27 @@ class IsolateTLScanner {
 
   IsolateTLScanner({required this.assetsGraph, required this.fileResolver});
 
-  Future<void> scanAssets() async {
+  Future<List<ProcessableAsset>> scanAssets() async {
     final assetsReader = FileAssetReader(fileResolver);
-    final packagesToScan = assetsGraph.loadedFromCache ? {rootPackageName} : fileResolver.packages;
+    final packagesToScan = assetsGraph.loadedFromCache ? {fileResolver.rootPackage} : fileResolver.packages;
 
     final assets = assetsReader.listAssetsFor(packagesToScan);
     final assetsList = assets.values.expand((e) => e).toList();
-
+    final List<ProcessableAsset> results;
     // Only distribute work if building from scratch
     if (!assetsGraph.loadedFromCache) {
-      await scanWithIsolates(assetsList, fileResolver.toJson());
+      results = await scanWithIsolates(assetsList, fileResolver.toJson());
     } else {
+      final processableAssets = <ProcessableAsset>[];
       // Use single-threaded approach for incremental updates
       final scanner = TopLevelScanner(assetsGraph, fileResolver);
       for (final asset in assetsList) {
-        scanner.scan(asset);
+        final (didScan, hasAnnotation) = scanner.scan(asset);
+        if (didScan) {
+          processableAssets.add(ProcessableAsset(asset, AssetState.inserted, hasAnnotation));
+        }
       }
-      updateIncrementalAssets(scanner);
+      results = [...processableAssets, ...updateIncrementalAssets(scanner)];
     }
 
     final file = AssetsGraph.cacheFile;
@@ -72,9 +82,10 @@ class IsolateTLScanner {
       file.createSync(recursive: true);
     }
     await file.writeAsString(jsonEncode(assetsGraph.toJson()));
+    return results;
   }
 
-  Future<void> scanWithIsolates(List<Asset> assets, Map<String, dynamic> packageResolverData) async {
+  Future<List<ProcessableAsset>> scanWithIsolates(List<Asset> assets, Map<String, dynamic> packageResolverData) async {
     final isolateCount = Platform.numberOfProcessors - 1; // Leave one core free
     final actualIsolateCount = isolateCount.clamp(1, assets.length);
 
@@ -88,18 +99,23 @@ class IsolateTLScanner {
       chunks.add(assets.sublist(i, end));
     }
 
-    final futures = <Future>[];
+    final futures = <Future<Iterable<ProcessableAsset>>>[];
 
     // Create and start isolates
     for (final chunk in chunks) {
       futures.add(processChunkInIsolate(chunk, packageResolverData));
     }
-
     // Wait for all isolates to complete
-    await Future.wait(futures);
+    final results = await Future.wait(futures);
+    return List.unmodifiable(results.expand((e) => e));
   }
 
-  Future<void> processChunkInIsolate(List<Asset> chunk, Map<String, dynamic> packageResolverData) async {
+  Future<List<ProcessableAsset>> processChunkInIsolate(
+    List<Asset> chunk,
+    Map<String, dynamic> packageResolverData,
+  ) async {
+    Set<ProcessableAsset> processableAssets = {};
+
     // Create the receive port
     final receivePort = ReceivePort();
     final completer = Completer();
@@ -118,7 +134,10 @@ class IsolateTLScanner {
         workerSendPort!.send(ScanningTask(chunk, packageResolverData));
       } else if (message is Map<String, dynamic>) {
         // Process results
-        final results = AssetsScanResults.fromJson(message);
+        final results = AssetsScanResults.fromJson(message['results']);
+        for (final assetJson in message['assets'] as List<dynamic>) {
+          processableAssets.add(ProcessableAsset.fromJson(assetJson));
+        }
         assetsGraph.merge(results);
         completer.complete();
       }
@@ -136,21 +155,48 @@ class IsolateTLScanner {
     }
     isolate.kill();
     receivePort.close();
+    return List.of(processableAssets);
   }
 
-  void updateIncrementalAssets(TopLevelScanner scanner) {
-    for (final entry in assetsGraph.getAssetsForPackage(rootPackageName)) {
+  List<ProcessableAsset> updateIncrementalAssets(TopLevelScanner scanner) {
+    final processableAssets = <ProcessableAsset>[];
+    for (final entry in assetsGraph.getAssetsForPackage(fileResolver.rootPackage)) {
       final asset = fileResolver.assetSrcFor(entry.uri);
       if (!asset.existsSync()) {
         assetsGraph.removeAsset(asset.id);
+        processableAssets.add(ProcessableAsset(asset, AssetState.deleted, entry.hasAnnotation));
         continue;
       }
       final content = asset.readAsBytesSync();
       final currentHash = xxh3String(content);
       if (currentHash != entry.digest) {
         assetsGraph.removeAsset(asset.id);
-        scanner.scan(asset);
+        final (didScane, hasAnnotation) = scanner.scan(asset);
+        if (didScane) {
+          processableAssets.add(ProcessableAsset(asset, AssetState.updated, hasAnnotation));
+        }
       }
     }
+    return processableAssets;
   }
 }
+
+class ProcessableAsset {
+  final Asset asset;
+  final bool hasTopLevelAnnotation;
+
+  final AssetState state;
+
+  ProcessableAsset(this.asset, this.state, this.hasTopLevelAnnotation);
+
+  ProcessableAsset.fromJson(Map<String, dynamic> json)
+    : asset = FileAsset.fromJson(json['asset'] as Map<String, dynamic>),
+      state = AssetState.values[json['state'] as int],
+      hasTopLevelAnnotation = json['hasTopLevelAnnotation'] as bool;
+
+  Map<String, dynamic> toJson() {
+    return {'asset': asset.toJson(), 'state': state.index, 'hasTopLevelAnnotation': hasTopLevelAnnotation};
+  }
+}
+
+enum AssetState { inserted, updated, deleted }

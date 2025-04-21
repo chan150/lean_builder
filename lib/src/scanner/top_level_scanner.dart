@@ -15,9 +15,9 @@ class TopLevelScanner {
 
   TopLevelScanner(this.results, this.fileResolver);
 
-  void scan(Asset asset) {
+  (bool didScane, bool hasTopLevelAnnotation) scan(Asset asset) {
     try {
-      if (results.isVisited(asset.id)) return;
+      if (results.isVisited(asset.id)) return (false, false);
       final bytes = asset.readAsBytesSync();
       results.addAsset(asset);
 
@@ -107,6 +107,7 @@ class TopLevelScanner {
         token = nextToken;
       }
       results.updateAssetInfo(asset, content: bytes, hasAnnotation: hasTopLevelAnnotation, libraryName: libraryName);
+      return (true, hasTopLevelAnnotation);
     } catch (e) {
       print('Error scanning file: ${asset.uri}');
       if (e is Error) {
@@ -114,7 +115,7 @@ class TopLevelScanner {
       } else {
         print(StackTrace.current);
       }
-      // Silent error handling
+      return (false, false);
     }
   }
 

@@ -23,7 +23,7 @@ class FileAssetReader {
       assert(dir.existsSync(), 'Package $package not found at ${dir.path}');
       for (final subDir in PackageFileResolver.dirsScheme.keys) {
         /// Skip test directory for non-root packages
-        if (subDir == 'test' && !fileResolver.isRootPackage(package)) continue;
+        if (subDir == 'test' && package != fileResolver.rootPackage) continue;
         final subDirPath = Directory(p.join(dir.path, subDir));
         if (subDirPath.existsSync()) {
           _collectAssets(package, subDirPath, collection);

@@ -1,4 +1,3 @@
-import 'package:async/async.dart';
 import 'dart:async';
 
 import 'package:lean_builder/src/builder/build_step.dart';
@@ -42,54 +41,41 @@ abstract class GeneratorForAnnotation extends Generator {
   FutureOr<String> generate(LibraryElement library, BuildStep buildStep) async {
     final typeChecker = _getTypeChecker(buildStep);
     final values = <String>{};
-    for (var annotatedElement in library.annotatedWith(typeChecker)) {
-      final generatedValue = generateForAnnotatedElement(buildStep, annotatedElement);
-      await for (var value in _normalizeGeneratorOutput(generatedValue)) {
-        assert(value.length == value.trim().length);
+    final annotatedElements = library.annotatedWith(typeChecker);
+    if (annotatedElements.isEmpty && throwOnUnresolved) {
+      throw ArgumentError(
+        'No elements found with annotation $typeChecker in ${library.src.uri}. '
+        'Please check your annotations.',
+      );
+    }
+    for (var annotatedElement in annotatedElements) {
+      final rawValue = generateForAnnotatedElement(buildStep, annotatedElement);
+      final value = rawValue is Future ? await rawValue : rawValue;
+      if (value != null && value.trim().isNotEmpty) {
         values.add(value);
       }
     }
-
     return values.join('\n\n');
   }
 
   TypeChecker buildTypeChecker(Resolver resolver);
 
   FutureOr<String?> generateForAnnotatedElement(BuildStep buildStep, AnnotatedElement annotatedElement);
+}
 
-  /// Converts [Future], [Iterable], and [Stream] implementations
-  /// containing [String] to a single [Stream] while ensuring all thrown
-  /// exceptions are forwarded through the return value.
-  Stream<String> _normalizeGeneratorOutput(Object? value) {
-    if (value == null) {
-      return const Stream.empty();
-    } else if (value is Future) {
-      return StreamCompleter.fromFuture(value.then(_normalizeGeneratorOutput));
-    } else if (value is String) {
-      value = [value];
-    }
+class SimpleGeneratorForAnnotation extends GeneratorForAnnotation {
+  final TypeChecker Function(Resolver resolver) _buildTypeChecker;
+  final FutureOr<String?> Function(BuildStep buildStep, AnnotatedElement annotatedElement) _generateForAnnotatedElement;
 
-    if (value is Iterable) {
-      value = Stream.fromIterable(value);
-    }
+  SimpleGeneratorForAnnotation(this._buildTypeChecker, this._generateForAnnotatedElement);
 
-    if (value is Stream) {
-      return value
-          .where((e) => e != null)
-          .map((e) {
-            if (e is String) {
-              return e.trim();
-            }
-
-            throw _argError(e as Object);
-          })
-          .where((e) => e.isNotEmpty);
-    }
-    throw _argError(value);
+  @override
+  TypeChecker buildTypeChecker(Resolver resolver) {
+    return _buildTypeChecker(resolver);
   }
 
-  ArgumentError _argError(Object value) => ArgumentError(
-    'Must be a String or be an Iterable/Stream containing String values. '
-    'Found `${Error.safeToString(value)}` (${value.runtimeType}).',
-  );
+  @override
+  FutureOr<String?> generateForAnnotatedElement(BuildStep buildStep, AnnotatedElement annotatedElement) {
+    return _generateForAnnotatedElement(buildStep, annotatedElement);
+  }
 }

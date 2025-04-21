@@ -1,36 +1,25 @@
 import 'dart:async';
 
 import 'package:lean_builder/src/builder/build_step.dart';
-import 'package:lean_builder/src/builder/builder_impl.dart';
 import 'package:lean_builder/src/builder/generator/generator.dart';
 import 'package:lean_builder/src/resolvers/element/element.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/resolvers/type/type_checker.dart';
-
-class MyBuilder extends LibraryBuilder {
-  MyBuilder() : super(MyGenerator(), generatedExtensions: {'.g.dart'});
-}
 
 class MyGenerator extends GeneratorForAnnotation {
   MyGenerator();
 
   @override
   TypeChecker buildTypeChecker(Resolver resolver) {
-    return resolver.typeCheckerFor('Genix', 'package:lean_builder/test/genix.dart');
+    return resolver.typeCheckerFor('JsonSerializable', 'package:json_annotation/json_annotation.dart');
   }
 
   @override
   FutureOr<String?> generateForAnnotatedElement(BuildStep buildStep, AnnotatedElement annotatedElement) {
-    print('Generating for ${annotatedElement.element.name}');
     final clazz = annotatedElement.element;
     if (clazz is! ClassElement) {
       throw Exception('Expected a ClassElement, but got ${clazz.runtimeType}');
     }
-    final element = buildStep.resolver.elementOf(clazz.thisType);
-
-    final annotation = annotatedElement.annotation;
-
-    final library = buildStep.inputLibrary;
 
     // Perform your code generation logic here
     // For example, you can generate a class based on the annotation
@@ -41,7 +30,6 @@ class MyGenerator extends GeneratorForAnnotation {
         // Your generated code here
       }
     ''';
-
     return generatedCode;
   }
 }
