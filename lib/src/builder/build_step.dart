@@ -8,7 +8,6 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:lean_builder/src/resolvers/element/element.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/resolvers/file_asset.dart';
-import 'package:path/path.dart' as p;
 
 import 'output_writer.dart';
 
@@ -90,14 +89,14 @@ class BuildStepImpl implements BuildStep {
 
   @override
   void writeAsBytes(List<int> bytes, String extension, {bool isPart = false}) async {
-    final outputUri = _changeExtension(asset, extension);
+    final outputUri = asset.uriWithExtension(extension);
     _validateOutput(outputUri);
     _outputWriter.writeBytes(outputUri, bytes, isPart);
   }
 
   @override
   void writeAsString(String extension, String contents, {Encoding encoding = utf8, bool isPart = false}) {
-    final outputUri = _changeExtension(asset, extension);
+    final outputUri = asset.uriWithExtension(extension);
     _validateOutput(outputUri);
     _outputWriter.writeString(outputUri, contents, isPart);
   }
@@ -105,14 +104,8 @@ class BuildStepImpl implements BuildStep {
   void _validateOutput(Uri uri) {
     final extDotIndex = uri.path.indexOf('.');
     if (extDotIndex == -1 || !allowedExtensions.contains(uri.path.substring(extDotIndex))) {
-      throw Exception('Invalid output: $uri. No extension found.');
+      throw Exception('Invalid extension, allowed extensions are: $allowedExtensions');
     }
-  }
-
-  /// Changes the extension of the asset's URI to the new extension.
-  Uri _changeExtension(Asset asset, String newExtension) {
-    final uri = asset.uri;
-    return uri.replace(path: p.withoutExtension(uri.path) + newExtension);
   }
 
   @override
@@ -124,7 +117,7 @@ class BuildStepImpl implements BuildStep {
       final part = partDirect.uri.stringValue;
       if (part == null) continue;
       final partUri = fileResolver.resolveFileUri(Uri.parse(part), relativeTo: library.src.uri);
-      if (partUri == _changeExtension(asset, extension)) {
+      if (partUri == asset.uriWithExtension(extension)) {
         return true;
       }
     }

@@ -1,7 +1,7 @@
 class Genix<T> implements GenixBase<T> {
-  final String? str2;
+  final dynamic str2;
   @override
-  final String type;
+  final dynamic type;
 
   const Genix(this.type) : str2 = 'str2';
 
@@ -11,7 +11,7 @@ class Genix<T> implements GenixBase<T> {
 abstract class GenixBase<T> {
   const GenixBase(this.type);
 
-  final String type;
+  final dynamic type;
 }
 
 //

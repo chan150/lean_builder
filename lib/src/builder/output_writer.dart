@@ -33,13 +33,15 @@ class DeferredOutputWriter implements OutputWriter {
     _operations.add(operation);
   }
 
-  Future<void> flush() async {
+  Future<Set<Uri>> flush() async {
+    final generatedFiles = <Uri>{};
     final nonParts = _operations.where((op) => !op.isPart);
     for (final operation in nonParts) {
       await operation.execute();
+      generatedFiles.add(operation.fileUri);
     }
     final parts = _operations.where((op) => op.isPart);
-    if (parts.isEmpty) return;
+    if (parts.isEmpty) generatedFiles;
 
     // all parts must have the same output uri
     final outputUri = parts.first.fileUri;
@@ -60,6 +62,8 @@ class DeferredOutputWriter implements OutputWriter {
         await operation.execute(header: '\n');
       }
     }
+    generatedFiles.add(outputUri);
+    return generatedFiles;
   }
 }
 

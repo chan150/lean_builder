@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:lean_builder/src/errors/resolver_error.dart';
 import 'package:lean_builder/src/resolvers/file_asset.dart';
 import 'package:lean_builder/src/scanner/directive_statement.dart';
 import 'package:lean_builder/src/scanner/scan_results.dart';
@@ -13,12 +14,19 @@ import 'identifier_ref.dart';
 class AssetsGraph extends AssetsScanResults {
   static final cacheFile = File('.dart_tool/lean_build/assets_graph.json');
 
+  final String packagesHash;
+
+  final bool loadedFromCache;
+
+  static const String version = '1.0.0';
+
+  late final _coreImportId = xxh3String(Uint8List.fromList('dart:core/core.dart'.codeUnits));
+
+  late final _coreImport = [DirectiveStatement.import, _coreImportId, '', null, null];
+
   AssetsGraph(this.packagesHash) : loadedFromCache = false;
 
   AssetsGraph._fromCache(this.packagesHash) : loadedFromCache = true;
-
-  late final _coreImportId = xxh3String(Uint8List.fromList('dart:core/core.dart'.codeUnits));
-  late final _coreImport = [DirectiveStatement.import, _coreImportId, '', null, null];
 
   factory AssetsGraph.init(String packagesHash) {
     if (cacheFile.existsSync()) {
@@ -38,10 +46,14 @@ class AssetsGraph extends AssetsScanResults {
     return AssetsGraph(packagesHash);
   }
 
-  final String packagesHash;
-  final bool loadedFromCache;
-
-  static const String version = '1.0.0';
+  Future<void> save() async {
+    final file = AssetsGraph.cacheFile;
+    if (!file.existsSync()) {
+      file.createSync(recursive: true);
+    }
+    await file.writeAsString(jsonEncode(toJson()));
+    print('Graph saved to **********');
+  }
 
   Uri uriForAsset(String id) {
     final asset = assets[id];
@@ -68,7 +80,7 @@ class AssetsGraph extends AssetsScanResults {
     return assets;
   }
 
-  DeclarationRef? getDeclarationRef(String identifier, Asset importingSrc, {String? importPrefix}) {
+  DeclarationRef getDeclarationRef(String identifier, Asset importingSrc, {String? importPrefix}) {
     DeclarationRef buildRef(MapEntry<String, int> srcEntry, {String? providerId}) {
       return DeclarationRef(
         identifier: identifier,
@@ -126,7 +138,7 @@ class AssetsGraph extends AssetsScanResults {
         return buildRef(srcEntry, providerId: importedFileSrc);
       }
     }
-    return null;
+    throw IdentifierNotFoundError(identifier, importPrefix);
   }
 
   DeclarationRef? lookupIdentifierByProvider(String name, String providerSrc) {
@@ -196,6 +208,11 @@ class AssetsGraph extends AssetsScanResults {
     return null;
   }
 
+  void addOutput(Asset asset, Asset output) {
+    assert(assets.containsKey(asset.id), 'Asset not found: ${asset.shortUri}');
+    outputs.putIfAbsent(asset.id, () => <String>{}).add(output.id);
+  }
+
   Set<String> identifiersForAsset(String src) {
     final identifiers = <String>{};
     for (final entry in this.identifiers) {
@@ -219,13 +236,7 @@ class AssetsGraph extends AssetsScanResults {
 
   @override
   Map<String, dynamic> toJson() {
-    return {
-      'assets': assets,
-      'identifiers': identifiers,
-      'directives': directives,
-      'version': version,
-      'packagesHash': packagesHash,
-    };
+    return {...super.toJson(), 'version': version, 'packagesHash': packagesHash};
   }
 
   // Create from cached data if valid
@@ -236,6 +247,58 @@ class AssetsGraph extends AssetsScanResults {
       return AssetsGraph(packagesHash);
     }
     return AssetsScanResults.populate(AssetsGraph._fromCache(packagesHash), json);
+  }
+
+  void invalidateDigest(Asset asset) {
+    final assetId = asset.id;
+    if (assets.containsKey(assetId)) {
+      assets[assetId]![GraphIndex.assetDigest] = null;
+    }
+  }
+
+  // get any asset that depends on this asset,
+  // either via direct import, part-of or via re-exports
+  List<List<dynamic>> dependentsOf(String id) {
+    final visited = <String>{};
+    final dependents = _dependentsOf(id, visited);
+    final assets = <List<dynamic>>[];
+    for (final dep in dependents) {
+      if (dep == id) continue;
+      final arr = this.assets[dep];
+      if (arr != null) {
+        assets.add(arr);
+      }
+    }
+    return assets;
+  }
+
+  Set<String> _dependentsOf(String id, Set<String> visited) {
+    if (visited.contains(id)) return {};
+    visited.add(id);
+    final dependents = <String>{};
+    for (final entry in directives.entries) {
+      for (final dep in entry.value) {
+        final type = dep[GraphIndex.directiveType];
+        // Check if this file directly depends on the target file through import or part directive
+        if (dep[GraphIndex.directiveSrc] == id) {
+          if (type != DirectiveStatement.export) {
+            dependents.add(entry.key);
+          }
+          dependents.addAll(_dependentsOf(entry.key, visited));
+        }
+      }
+    }
+
+    return dependents;
+  }
+
+  List<dynamic>? getGeneratingSourceOf(String id) {
+    for (final entry in outputs.entries) {
+      if (entry.value.contains(id)) {
+        return assets[entry.key];
+      }
+    }
+    return null;
   }
 }
 

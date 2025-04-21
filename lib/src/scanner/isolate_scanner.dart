@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
@@ -77,11 +76,6 @@ class IsolateTLScanner {
       results = [...processableAssets, ...updateIncrementalAssets(scanner)];
     }
 
-    final file = AssetsGraph.cacheFile;
-    if (!file.existsSync()) {
-      file.createSync(recursive: true);
-    }
-    await file.writeAsString(jsonEncode(assetsGraph.toJson()));
     return results;
   }
 
@@ -161,8 +155,20 @@ class IsolateTLScanner {
   List<ProcessableAsset> updateIncrementalAssets(TopLevelScanner scanner) {
     final processableAssets = <ProcessableAsset>[];
     for (final entry in assetsGraph.getAssetsForPackage(fileResolver.rootPackage)) {
-      final asset = fileResolver.assetSrcFor(entry.uri);
+      final asset = fileResolver.assetForUri(entry.uri);
       if (!asset.existsSync()) {
+        final generatingAssetArr = assetsGraph.getGeneratingSourceOf(asset.id);
+        if (generatingAssetArr != null) {
+          final uri = Uri.parse(generatingAssetArr[GraphIndex.assetUri]);
+          final generatedAsset = fileResolver.assetForUri(uri);
+          processableAssets.add(
+            ProcessableAsset(
+              generatedAsset,
+              AssetState.needUpdate,
+              generatingAssetArr[GraphIndex.assetAnnotationFlag] == 1,
+            ),
+          );
+        }
         assetsGraph.removeAsset(asset.id);
         processableAssets.add(ProcessableAsset(asset, AssetState.deleted, entry.hasAnnotation));
         continue;
@@ -170,10 +176,17 @@ class IsolateTLScanner {
       final content = asset.readAsBytesSync();
       final currentHash = xxh3String(content);
       if (currentHash != entry.digest) {
-        assetsGraph.removeAsset(asset.id);
+        final dependents = assetsGraph.dependentsOf(asset.id);
+        assetsGraph.visitedAssets.remove(asset.id);
         final (didScane, hasAnnotation) = scanner.scan(asset);
         if (didScane) {
           processableAssets.add(ProcessableAsset(asset, AssetState.updated, hasAnnotation));
+        }
+        for (final dep in dependents) {
+          final asset = fileResolver.assetForUri(Uri.parse(dep[GraphIndex.assetUri]));
+          processableAssets.add(
+            ProcessableAsset(asset, AssetState.needUpdate, dep[GraphIndex.assetAnnotationFlag] == 1),
+          );
         }
       }
     }
@@ -199,4 +212,4 @@ class ProcessableAsset {
   }
 }
 
-enum AssetState { inserted, updated, deleted }
+enum AssetState { inserted, updated, deleted, needUpdate }

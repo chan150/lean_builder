@@ -41,7 +41,7 @@ class StringAsset implements Asset {
   }
 
   @override
-  Uri changeUriExtension(String ext) {
+  Uri uriWithExtension(String ext) {
     return uri.replace(path: p.withoutExtension(uri.path) + ext);
   }
 

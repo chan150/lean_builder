@@ -1,23 +1,9 @@
-import 'package:lean_builder/test/test.dart';
+import 'package:lean_builder/test/annotation.dart';
 
-const constVar = 'Hello';
+const constVar = 'Hello2;223242;22we2323wewe22';
 
-class FieldType<T> {
-  final List<T>? value;
-  const FieldType(this.value);
-  static const instance = FieldType(null);
-}
-
-class SuperX {
-  const SuperX({this.superStr = 'superStr'});
-
-  final String superStr;
-
-  const SuperX.named({this.superStr = 'superStr'});
-}
-
-class RedirectedClass extends AnnotatedClass {
-  RedirectedClass() : super('');
-  RedirectedClass.red() : super('');
-  RedirectedClass.named() : super('');
+class FieldType {
+  FieldType();
+  final String field = 'Hel2323lo';
+  final Genix field2 = Genix('type');
 }

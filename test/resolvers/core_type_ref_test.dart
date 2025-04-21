@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';

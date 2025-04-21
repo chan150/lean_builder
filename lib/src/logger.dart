@@ -11,7 +11,6 @@ class Logger {
   static const String _yellow = '\x1B[33m';
   static const String _blue = '\x1B[34m';
   static const String _cyan = '\x1B[36m';
-  static const String _magenta = '\x1B[35m';
 
   static void log(String message, {String color = ''}) {
     stdout.write('$color$message$_reset\n');

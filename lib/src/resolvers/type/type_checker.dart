@@ -180,7 +180,6 @@ class _TypeRefChecker extends TypeChecker {
         if (check(mixin)) {
           return _superTypeChecksCache[reqId] = true;
         }
-        ;
       }
     } else if (unit is MixinDeclaration) {
       for (final interface in [...?unit.implementsClause?.interfaces]) {
@@ -219,9 +218,7 @@ class _TypeRefChecker extends TypeChecker {
       importingLib.src,
       importPrefix: importPrefix?.name.lexeme,
     );
-    if (identifierLocation == null) {
-      throw Exception('Could not find identifier $typename in ${importingLib.src.shortUri}');
-    }
+
     final resolvedType = NamedTypeRefImpl(typename, identifierLocation, isNullable: superType.question != null);
     return _resolvedTypesCache[reqId] = resolvedType;
   }

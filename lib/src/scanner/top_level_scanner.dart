@@ -223,7 +223,7 @@ class TopLevelScanner {
       return (_skipUntil(next, TokenType.SEMICOLON), null);
     }
 
-    final asset = fileResolver.assetSrcFor(uri, relativeTo: enclosingAsset);
+    final asset = fileResolver.assetForUri(uri, relativeTo: enclosingAsset);
 
     final show = <String>[];
     final hide = <String>[];

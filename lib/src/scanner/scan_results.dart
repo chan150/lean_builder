@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:typed_data';
 
 import 'package:analyzer/dart/ast/ast.dart';
@@ -33,11 +34,11 @@ class GraphIndex {
 }
 
 abstract class ScanResults {
-  Map<String, List<dynamic> /*uri, digest, hasTLAnnotation,library-name?*/> get assets;
+  HashMap<String, List<dynamic> /*uri, digest, hasTLAnnotation,library-name?*/> get assets;
 
   List<List<dynamic> /*name, src, type*/> get identifiers;
 
-  Map<String, List<List<dynamic> /*type, src, stringUri, show, hide, prefix?, deferred?*/>> get directives;
+  HashMap<String, List<List<dynamic> /*type, src, stringUri, show, hide, prefix?, deferred?*/>> get directives;
 
   List<List<dynamic> /*type, src, stringUri, show, hide*/> exportsOf(String fileId, {bool includeParts = true});
 
@@ -54,6 +55,9 @@ abstract class ScanResults {
 
   // Set of visited assets
   Set<String> get visitedAssets;
+
+  /// the generated outputs sources of a file
+  HashMap<String, Set<String>> get outputs;
 
   bool isVisited(String fileId);
 
@@ -80,7 +84,7 @@ class AssetsScanResults extends ScanResults {
   final _listEquals = const ListEquality().equals;
 
   @override
-  final Map<String, List<dynamic>> assets = {};
+  final HashMap<String, List<dynamic>> assets = HashMap();
 
   @override
   final List<List<dynamic>> identifiers = [];
@@ -291,7 +295,12 @@ class AssetsScanResults extends ScanResults {
   }
 
   Map<String, dynamic> toJson() {
-    return {'assets': assets, 'identifiers': identifiers, 'directives': directives};
+    return {
+      'assets': assets,
+      'identifiers': identifiers,
+      'directives': directives,
+      'outputs': outputs.map((key, value) => MapEntry(key, value.toList())),
+    };
   }
 
   static T populate<T extends ScanResults>(T instance, Map<String, dynamic> json) {
@@ -301,6 +310,9 @@ class AssetsScanResults extends ScanResults {
       instance.directives[directive.key] = (directive.value as List<dynamic>).cast<List<dynamic>>();
     }
     instance.identifiers.addAll((json['identifiers'] as List<dynamic>).cast<List<dynamic>>());
+    for (final entry in json['outputs'].entries) {
+      instance.outputs[entry.key] = (entry.value as List<dynamic>).cast<String>().toSet();
+    }
     return instance;
   }
 
@@ -309,11 +321,14 @@ class AssetsScanResults extends ScanResults {
   }
 
   @override
-  final Map<String, List<List>> directives = {};
+  final HashMap<String, List<List>> directives = HashMap();
+
+  @override
+  final HashMap<String, Set<String>> outputs = HashMap();
 
   @override
   String toString() {
-    return 'AssetsScanResults{assets: $assets, identifiers: $identifiers, directives: $directives}';
+    return 'AssetsScanResults{assets: $assets, identifiers: $identifiers, directives: $directives} ';
   }
 
   @override

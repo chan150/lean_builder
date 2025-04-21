@@ -54,3 +54,15 @@ class InvalidPathError extends ResolverError {
   @override
   String toString() => 'InvalidPathError: Path "$path" is invalid';
 }
+
+/// identifier not found
+class IdentifierNotFoundError extends ResolverError {
+  final String identifier;
+  final String? importPrefix;
+
+  IdentifierNotFoundError(this.identifier, this.importPrefix);
+
+  @override
+  String toString() =>
+      'IdentifierNotFoundError: "${importPrefix == null ? '' : '$importPrefix.'}$identifier" not found';
+}

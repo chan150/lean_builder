@@ -74,11 +74,11 @@ class Resolver {
   }
 
   LibraryElement libraryForDirective(DirectiveElement directive) {
-    final assetSrc = fileResolver.assetSrcFor(directive.uri);
+    final assetSrc = fileResolver.assetForUri(directive.uri);
     return libraryFor(assetSrc);
   }
 
-  DeclarationRef? getDeclarationRef(String identifier, Asset importingSrc, {String? importPrefix}) {
+  DeclarationRef getDeclarationRef(String identifier, Asset importingSrc, {String? importPrefix}) {
     return graph.getDeclarationRef(identifier, importingSrc, importPrefix: importPrefix);
   }
 
@@ -127,9 +127,8 @@ class Resolver {
         identifier.location ??
         getDeclarationRef(identifier.topLevelTarget, enclosingAsset, importPrefix: identifier.importPrefix);
 
-    assert(declarationRef != null, 'Identifier $identifier not found in ${enclosingAsset.uri}');
-    final srcUri = uriForAsset(declarationRef!.srcId);
-    final assetFile = fileResolver.assetSrcFor(srcUri, relativeTo: enclosingAsset);
+    final srcUri = uriForAsset(declarationRef.srcId);
+    final assetFile = fileResolver.assetForUri(srcUri, relativeTo: enclosingAsset);
 
     final library = libraryFor(assetFile);
     final compilationUnit = library.compilationUnit;

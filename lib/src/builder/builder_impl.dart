@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:dart_style/dart_style.dart';
 import 'package:lean_builder/src/logger.dart';
 import 'package:lean_builder/src/resolvers/element/element.dart';
+import 'package:path/path.dart' as p;
 import 'build_step.dart';
 import 'builder.dart';
 import 'generator/generated_output.dart';
@@ -198,9 +199,11 @@ class SharedPartBuilder extends _Builder {
   @override
   Future<void> generateForLibrary(LibraryElement library, BuildStep buildStep) async {
     if (!buildStep.hasValidPartDirectiveFor('.g.dart')) {
+      final outputUri = buildStep.asset.uriWithExtension('.g.dart');
+      final part = p.relative(buildStep.asset.uri.path, from: p.dirname(outputUri.path));
       throw ArgumentError(
-        'The input library must have a part directive for the generated part '
-        'file. Please add a part directive () to the input library ${library.src.uri}',
+        'The input library must have a part directive for the generated part\n'
+        'file. Please add a part directive (part \'$part\';) to the input library ${library.src.shortUri}',
       );
     }
     return super.generateForLibrary(library, buildStep);

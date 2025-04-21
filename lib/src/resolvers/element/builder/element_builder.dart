@@ -417,9 +417,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       enclosingEle.library.src,
       importPrefix: importPrefix?.name.lexeme,
     );
-    if (identifierLocation == null) {
-      throw Exception('Could not find identifier $typename in ${enclosingEle.librarySrc.shortUri}');
-    }
+
     return NamedTypeRefImpl(
       typename,
       identifierLocation,
@@ -883,7 +881,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
         importPrefix: identifierRef.importPrefix,
       );
 
-      final resolvedType = NamedTypeRefImpl(identifierRef.name, declarationRef!);
+      final resolvedType = NamedTypeRefImpl(identifierRef.name, declarationRef);
       constructorElement.returnType = resolvedType;
       constructorElement.redirectedConstructor = ConstructorElementRef(resolvedType, identifierRef.name);
     }

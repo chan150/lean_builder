@@ -110,11 +110,11 @@ void main() {
   });
 
   test('Building relative uri without passing a relativeTo uri should throw', () {
-    expect(() => fileResolver.assetSrcFor(Uri.parse('path')), throwsA(isA<InvalidPathError>()));
+    expect(() => fileResolver.assetForUri(Uri.parse('path')), throwsA(isA<InvalidPathError>()));
   });
 
   test('Building asset uri with invalid file path should throw', () {
-    expect(() => fileResolver.assetSrcFor(Uri.parse('invalid:io')), throwsA(isA<AssetUriError>()));
+    expect(() => fileResolver.assetForUri(Uri.parse('invalid:io')), throwsA(isA<AssetUriError>()));
   });
 
   test('PackageFileResolver should throw exception for non-existing package config path', () {

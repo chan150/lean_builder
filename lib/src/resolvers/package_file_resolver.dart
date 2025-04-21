@@ -29,7 +29,7 @@ abstract class PackageFileResolver {
 
   String pathFor(String package);
 
-  Asset assetSrcFor(Uri uri, {Asset? relativeTo});
+  Asset assetForUri(Uri uri, {Asset? relativeTo});
 
   /// Returns the set of available packages
   Set<String> get packages;
@@ -47,7 +47,7 @@ abstract class PackageFileResolver {
     return PackageFileResolverImpl(packageToPath, packagesHash: data['packagesHash'], rootPackage: data['rootPackage']);
   }
 
- String get rootPackage;
+  String get rootPackage;
 
   Map<String, dynamic> toJson();
 }
@@ -188,7 +188,7 @@ class PackageFileResolverImpl implements PackageFileResolver {
   }
 
   @override
-  Asset assetSrcFor(Uri uri, {Asset? relativeTo}) {
+  Asset assetForUri(Uri uri, {Asset? relativeTo}) {
     final reqId = '$uri@${relativeTo?.uri}';
     if (_assetCache.containsKey(reqId)) {
       return _assetCache[reqId]!;
@@ -285,11 +285,6 @@ class PackageFileResolverImpl implements PackageFileResolver {
     } catch (e) {
       throw InvalidPathError(uri.toString());
     }
-  }
-
-  @override
-  bool isRootPackage(String package) {
-    return package == rootPackage;
   }
 
   @override

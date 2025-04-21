@@ -23,7 +23,7 @@ abstract class Asset {
   /// returns null if [shortUri] is not a package asset or it has empty segments
   String? get packageName;
 
-  Uri changeUriExtension(String ext);
+  Uri uriWithExtension(String ext);
 }
 
 class FileAsset implements Asset {
@@ -79,7 +79,7 @@ class FileAsset implements Asset {
   }
 
   @override
-  Uri changeUriExtension(String ext) {
+  Uri uriWithExtension(String ext) {
     return uri.replace(path: p.withoutExtension(uri.path) + ext);
   }
 }

@@ -1,24 +1,24 @@
+import 'dart:collection';
 import 'dart:io';
 import 'dart:isolate';
 
 import 'package:lean_builder/src/builder/build_step.dart';
 import 'package:lean_builder/src/builder/builder_impl.dart';
 import 'package:lean_builder/src/builder/output_writer.dart';
+import 'package:lean_builder/src/resolvers/file_asset.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
 import 'package:lean_builder/src/scanner/assets_graph.dart';
 import 'package:lean_builder/src/scanner/isolate_scanner.dart';
+import 'package:lean_builder/src/scanner/top_level_scanner.dart';
+import 'package:lean_builder/src/utils.dart';
 import 'my_builder.dart';
 
 void main(List<String> args) async {
   final stopWatch = Stopwatch()..start();
-  // print('Running Fresh Version');
-  // if (AssetsGraph.cacheFile.existsSync()) {
-  //   AssetsGraph.cacheFile.deleteSync(recursive: true);
-  // }
 
-  final rootPackageName = 'gen_benchmark';
+  // final rootPackageName = 'gen_benchmark';
 
   final fileResolver = PackageFileResolver.forCurrentRoot(rootPackageName);
   final assetsGraph = AssetsGraph.init(fileResolver.packagesHash);
@@ -26,10 +26,11 @@ void main(List<String> args) async {
   final isoTlScanner = IsolateTLScanner(assetsGraph: assetsGraph, fileResolver: fileResolver);
   final scannedAssets = await isoTlScanner.scanAssets();
 
-  final rootAssets = scannedAssets.where((e) => e.asset.packageName == rootPackageName);
+  final rootAssets = scannedAssets.where((e) => e.asset.packageName == fileResolver.rootPackage);
   final toProcess = List.of(rootAssets.where((e) => e.state == AssetState.deleted || e.hasTopLevelAnnotation));
   if (toProcess.isEmpty) {
     print('No assets to process');
+    await assetsGraph.save();
     return;
   }
 
@@ -37,7 +38,7 @@ void main(List<String> args) async {
   stopWatch.reset();
 
   final parser = SrcParser();
-  print('Resolving assets inside $rootPackageName');
+  print('Resolving assets inside ${fileResolver.rootPackage}');
   final isolateCount = Platform.numberOfProcessors - 1;
   final actualIsolateCount = isolateCount.clamp(1, toProcess.length);
   final chunkSize = (toProcess.length / actualIsolateCount).ceil();
@@ -51,42 +52,63 @@ void main(List<String> args) async {
   final builders = [
     SharedPartBuilder([MyGenerator()]),
   ];
-
-  final futures = <Future>[];
+  final scanner = TopLevelScanner(assetsGraph, fileResolver);
+  final futures = <Future<Map<Asset, Set<Uri>>>>[];
   for (final chunk in chunks) {
     final future = Isolate.run(() async {
+      final allOutputs = HashMap<Asset, Set<Uri>>();
       final chunkResolver = Resolver(assetsGraph, fileResolver, parser);
       for (final entry in chunk) {
-        if (entry.state == AssetState.deleted) {
-          // delete all possible generated files
-          for (final builder in builders) {
-            for (final ext in builder.outputExtensions) {
-              final generatedAsset = File.fromUri(entry.asset.changeUriExtension(ext));
-              if (generatedAsset.existsSync()) {
-                print('Deleting ${generatedAsset.path}');
-                generatedAsset.deleteSync();
-              }
+        // delete all possible generated files
+        for (final builder in builders) {
+          for (final ext in builder.outputExtensions) {
+            final generatedAsset = File.fromUri(entry.asset.uriWithExtension(ext));
+            if (generatedAsset.existsSync()) {
+              print('Deleting ${generatedAsset.path}');
+              generatedAsset.deleteSync();
             }
           }
         }
-        final outputWriter = DeferredOutputWriter(entry.asset);
-        for (final builder in builders) {
-          final buildStep = BuildStepImpl(
-            entry.asset,
-            chunkResolver,
-            outputWriter,
-            allowedExtensions: builder.outputExtensions,
-          );
-          await builder.build(buildStep);
+        if (entry.state == AssetState.deleted) {
+          continue;
         }
-        await outputWriter.flush();
+        try {
+          final outputWriter = DeferredOutputWriter(entry.asset);
+          for (final builder in builders) {
+            final buildStep = BuildStepImpl(
+              entry.asset,
+              chunkResolver,
+              outputWriter,
+              allowedExtensions: builder.outputExtensions,
+            );
+            await builder.build(buildStep);
+          }
+          final outputs = await outputWriter.flush();
+
+          allOutputs[entry.asset] = outputs;
+        } catch (e) {
+          assetsGraph.invalidateDigest(entry.asset);
+          rethrow;
+        }
       }
+      return allOutputs;
     });
     futures.add(future);
   }
   if (futures.isNotEmpty) {
-    await Future.wait(futures);
+    final results = await Future.wait(futures);
+    print(results);
+    for (final result in results) {
+      for (final entry in result.entries) {
+        for (final uri in entry.value) {
+          final output = fileResolver.assetForUri(uri);
+          scanner.scan(output);
+          assetsGraph.addOutput(entry.key, output);
+        }
+      }
+    }
   }
+  await assetsGraph.save();
 
   print('Resolving took: ${stopWatch.elapsed.inMilliseconds} ms');
 }
