@@ -21,6 +21,8 @@ class DeferredOutputWriter implements OutputWriter {
 
   DeferredOutputWriter(this.input);
 
+  bool get hasPendingOperations => _operations.isNotEmpty;
+
   @override
   Future<void> writeString(Uri fileUri, String content, bool isPart) async {
     final operation = WriteStringOperation(fileUri, content, isPart: isPart);
@@ -33,15 +35,22 @@ class DeferredOutputWriter implements OutputWriter {
     _operations.add(operation);
   }
 
-  Future<Set<Uri>> flush() async {
+  /// Flushes all non-part outputs and returns the generated files.
+  Future<Set<Uri>> flushOutputs() async {
     final generatedFiles = <Uri>{};
     final nonParts = _operations.where((op) => !op.isPart);
     for (final operation in nonParts) {
       await operation.execute();
       generatedFiles.add(operation.fileUri);
+      _operations.remove(operation);
     }
+    return generatedFiles;
+  }
+
+  /// Flushes all part outputs and returns the generated file.
+  Future<Uri?> flushSharedOutput() async {
     final parts = _operations.where((op) => op.isPart);
-    if (parts.isEmpty) return generatedFiles;
+    if (parts.isEmpty) return null;
 
     // all parts must have the same output uri
     final outputUri = parts.first.fileUri;
@@ -61,9 +70,9 @@ class DeferredOutputWriter implements OutputWriter {
       } else {
         await operation.execute(header: '\n');
       }
+      _operations.remove(operation);
     }
-    generatedFiles.add(outputUri);
-    return generatedFiles;
+    return outputUri;
   }
 }
 

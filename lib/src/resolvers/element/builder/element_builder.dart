@@ -57,12 +57,12 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     final clazzElement = ClassElementImpl(
       library: library,
       name: node.name.lexeme,
-      isAbstract: node.abstractKeyword != null,
-      isSealed: node.sealedKeyword != null,
-      isBase: node.baseKeyword != null,
-      isInterface: node.interfaceKeyword != null,
+      hasAbstract: node.abstractKeyword != null,
+      hasSealedKeyword: node.sealedKeyword != null,
+      hasBase: node.baseKeyword != null,
+      hasInterface: node.interfaceKeyword != null,
       isMixinClass: node.mixinKeyword != null,
-      isFinal: node.finalKeyword != null,
+      hasFinal: node.finalKeyword != null,
       isMixinApplication: true,
     );
     visitElementScoped(clazzElement, () {
@@ -183,16 +183,14 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
   void visitClassDeclaration(ClassDeclaration node) {
     final library = currentLibrary();
     if (library.hasElement(node.name.lexeme)) return;
-    print('ClassDeclaration: ${node.name.lexeme}');
-    final isSealed = node.sealedKeyword != null;
     final classElement = ClassElementImpl(
       name: node.name.lexeme,
       library: library,
-      isAbstract: node.abstractKeyword != null,
-      isSealed: isSealed,
-      isBase: node.baseKeyword != null,
-      isFinal: node.finalKeyword != null,
-      isInterface: node.interfaceKeyword != null,
+      hasAbstract: node.abstractKeyword != null,
+      hasSealedKeyword: node.sealedKeyword != null,
+      hasBase: node.baseKeyword != null,
+      hasFinal: node.finalKeyword != null,
+      hasInterface: node.interfaceKeyword != null,
       isMixinClass: node.mixinKeyword != null,
       isMixinApplication: false,
     );

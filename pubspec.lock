@@ -13,10 +13,10 @@ packages:
     dependency: "direct main"
     description:
       name: analyzer
-      sha256: f4c21c94eb4623b183c1014a470196b3910701bea9b926e6c91270d756e6fc60
+      sha256: "7c8416f91308ced2f7ac1e4fe59d1fb2f6cee25d6b015584505ea286f98a904a"
       url: "https://pub.dev"
     source: hosted
-    version: "7.4.1"
+    version: "7.4.3"
   args:
     dependency: "direct main"
     description:
@@ -155,7 +155,7 @@ packages:
     source: path
     version: "1.0.0+1"
   glob:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: glob
       sha256: c3f1ee72c96f8f78935e18aa8cecced9ab132419e8625dc187e1c2408efc20de

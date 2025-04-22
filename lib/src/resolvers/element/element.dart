@@ -274,19 +274,19 @@ abstract class ParameterElement extends VariableElement {
 
 abstract class ClassElement extends InterfaceElement {
   /// Whether the declaration has an explicit `abstract` modifier
-  bool get isAbstract;
+  bool get hasAbstract;
 
   /// Whether the declaration has an explicit `base` modifier.
-  bool get isBase;
+  bool get hasBase;
 
   /// Whether the class can be instantiated.
   bool get isConstructable;
 
   /// Whether the declaration has an explicit `final` modifier
-  bool get isFinal;
+  bool get hasFinal;
 
   /// Whether the declaration has an explicit `interface` modifier
-  bool get isInterface;
+  bool get hasInterface;
 
   /// Whether the class is a mixin application.
   ///
@@ -298,7 +298,7 @@ abstract class ClassElement extends InterfaceElement {
   bool get isMixinClass;
 
   /// Whether the declaration has an explicit `sealed` modifier.
-  bool get isSealed;
+  bool get hasSealedKeyword;
 }
 
 abstract class EnumElement implements InterfaceElement {}

@@ -28,14 +28,6 @@ abstract class _Builder extends Builder {
   /// The generators run for each targeted library.
   final List<Generator> _generators;
 
-  /// possible extensions for generated files
-  ///
-  /// The first extension is the primary output, and the rest are
-  /// additional outputs.
-  ///
-  /// this can not be empty
-  final Set<String> outputExtensions;
-
   final String _header;
 
   /// Whether to include or emit the gen part descriptions. Defaults to true.
@@ -45,7 +37,7 @@ abstract class _Builder extends Builder {
   final bool allowSyntaxErrors;
 
   @override
-  final Map<String, Set<String>> buildExtensions;
+  final Set<String> outputExtensions;
 
   /// Wrap [_generators] to form a [Builder]-compatible API.
   ///
@@ -54,16 +46,19 @@ abstract class _Builder extends Builder {
   _Builder(
     this._generators, {
     required this.formatOutput,
-    this.outputExtensions = const {'.g.dart'},
+    Set<String> outputExtensions = const {'.g.dart'},
     String? header,
     bool? writeDescriptions,
     this.allowSyntaxErrors = false,
     BuilderOptions? options,
-  }) : buildExtensions = validatedBuildExtensionsFrom(options != null ? Map.of(options.config) : null, {
-         '.dart': outputExtensions,
-       }),
+  }) : outputExtensions = validatedBuildExtensionsFrom(outputExtensions),
        _writeDescriptions = writeDescriptions ?? true,
        _header = (header ?? defaultFileHeader).trim();
+
+  @override
+  bool shouldBuild(BuildCandidate candidate) {
+    return candidate.hasTopLevelMetadata;
+  }
 
   @override
   Future<void> build(BuildStep buildStep) async {
@@ -215,56 +210,11 @@ class SharedPartBuilder extends _Builder {
 ///
 /// Modifies [optionsMap] by removing the `build_extensions` key from it, if
 /// present.
-Map<String, Set<String>> validatedBuildExtensionsFrom(
-  Map<String, dynamic>? optionsMap,
-  Map<String, Set<String>> defaultExtensions,
-) {
-  final extensionsOption = optionsMap?.remove('build_extensions');
-  if (extensionsOption == null) {
-    if (defaultExtensions.isEmpty) {
-      throw ArgumentError('Configured build_extensions must not be empty.');
+Set<String> validatedBuildExtensionsFrom(Set<String> defaultExtensions) {
+  for (final ext in defaultExtensions) {
+    if (ext.isEmpty || ext[0] != '.') {
+      throw ArgumentError('Extensions should be in the format of .*');
     }
-    for (final ext in defaultExtensions.values.first) {
-      if (ext.isEmpty || ext[0] != '.') {
-        throw ArgumentError('Extensions should be in the format of .*');
-      }
-    }
-    return defaultExtensions;
   }
-
-  if (extensionsOption is! Map) {
-    throw ArgumentError('Configured build_extensions should be a map from inputs to outputs.');
-  }
-
-  final result = <String, Set<String>>{};
-
-  for (final entry in extensionsOption.entries) {
-    final input = entry.key;
-    if (input is! String || !input.endsWith('.dart')) {
-      throw ArgumentError(
-        'Invalid key in build_extensions option: `$input` '
-        'should be a string ending with `.dart`',
-      );
-    }
-
-    final output = (entry.value is List) ? entry.value as List : [entry.value];
-
-    for (var i = 0; i < output.length; i++) {
-      final o = output[i];
-      if (o is! String || (i == 0 && !o.endsWith('.dart'))) {
-        throw ArgumentError(
-          'Invalid output extension `${entry.value}`. It should be a string '
-          'or a list of strings with the first ending with `.dart`',
-        );
-      }
-    }
-
-    result[input] = output.cast<String>().toSet();
-  }
-
-  if (result.isEmpty) {
-    throw ArgumentError('Configured build_extensions must not be empty.');
-  }
-
-  return result;
+  return defaultExtensions;
 }

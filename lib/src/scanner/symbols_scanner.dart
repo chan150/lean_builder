@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:math';
 
 // ignore: implementation_imports
@@ -7,15 +6,14 @@ import 'package:analyzer/dart/ast/token.dart';
 import 'package:lean_builder/src/resolvers/file_asset.dart';
 import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 import 'package:lean_builder/src/scanner/scan_results.dart';
-import 'package:xxh3/xxh3.dart';
 
 import 'directive_statement.dart';
 
-class TopLevelScanner {
+class SymbolsScanner {
   final ScanResults results;
   final PackageFileResolver fileResolver;
 
-  TopLevelScanner(this.results, this.fileResolver);
+  SymbolsScanner(this.results, this.fileResolver);
 
   (bool didScane, bool hasTopLevelAnnotation) scan(Asset asset) {
     try {

@@ -1,0 +1,14 @@
+builders:
+    auto_route_generator:
+        import: "package:auto_route_generator/builder.dart"
+        builder_factory: "autoRouteBuilder"
+        hide_output: true
+        runs_before:
+            - auto_route_generator:auto_router_generator
+        generate_for:
+            - lib/**_page.dart
+            - lib/**router.dart
+        options:
+            option1: true
+
+

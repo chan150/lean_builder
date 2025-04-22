@@ -729,29 +729,29 @@ class ClassElementImpl extends InterfaceElementImpl implements ClassElement {
   ClassElementImpl({
     required super.name,
     required super.library,
-    required this.isAbstract,
-    required this.isBase,
-    required this.isFinal,
-    required this.isInterface,
+    required this.hasAbstract,
+    required this.hasBase,
+    required this.hasFinal,
+    required this.hasInterface,
     required this.isMixinApplication,
     required this.isMixinClass,
-    required this.isSealed,
+    required this.hasSealedKeyword,
   });
 
   @override
-  final bool isAbstract;
+  final bool hasAbstract;
 
   @override
-  final bool isBase;
+  final bool hasBase;
 
   @override
-  bool get isConstructable => !isAbstract && !isSealed;
+  bool get isConstructable => !hasAbstract && !hasSealedKeyword;
 
   @override
-  final bool isFinal;
+  final bool hasFinal;
 
   @override
-  final bool isInterface;
+  final bool hasInterface;
 
   @override
   final bool isMixinApplication;
@@ -760,7 +760,7 @@ class ClassElementImpl extends InterfaceElementImpl implements ClassElement {
   final bool isMixinClass;
 
   @override
-  final bool isSealed;
+  final bool hasSealedKeyword;
 }
 
 class EnumElementImpl extends InterfaceElementImpl implements EnumElement {

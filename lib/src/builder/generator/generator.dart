@@ -29,7 +29,7 @@ abstract class GeneratorForAnnotation extends Generator {
   /// By default, this generator will throw if it encounters unresolved
   /// annotations. You can override this by setting [throwOnUnresolved] to
   /// `false`.
-  GeneratorForAnnotation({this.throwOnUnresolved = true});
+  GeneratorForAnnotation({this.throwOnUnresolved = false});
 
   TypeChecker? _typeChecker;
 

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:lean_builder/src/builder/builder.dart';
 import 'package:lean_builder/src/errors/resolver_error.dart';
 import 'package:lean_builder/src/logger.dart';
 import 'package:lean_builder/src/resolvers/file_asset.dart';
@@ -53,7 +54,6 @@ class AssetsGraph extends AssetsScanResults {
       file.createSync(recursive: true);
     }
     await file.writeAsString(jsonEncode(toJson()));
-    Logger.info('Graph saved to **********');
   }
 
   Uri uriForAsset(String id) {
@@ -309,19 +309,31 @@ class AssetsGraph extends AssetsScanResults {
     }
     return null;
   }
+
+  List<ExportedSymbol> exportedSymbolsOf(String id) {
+    final exportedSymbols = <ExportedSymbol>[];
+    for (final entry in identifiers) {
+      if (entry[GraphIndex.identifierSrc] == id) {
+        final name = entry[GraphIndex.identifierName];
+        final type = TopLevelIdentifierType.fromValue(entry[GraphIndex.identifierType]);
+        exportedSymbols.add(ExportedSymbol(name, type));
+      }
+    }
+    return exportedSymbols;
+  }
 }
 
 class ScannedAsset {
-  ScannedAsset(this.id, this.uri, this.digest, this.hasAnnotation);
+  ScannedAsset(this.id, this.uri, this.digest, this.hasTopLevelMetadata);
 
   final Uri uri;
   final String id;
   final String? digest;
-  final bool hasAnnotation;
+  final bool hasTopLevelMetadata;
 
   @override
   String toString() {
-    return 'PackageAsset{path: $uri, hasAnnotation: $hasAnnotation}';
+    return 'PackageAsset{path: $uri, hasTopLevelMetadata: $hasTopLevelMetadata}';
   }
 }
 

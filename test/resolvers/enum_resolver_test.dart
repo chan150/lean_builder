@@ -4,7 +4,7 @@ import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
 import 'package:lean_builder/src/scanner/assets_graph.dart';
-import 'package:lean_builder/src/scanner/top_level_scanner.dart';
+import 'package:lean_builder/src/scanner/symbols_scanner.dart';
 import 'package:test/test.dart';
 
 import '../scanner/string_asset_src.dart';
@@ -12,7 +12,7 @@ import '../utils/test_utils.dart';
 
 void main() {
   PackageFileResolverImpl? fileResolver;
-  TopLevelScanner? scanner;
+  SymbolsScanner? scanner;
   Resolver? resolver;
 
   setUp(() {
@@ -22,7 +22,7 @@ void main() {
     };
     fileResolver = PackageFileResolverImpl(packageToPath, packagesHash: '', rootPackage: 'root');
     final AssetsGraph graph = AssetsGraph('hash');
-    scanner = TopLevelScanner(graph, fileResolver!);
+    scanner = SymbolsScanner(graph, fileResolver!);
     resolver = Resolver(graph, fileResolver!, SrcParser());
   });
 
