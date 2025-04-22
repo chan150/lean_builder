@@ -59,10 +59,12 @@ class InvalidPathError extends ResolverError {
 class IdentifierNotFoundError extends ResolverError {
   final String identifier;
   final String? importPrefix;
+  final Uri importingLibrary;
 
-  IdentifierNotFoundError(this.identifier, this.importPrefix);
+  IdentifierNotFoundError(this.identifier, this.importPrefix, this.importingLibrary);
 
   @override
   String toString() =>
-      'IdentifierNotFoundError: "${importPrefix == null ? '' : '$importPrefix.'}$identifier" not found';
+      'IdentifierNotFoundError: "${importPrefix == null ? '' : '$importPrefix.'}$identifier" not found\n'
+      'inside Library: $importingLibrary';
 }

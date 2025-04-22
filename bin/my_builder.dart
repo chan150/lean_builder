@@ -7,12 +7,12 @@ import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/resolvers/type/type_checker.dart';
 
 class MyGenerator extends GeneratorForAnnotation {
-  MyGenerator();
+  MyGenerator() : super(throwOnUnresolved: false);
 
   @override
   TypeChecker buildTypeChecker(Resolver resolver) {
-    // return resolver.typeCheckerFor('JsonSerializable', 'package:json_annotation/json_annotation.dart');
-    return resolver.typeCheckerFor('Genix', 'package:lean_builder/test/genix.dart');
+    return resolver.typeCheckerFor('JsonSerializable', 'package:json_annotation/json_annotation.dart');
+    // return resolver.typeCheckerFor('Genix', 'package:lean_builder/test/genix.dart');
   }
 
   @override
@@ -29,10 +29,7 @@ class MyGenerator extends GeneratorForAnnotation {
     generatedCode.writeln('class ${clazz.name}Generated {');
     for (final field in clazz.fields) {
       generatedCode.writeln('  final ${field.type} ${field.name};');
-      final fieldElem = await resolver.elementOf(field.type);
-      if (fieldElem is ClassElement) {
-        generatedCode.write('/* ${fieldElem.fields.map((e) => '${e.type} : ${e.name}').join(', ')} */');
-      }
+      print(await resolver.elementOf(field.type));
     }
     generatedCode.writeln('  ${clazz.name}Generated({');
     for (final field in clazz.fields) {

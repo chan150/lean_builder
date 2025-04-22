@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 
 // ignore: implementation_imports
@@ -6,6 +7,7 @@ import 'package:analyzer/dart/ast/token.dart';
 import 'package:lean_builder/src/resolvers/file_asset.dart';
 import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 import 'package:lean_builder/src/scanner/scan_results.dart';
+import 'package:xxh3/xxh3.dart';
 
 import 'directive_statement.dart';
 
@@ -106,6 +108,7 @@ class TopLevelScanner {
 
         token = nextToken;
       }
+
       results.updateAssetInfo(asset, content: bytes, hasAnnotation: hasTopLevelAnnotation, libraryName: libraryName);
       return (true, hasTopLevelAnnotation);
     } catch (e) {

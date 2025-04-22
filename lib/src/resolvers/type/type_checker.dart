@@ -207,7 +207,7 @@ class _TypeRefChecker extends TypeChecker {
 
   NamedTypeRef _resolveType(NamedType superType, LibraryElementImpl importingLib) {
     final reqId = '$superType@${importingLib.src.id}';
-    print('Resolving type: $reqId');
+
     if (_resolvedTypesCache.containsKey(reqId)) {
       return _resolvedTypesCache[reqId]!;
     }

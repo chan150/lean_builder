@@ -41,7 +41,7 @@ class DeferredOutputWriter implements OutputWriter {
       generatedFiles.add(operation.fileUri);
     }
     final parts = _operations.where((op) => op.isPart);
-    if (parts.isEmpty) generatedFiles;
+    if (parts.isEmpty) return generatedFiles;
 
     // all parts must have the same output uri
     final outputUri = parts.first.fileUri;

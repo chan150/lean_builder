@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:lean_builder/src/errors/resolver_error.dart';
+import 'package:lean_builder/src/logger.dart';
 import 'package:lean_builder/src/resolvers/file_asset.dart';
 import 'package:lean_builder/src/scanner/directive_statement.dart';
 import 'package:lean_builder/src/scanner/scan_results.dart';
@@ -34,12 +35,12 @@ class AssetsGraph extends AssetsScanResults {
         final cachedGraph = jsonDecode(cacheFile.readAsStringSync());
         final instance = AssetsGraph.fromCache(cachedGraph, packagesHash);
         if (!instance.loadedFromCache) {
-          print('Cache is outdated, rebuilding...');
+          Logger.info('Cache is outdated, rebuilding...');
           cacheFile.deleteSync(recursive: true);
         }
         return instance;
       } catch (e) {
-        print('Cache is invalid, rebuilding...');
+        Logger.info('Cache is invalid, rebuilding...');
         cacheFile.deleteSync(recursive: true);
       }
     }
@@ -52,13 +53,19 @@ class AssetsGraph extends AssetsScanResults {
       file.createSync(recursive: true);
     }
     await file.writeAsString(jsonEncode(toJson()));
-    print('Graph saved to **********');
+    Logger.info('Graph saved to **********');
   }
 
   Uri uriForAsset(String id) {
+    final uri = uriForAssetOrNull(id);
+    assert(uri != null, 'Asset not found: $id');
+    return uri!;
+  }
+
+  Uri? uriForAssetOrNull(String id) {
     final asset = assets[id];
-    assert(asset != null, 'Asset not found: $id');
-    return Uri.parse(asset![GraphIndex.assetUri]);
+    if (asset == null) return null;
+    return Uri.parse(asset[GraphIndex.assetUri]);
   }
 
   List<ScannedAsset> getAssetsForPackage(String package) {
@@ -138,7 +145,7 @@ class AssetsGraph extends AssetsScanResults {
         return buildRef(srcEntry, providerId: importedFileSrc);
       }
     }
-    throw IdentifierNotFoundError(identifier, importPrefix);
+    throw IdentifierNotFoundError(identifier, importPrefix, importingSrc.shortUri);
   }
 
   DeclarationRef? lookupIdentifierByProvider(String name, String providerSrc) {
@@ -277,18 +284,20 @@ class AssetsGraph extends AssetsScanResults {
     visited.add(id);
     final dependents = <String>{};
     for (final entry in directives.entries) {
-      for (final dep in entry.value) {
-        final type = dep[GraphIndex.directiveType];
-        // Check if this file directly depends on the target file through import or part directive
-        if (dep[GraphIndex.directiveSrc] == id) {
-          if (type != DirectiveStatement.export) {
+      for (final directive in entry.value) {
+        final type = directive[GraphIndex.directiveType];
+        if (directive[GraphIndex.directiveSrc] == id) {
+          if (type == DirectiveStatement.export) {
+            dependents.addAll(_dependentsOf(entry.key, visited));
+          } else if (type != DirectiveStatement.library) {
             dependents.add(entry.key);
           }
-          dependents.addAll(_dependentsOf(entry.key, visited));
+        } else if (type == DirectiveStatement.partOf && entry.key == id) {
+          // If 'id' is the main library and 'directiveSrc' is a part of it
+          dependents.add(directive[GraphIndex.directiveSrc]);
         }
       }
     }
-
     return dependents;
   }
 

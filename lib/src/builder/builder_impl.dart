@@ -79,11 +79,11 @@ abstract class _Builder extends Builder {
   Stream<GeneratedOutput> _generate(LibraryElement library, List<Generator> generators, BuildStep buildStep) async* {
     for (var i = 0; i < generators.length; i++) {
       final gen = generators[i];
-      var msg = 'Running $gen for ${library.src.uri}';
+      var msg = 'Running $gen';
       if (generators.length > 1) {
         msg = '$msg - ${i + 1} of ${generators.length}';
       }
-      Logger.info(msg);
+      // Logger.info(msg);
       var createdUnit = await gen.generate(library, buildStep);
 
       if (createdUnit == null) {
@@ -197,20 +197,15 @@ class SharedPartBuilder extends _Builder {
     : super(outputExtensions: {'.g.dart'}, header: '');
 
   @override
-  Future<void> generateForLibrary(LibraryElement library, BuildStep buildStep) async {
+  FutureOr<void> writeOutput(BuildStep buildStep, String content, String extension) {
     if (!buildStep.hasValidPartDirectiveFor('.g.dart')) {
       final outputUri = buildStep.asset.uriWithExtension('.g.dart');
       final part = p.relative(buildStep.asset.uri.path, from: p.dirname(outputUri.path));
       throw ArgumentError(
         'The input library must have a part directive for the generated part\n'
-        'file. Please add a part directive (part \'$part\';) to the input library ${library.src.shortUri}',
+        'file. Please add a part directive (part \'$part\';) to the input library ${buildStep.inputLibrary.src.shortUri}',
       );
     }
-    return super.generateForLibrary(library, buildStep);
-  }
-
-  @override
-  FutureOr<void> writeOutput(BuildStep buildStep, String content, String extension) {
     return buildStep.writeAsString(extension, content, isPart: true);
   }
 }

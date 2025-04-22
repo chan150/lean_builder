@@ -5,6 +5,7 @@ import 'dart:isolate';
 import 'package:lean_builder/src/builder/build_step.dart';
 import 'package:lean_builder/src/builder/builder_impl.dart';
 import 'package:lean_builder/src/builder/output_writer.dart';
+import 'package:lean_builder/src/logger.dart';
 import 'package:lean_builder/src/resolvers/file_asset.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
@@ -18,7 +19,7 @@ import 'my_builder.dart';
 void main(List<String> args) async {
   final stopWatch = Stopwatch()..start();
 
-  // final rootPackageName = 'gen_benchmark';
+  final rootPackageName = 'gen_benchmark';
 
   final fileResolver = PackageFileResolver.forCurrentRoot(rootPackageName);
   final assetsGraph = AssetsGraph.init(fileResolver.packagesHash);
@@ -27,10 +28,19 @@ void main(List<String> args) async {
   final scannedAssets = await isoTlScanner.scanAssets();
 
   final rootAssets = scannedAssets.where((e) => e.asset.packageName == fileResolver.rootPackage);
-  final toProcess = List.of(rootAssets.where((e) => e.state == AssetState.deleted || e.hasTopLevelAnnotation));
-  if (toProcess.isEmpty) {
-    print('No assets to process');
+  final toProcess = List.of(
+    rootAssets.where(
+      (e) => (e.state == AssetState.deleted || e.hasTopLevelAnnotation) && !e.asset.uri.path.endsWith('.g.dart'),
+    ),
+  );
+
+  if (scannedAssets.isNotEmpty) {
     await assetsGraph.save();
+  }
+
+  if (toProcess.isEmpty) {
+    Logger.success('All assets are up to date');
+
     return;
   }
 
@@ -54,21 +64,25 @@ void main(List<String> args) async {
   ];
   final scanner = TopLevelScanner(assetsGraph, fileResolver);
   final futures = <Future<Map<Asset, Set<Uri>>>>[];
+
   for (final chunk in chunks) {
     final future = Isolate.run(() async {
       final allOutputs = HashMap<Asset, Set<Uri>>();
       final chunkResolver = Resolver(assetsGraph, fileResolver, parser);
       for (final entry in chunk) {
         // delete all possible generated files
-        for (final builder in builders) {
-          for (final ext in builder.outputExtensions) {
-            final generatedAsset = File.fromUri(entry.asset.uriWithExtension(ext));
-            if (generatedAsset.existsSync()) {
-              print('Deleting ${generatedAsset.path}');
-              generatedAsset.deleteSync();
-            }
+
+        final outputs = assetsGraph.outputs[entry.asset.id];
+        if (outputs != null) {
+          for (final output in outputs) {
+            final outputUri = assetsGraph.uriForAssetOrNull(output);
+            if (outputUri == null) continue;
+            final outputAsset = fileResolver.assetForUri(outputUri);
+            assetsGraph.outputs.remove(entry.asset.id);
+            outputAsset.safeDelete();
           }
         }
+
         if (entry.state == AssetState.deleted) {
           continue;
         }
@@ -97,11 +111,11 @@ void main(List<String> args) async {
   }
   if (futures.isNotEmpty) {
     final results = await Future.wait(futures);
-    print(results);
     for (final result in results) {
       for (final entry in result.entries) {
         for (final uri in entry.value) {
           final output = fileResolver.assetForUri(uri);
+          assetsGraph.invalidateDigest(output);
           scanner.scan(output);
           assetsGraph.addOutput(entry.key, output);
         }

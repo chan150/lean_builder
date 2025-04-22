@@ -53,9 +53,6 @@ abstract class ScanResults {
 
   String getParentSrc(String fileId);
 
-  // Set of visited assets
-  Set<String> get visitedAssets;
-
   /// the generated outputs sources of a file
   HashMap<String, Set<String>> get outputs;
 
@@ -65,7 +62,7 @@ abstract class ScanResults {
 
   void merge(ScanResults results);
 
-  void addAsset(Asset asset, {bool isVisited = true});
+  void addAsset(Asset asset);
 
   void addDeclaration(String identifier, Asset declaringFile, TopLevelIdentifierType type);
 
@@ -141,14 +138,11 @@ class AssetsScanResults extends ScanResults {
     );
   }
 
-  @override
-  final Set<String> visitedAssets = {};
-
   AssetsScanResults();
 
   @override
   bool isVisited(String fileId) {
-    return visitedAssets.contains(fileId);
+    return assets.containsKey(fileId) && assets[fileId]?[GraphIndex.assetDigest] != null;
   }
 
   @override
@@ -191,24 +185,21 @@ class AssetsScanResults extends ScanResults {
         directives[directive.key] = allDirections;
       }
     }
-
-    visitedAssets.addAll(results.visitedAssets);
     identifiers.addAll(results.identifiers);
   }
 
   @override
-  String addAsset(Asset asset, {bool isVisited = true}) {
+  String addAsset(Asset asset) {
     if (!assets.containsKey(asset.id)) {
       assets[asset.id] = [asset.shortUri.toString(), null, 0];
     }
-    if (isVisited) visitedAssets.add(asset.id);
     return asset.id;
   }
 
   @override
   void addDirective(Asset src, DirectiveStatement statement) {
     assert(assets.containsKey(src.id));
-    final directiveSrcId = addAsset(statement.asset, isVisited: false);
+    final directiveSrcId = addAsset(statement.asset);
     final srcDirectives = directives[src.id] ?? [];
     if (srcDirectives.isNotEmpty) {
       for (final directive in srcDirectives) {
@@ -283,7 +274,6 @@ class AssetsScanResults extends ScanResults {
   @override
   void removeAsset(String id) {
     assets.remove(id);
-    visitedAssets.remove(id);
     // remove all directives that reference this asset
     directives.removeWhere((key, value) {
       value.removeWhere((element) => element[GraphIndex.directiveSrc] == id);
@@ -305,7 +295,6 @@ class AssetsScanResults extends ScanResults {
 
   static T populate<T extends ScanResults>(T instance, Map<String, dynamic> json) {
     instance.assets.addAll((json['assets'] as Map<String, dynamic>).cast<String, List<dynamic>>());
-    instance.visitedAssets.addAll(instance.assets.keys);
     for (final directive in json['directives'].entries) {
       instance.directives[directive.key] = (directive.value as List<dynamic>).cast<List<dynamic>>();
     }

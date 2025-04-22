@@ -24,6 +24,8 @@ abstract class Asset {
   String? get packageName;
 
   Uri uriWithExtension(String ext);
+
+  void safeDelete();
 }
 
 class FileAsset implements Asset {
@@ -81,5 +83,16 @@ class FileAsset implements Asset {
   @override
   Uri uriWithExtension(String ext) {
     return uri.replace(path: p.withoutExtension(uri.path) + ext);
+  }
+
+  @override
+  void safeDelete() {
+    try {
+      if (existsSync()) {
+        file.deleteSync();
+      }
+    } catch (e) {
+      print('Error deleting file: $e');
+    }
   }
 }

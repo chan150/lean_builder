@@ -49,4 +49,9 @@ class StringAsset implements Asset {
   Map<String, dynamic> toJson() {
     return {'id': id, 'shortUri': shortUri.toString(), 'uri': uri.toString(), 'content': content};
   }
+
+  @override
+  void safeDelete() {
+    // No-op for StringAsset
+  }
 }

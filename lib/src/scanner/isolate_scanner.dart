@@ -175,9 +175,13 @@ class IsolateTLScanner {
       }
       final content = asset.readAsBytesSync();
       final currentHash = xxh3String(content);
+
       if (currentHash != entry.digest) {
+        print('Asset ${asset.shortUri} changed, expected: ${entry.digest}, current: $currentHash');
+        final stopWatch = Stopwatch()..start();
         final dependents = assetsGraph.dependentsOf(asset.id);
-        assetsGraph.visitedAssets.remove(asset.id);
+        print('looking up dependents for ${asset.shortUri} took: ${stopWatch.elapsed.inMilliseconds} ms');
+        assetsGraph.invalidateDigest(asset);
         final (didScane, hasAnnotation) = scanner.scan(asset);
         if (didScane) {
           processableAssets.add(ProcessableAsset(asset, AssetState.updated, hasAnnotation));
