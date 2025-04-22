@@ -1,10 +1,16 @@
 import 'dart:async';
 
 import 'package:lean_builder/src/builder/build_step.dart';
+import 'package:lean_builder/src/builder/builder.dart';
+import 'package:lean_builder/src/builder/builder_impl.dart';
 import 'package:lean_builder/src/builder/generator/generator.dart';
 import 'package:lean_builder/src/resolvers/element/element.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/resolvers/type/type_checker.dart';
+
+Builder myBuilder(BuilderOptions options) {
+  return SharedPartBuilder([MyGenerator()]);
+}
 
 class MyGenerator extends GeneratorForAnnotation {
   @override

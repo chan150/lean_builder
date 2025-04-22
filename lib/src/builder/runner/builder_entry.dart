@@ -16,8 +16,8 @@ class BuilderEntry {
     this.builderFactory, {
     this.hideOutput = false,
     this.generateFor = const [],
-    this.options = BuilderOptions.empty,
-  });
+    Map<String, dynamic> options = const {},
+  }) : options = BuilderOptions(options);
 
   Builder? _builder;
 
