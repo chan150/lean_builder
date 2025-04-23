@@ -26,13 +26,16 @@ class BuilderEntry {
   }
 
   bool shouldGenerateFor(BuildCandidate candidate) {
-    for (final pattern in generateFor) {
-      final glob = Glob(pattern);
-      if (glob.matches(candidate.asset.uri.path)) {
-        return builder.shouldBuild(candidate);
+    if (generateFor.isNotEmpty) {
+      for (final pattern in generateFor) {
+        final glob = Glob(pattern);
+        if (glob.matches(candidate.asset.uri.path)) {
+          return builder.shouldBuild(candidate);
+        }
       }
+      return false;
     }
-    return false;
+    return builder.shouldBuild(candidate);
   }
 
   FutureOr<void> build(BuildStep buildStep) {

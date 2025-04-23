@@ -23,7 +23,7 @@ class MyGenerator extends GeneratorForAnnotation {
   FutureOr<String?> generateForAnnotatedElement(BuildStep buildStep, AnnotatedElement annotatedElement) async {
     final clazz = annotatedElement.element;
     if (clazz is! ClassElement) {
-      throw Exception('Expected a ClassElement, but got ${clazz.runtimeType}');
+      throw Exception('@Genix can only be used on classes');
     }
     final resolver = buildStep.resolver;
     // Perform your code generation logic here

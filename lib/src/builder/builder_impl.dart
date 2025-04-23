@@ -195,7 +195,7 @@ class SharedPartBuilder extends _Builder {
   FutureOr<void> writeOutput(BuildStep buildStep, String content, String extension) {
     if (!buildStep.hasValidPartDirectiveFor('.g.dart')) {
       final outputUri = buildStep.asset.uriWithExtension('.g.dart');
-      final part = p.relative(buildStep.asset.uri.path, from: p.dirname(outputUri.path));
+      final part = p.relative(outputUri.path, from: p.dirname(buildStep.asset.uri.path));
       throw ArgumentError(
         'The input library must have a part directive for the generated part\n'
         'file. Please add a part directive (part \'$part\';) to the input library ${buildStep.inputLibrary.src.shortUri}',

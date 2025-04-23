@@ -212,6 +212,11 @@ class ProcessableAsset {
   Map<String, dynamic> toJson() {
     return {'asset': asset.toJson(), 'state': state.index, 'hasTopLevelMetadata': hasTopLevelMetadata};
   }
+
+  @override
+  String toString() {
+    return 'Asset{uri: ${asset.uri}, state: ${state.name}, hasTopLevelMetadata: $hasTopLevelMetadata}';
+  }
 }
 
 enum AssetState { inserted, updated, deleted, needUpdate }

@@ -16,6 +16,8 @@ import 'package:lean_builder/src/scanner/isolate_symbols_scanner.dart';
 import 'package:lean_builder/src/scanner/symbols_scanner.dart';
 import 'package:lean_builder/src/utils.dart';
 
+import 'build_result.dart';
+
 Future<void> runBuilders(List<BuilderEntry> builders, List<String> args) async {
   final stopWatch = Stopwatch()..start();
 
@@ -32,16 +34,31 @@ Future<void> runBuilders(List<BuilderEntry> builders, List<String> args) async {
     Logger.success('No assets to process');
     return;
   }
+
   try {
-    final outputs = await buildAssets(
+    final buildResult = await buildAssets(
       assets: assets,
       builders: builders,
       assetsGraph: assetsGraph,
       fileResolver: fileResolver,
     );
-    final outputCount = await _finalizeBuild(assetsGraph, fileResolver, outputs);
+    final outputCount = await _finalizeBuild(assetsGraph, fileResolver, buildResult.outputs);
+    final errors = buildResult.fieldAssets;
+    if (errors.isNotEmpty) {
+      Logger.error('Errors while building assets:');
+      for (final error in errors) {
+        assetsGraph.invalidateDigest(error.asset);
+        Logger.error('${error.error} ->  ${error.asset.uri}');
+      }
+    }
+    await assetsGraph.save();
+    if (errors.isNotEmpty) {
+      throw errors.first.error ?? 'Unknown error';
+    }
+
     Logger.success('Done with ($outputCount) outputs, took ${stopWatch.elapsed.inMilliseconds} ms');
   } catch (e) {
+    await assetsGraph.save();
     Logger.error('Error while building assets: $e');
     rethrow;
   }
@@ -63,7 +80,6 @@ Future<int> _finalizeBuild(
       assetsGraph.addOutput(entry.key, output);
     }
   }
-  assetsGraph.save();
   return outputCount;
 }
 
@@ -95,7 +111,7 @@ Future<List<ProcessableAsset>> scanPackageAssets({
   return processableAssets;
 }
 
-Future<Map<Asset, Set<Uri>>> buildAssets({
+Future<BuildResult> buildAssets({
   required List<ProcessableAsset> assets,
   required List<BuilderEntry> builders,
   required AssetsGraph assetsGraph,
@@ -115,11 +131,12 @@ Future<Map<Asset, Set<Uri>>> buildAssets({
     chunks.add(assets.sublist(i, end));
   }
 
-  final outputResults = <Future<Map<Asset, Set<Uri>>>>[];
+  final outputResults = <Future<BuildResult>>[];
 
   for (final chunk in chunks) {
-    final future = Isolate.run(() async {
+    final future = Isolate.run<BuildResult>(() async {
       final chunkOutputs = HashMap<Asset, Set<Uri>>();
+      final chunkErrors = <FieldAsset>[];
       final chunkResolver = Resolver(assetsGraph, fileResolver, parser);
       for (final entry in chunk) {
         // delete all possible generated files
@@ -156,7 +173,6 @@ Future<Map<Asset, Set<Uri>>> buildAssets({
               outputWriter,
               allowedExtensions: builderEntry.builder.outputExtensions,
             );
-
             await builderEntry.build(buildStep);
             final generatedOutputs = await outputWriter.flushOutputs();
             chunkOutputs.putIfAbsent(entry.asset, () => <Uri>{}).addAll(generatedOutputs);
@@ -167,18 +183,17 @@ Future<Map<Asset, Set<Uri>>> buildAssets({
             chunkOutputs.putIfAbsent(entry.asset, () => <Uri>{}).add(output);
           }
         } catch (e) {
-          assetsGraph.invalidateDigest(entry.asset);
-          rethrow;
+          chunkErrors.add(FieldAsset(entry.asset, e));
         }
       }
-      return chunkOutputs;
+      return BuildResult(chunkOutputs, chunkErrors);
     });
     outputResults.add(future);
   }
 
-  final allOutputMap = <Asset, Set<Uri>>{};
-  for (final output in await Future.wait(outputResults)) {
-    allOutputMap.addAll(output);
+  final allResults = BuildResult.empty();
+  for (final result in await Future.wait(outputResults)) {
+    allResults.append(result);
   }
-  return allOutputMap;
+  return allResults;
 }
