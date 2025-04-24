@@ -1,7 +1,7 @@
 import 'dart:io';
+import 'package:lean_builder/src/asset/asset.dart' show Asset;
 import 'package:lean_builder/src/builder/builder_impl.dart';
 import 'package:path/path.dart' as p;
-import 'package:lean_builder/src/resolvers/file_asset.dart';
 
 abstract class OutputWriter {
   /// Writes the [content] to the output file at [path].
@@ -61,6 +61,10 @@ class DeferredOutputWriter implements OutputWriter {
     }
 
     final inputUri = input.uri;
+    final file = File.fromUri(outputUri);
+    if (file.existsSync()) {
+      file.deleteSync();
+    }
     final partOf = p.relative(inputUri.path, from: p.dirname(outputUri.path));
     final header = [defaultFileHeader, "part of '$partOf';"].join('\n\n');
     for (var i = 0; i < parts.length; i++) {

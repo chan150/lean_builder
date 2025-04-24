@@ -1,7 +1,7 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:collection/collection.dart';
-import 'package:lean_builder/src/resolvers/type/type_ref.dart';
-import 'package:lean_builder/src/scanner/identifier_ref.dart';
+import 'package:lean_builder/src/graph/identifier_ref.dart';
+import 'package:lean_builder/src/type/type_ref.dart';
 
 import 'const_evaluator.dart';
 

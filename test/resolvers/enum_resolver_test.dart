@@ -1,10 +1,10 @@
+import 'package:lean_builder/src/asset/package_file_resolver.dart';
+import 'package:lean_builder/src/element/element.dart';
+import 'package:lean_builder/src/graph/assets_graph.dart';
+import 'package:lean_builder/src/graph/symbols_scanner.dart';
 import 'package:lean_builder/src/resolvers/constant/constant.dart';
-import 'package:lean_builder/src/resolvers/element/element.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
-import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
-import 'package:lean_builder/src/scanner/assets_graph.dart';
-import 'package:lean_builder/src/scanner/symbols_scanner.dart';
 import 'package:test/test.dart';
 
 import '../scanner/string_asset_src.dart';

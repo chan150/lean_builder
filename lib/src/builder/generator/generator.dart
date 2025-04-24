@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:lean_builder/src/builder/build_step.dart';
-import 'package:lean_builder/src/resolvers/element/element.dart';
+import 'package:lean_builder/src/element/element.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
-import 'package:lean_builder/src/resolvers/type/type_checker.dart';
+import 'package:lean_builder/src/type/type_checker.dart';
 
 /// A tool to generate Dart code based on a Dart library source.
 ///

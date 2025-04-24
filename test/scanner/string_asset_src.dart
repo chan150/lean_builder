@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:lean_builder/src/asset/asset.dart';
 import 'package:path/path.dart' as p;
 import 'package:xxh3/xxh3.dart';
-import 'package:lean_builder/src/resolvers/file_asset.dart';
 
 class StringAsset implements Asset {
   StringAsset(this.content, {this.uriString = 'package:root/path.dart'});

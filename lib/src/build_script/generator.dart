@@ -1,0 +1,39 @@
+import 'dart:isolate';
+
+import 'package:lean_builder/src/build_script/parsed_builder_entry.dart';
+
+String generateBuildScript(List<BuilderDefinitionEntry> entries) {
+  assert(entries.isNotEmpty);
+  final importPrefixes = <String, String>{};
+
+  final buffer = StringBuffer();
+  buffer.writeln('// This is an auto-generated build script.');
+  buffer.writeln('// Do not modify this file directly.');
+  buffer.writeln('import \'package:lean_builder/runner.dart\' as i1;');
+  for (final entry in entries) {
+    final prefix = importPrefixes[entry.import] ??= 'i${importPrefixes.length + 2}';
+    buffer.writeln('import \'${entry.import}\' as $prefix;');
+  }
+  buffer.writeln('final _builders = <i1.BuilderEntry>[');
+  for (final entry in entries) {
+    final prefix = importPrefixes[entry.import]!;
+    buffer.writeln('i1.BuilderEntry(');
+    final props = [
+      '\'${entry.key}\'',
+      '$prefix.${entry.builderFactory}',
+      'hideOutput: ${entry.hideOutput}',
+      if (entry.generateFor?.isNotEmpty == true) 'generateFor: ${entry.generateFor}',
+      if (entry.options?.isNotEmpty == true) 'options: ${entry.options.toString()}',
+    ];
+    buffer.writeln(props.join(',\n'));
+    buffer.writeln('),');
+  }
+  buffer.writeln('];');
+
+  buffer.write('''
+  void main(List<String> args) async {
+   await i1.runBuilders(_builders, args);
+  }
+  ''');
+  return buffer.toString();
+}

@@ -5,9 +5,9 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:lean_builder/src/resolvers/element/element.dart';
+import 'package:lean_builder/src/asset/asset.dart' show Asset;
+import 'package:lean_builder/src/element/element.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
-import 'package:lean_builder/src/resolvers/file_asset.dart';
 
 import 'output_writer.dart';
 

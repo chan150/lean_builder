@@ -3,18 +3,18 @@ import 'dart:collection';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
-import 'package:lean_builder/src/resolvers/element/element.dart';
+import 'package:lean_builder/src/element/builder/element_builder.dart';
+import 'package:lean_builder/src/element/builder/element_stack.dart';
+import 'package:lean_builder/src/element/element.dart';
+import 'package:lean_builder/src/graph/assets_graph.dart';
+import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
-import 'package:lean_builder/src/resolvers/type/type_ref.dart';
-import 'package:lean_builder/src/resolvers/element/builder/element_builder.dart';
-import 'package:lean_builder/src/resolvers/element/builder/element_stack.dart';
-import 'package:lean_builder/src/scanner/assets_graph.dart';
-import 'package:lean_builder/src/scanner/scan_results.dart';
 import 'package:collection/collection.dart';
+import 'package:lean_builder/src/type/type_ref.dart';
 
 import 'constant.dart';
 
-// some implementations of this classes is borrowed from analyzer package
+// some implementations of this class is borrowed from analyzer package
 
 class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementStack<Constant> {
   final Resolver _resolver;

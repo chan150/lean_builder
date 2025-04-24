@@ -1,8 +1,9 @@
-import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
-import 'package:lean_builder/src/scanner/assets_graph.dart';
-import 'package:lean_builder/src/scanner/directive_statement.dart';
-import 'package:lean_builder/src/scanner/scan_results.dart';
-import 'package:lean_builder/src/scanner/symbols_scanner.dart';
+import 'package:lean_builder/src/asset/package_file_resolver.dart' show PackageFileResolverImpl;
+import 'package:lean_builder/src/graph/assets_graph.dart' show AssetsGraph;
+import 'package:lean_builder/src/graph/directive_statement.dart';
+import 'package:lean_builder/src/graph/scan_results.dart';
+import 'package:lean_builder/src/graph/symbols_scanner.dart' show SymbolsScanner;
+
 import 'package:test/expect.dart';
 import 'package:test/scaffolding.dart';
 

@@ -1,14 +1,12 @@
 abstract class ResolverError implements Exception {}
 
 /// Package configuration could not be loaded
-class PackageConfigLoadError extends ResolverError {
-  final String message;
-  final Object? cause;
-
-  PackageConfigLoadError(this.message, [this.cause]);
+class PackageConfigNotFound extends ResolverError {
+  PackageConfigNotFound();
 
   @override
-  String toString() => 'PackageConfigLoadError: $message${cause != null ? ', cause: $cause' : ''}';
+  String toString() =>
+      'Could not find package_config.json file\ntry running `flutter pub get` or `pub get` then re-run the build';
 }
 
 /// JSON parsing failed when processing package configuration
@@ -64,7 +62,5 @@ class IdentifierNotFoundError extends ResolverError {
   IdentifierNotFoundError(this.identifier, this.importPrefix, this.importingLibrary);
 
   @override
-  String toString() =>
-      'IdentifierNotFoundError: "${importPrefix == null ? '' : '$importPrefix.'}$identifier" not found\n'
-      'inside Library: $importingLibrary';
+  String toString() => 'Could not resolve "${importPrefix == null ? '' : '$importPrefix.'}$identifier"';
 }

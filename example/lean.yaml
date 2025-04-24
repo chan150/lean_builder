@@ -1,0 +1,5 @@
+builders:
+  serializationBuilder:
+    import: "package:example/src/serialization_builder.dart"
+    builder_factory: "serializationBuilder"
+

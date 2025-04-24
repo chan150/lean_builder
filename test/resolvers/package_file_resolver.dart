@@ -1,7 +1,7 @@
 import 'dart:io';
 
+import 'package:lean_builder/src/asset/package_file_resolver.dart';
 import 'package:lean_builder/src/errors/resolver_error.dart';
-import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -118,7 +118,7 @@ void main() {
   });
 
   test('PackageFileResolver should throw exception for non-existing package config path', () {
-    expect(() => PackageFileResolverImpl.forRoot('non_existing_path', 'root'), throwsA(isA<PackageConfigLoadError>()));
+    expect(() => PackageFileResolverImpl.forRoot('non_existing_path', 'root'), throwsA(isA<PackageConfigNotFound>()));
   });
 
   test('PackageFileResolver should throw exception for invalid package config', () {

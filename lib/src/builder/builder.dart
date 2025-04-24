@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:lean_builder/src/resolvers/file_asset.dart';
-import 'package:lean_builder/src/scanner/scan_results.dart';
+import 'package:lean_builder/src/asset/asset.dart';
+import 'package:lean_builder/src/graph/scan_results.dart';
 
 import 'build_step.dart';
 

@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dart_style/dart_style.dart';
+import 'package:lean_builder/src/element/element.dart';
 import 'package:lean_builder/src/logger.dart';
-import 'package:lean_builder/src/resolvers/element/element.dart';
 import 'package:path/path.dart' as p;
 import 'build_step.dart';
 import 'builder.dart';

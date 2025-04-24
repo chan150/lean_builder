@@ -1,7 +1,7 @@
-import 'package:lean_builder/src/resolvers/assets_reader.dart';
-import 'package:lean_builder/src/resolvers/file_asset.dart';
-import 'package:lean_builder/src/resolvers/package_file_resolver.dart';
-import 'package:lean_builder/src/scanner/symbols_scanner.dart';
+import 'package:lean_builder/src/asset/asset.dart';
+import 'package:lean_builder/src/asset/assets_reader.dart';
+import 'package:lean_builder/src/asset/package_file_resolver.dart';
+import 'package:lean_builder/src/graph/symbols_scanner.dart';
 
 extension TopLevelScannerExt on SymbolsScanner {
   // register the scanned asset in the assets cache so it's not resolved to FileAsset
