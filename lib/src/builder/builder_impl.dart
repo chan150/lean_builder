@@ -78,7 +78,7 @@ abstract class _Builder extends Builder {
       if (generators.length > 1) {
         msg = '$msg - ${i + 1} of ${generators.length}';
       }
-      // Logger.info(msg);
+      Logger.fine(msg);
       var createdUnit = await gen.generate(library, buildStep);
 
       if (createdUnit == null) {
@@ -120,15 +120,11 @@ abstract class _Builder extends Builder {
     try {
       content = formatOutput(content);
     } catch (e, stack) {
-      Logger.severe(
-        '''
+      Logger.error('''
           An error `${e.runtimeType}` occurred while formatting the generated source for `${library.src.uri}`
           which was output to to extension `$extension`.
           This may indicate an issue in the generator, the input source code, or in the source formatter.
-        ''',
-        e,
-        stack,
-      );
+        ''', stackTrace: stack);
     }
 
     await writeOutput(buildStep, content, extension);

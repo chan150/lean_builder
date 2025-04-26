@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:lean_builder/src/logger.dart';
 import 'package:path/path.dart' as p;
 
 abstract class Asset {
@@ -92,7 +93,20 @@ class FileAsset implements Asset {
         file.deleteSync();
       }
     } catch (e) {
-      print('Error deleting file: $e');
+      final stack = e is Error ? e.stackTrace : StackTrace.current;
+      Logger.error('Error deleting file ${file.path}', stackTrace: stack);
     }
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FileAsset &&
+          runtimeType == other.runtimeType &&
+          file == other.file &&
+          id == other.id &&
+          shortUri == other.shortUri;
+
+  @override
+  int get hashCode => file.hashCode ^ id.hashCode ^ shortUri.hashCode;
 }

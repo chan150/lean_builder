@@ -6,6 +6,7 @@ import 'package:analyzer/dart/ast/token.dart';
 import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
+import 'package:lean_builder/src/logger.dart';
 
 import 'directive_statement.dart';
 
@@ -110,12 +111,8 @@ class SymbolsScanner {
       results.updateAssetInfo(asset, content: bytes, hasAnnotation: hasTopLevelAnnotation, libraryName: libraryName);
       return (true, hasTopLevelAnnotation);
     } catch (e) {
-      print('Error scanning file: ${asset.uri}');
-      if (e is Error) {
-        print(e.stackTrace);
-      } else {
-        print(StackTrace.current);
-      }
+      final stack = e is Error ? e.stackTrace : StackTrace.current;
+      Logger.error('Error scanning asset ${asset.id}', stackTrace: stack);
       return (false, false);
     }
   }

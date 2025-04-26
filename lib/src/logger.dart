@@ -1,44 +1,67 @@
-import 'dart:io' show stdout;
+import 'package:ansicolor/ansicolor.dart';
 
 class Logger {
-  // Private constructor prevents instantiation
-  Logger._();
+  static final Logger _instance = Logger._internal();
 
-  // ANSI color codes
-  static const String _reset = '\x1B[0m';
-  static const String _red = '\x1B[31m';
-  static const String _green = '\x1B[32m';
-  static const String _yellow = '\x1B[33m';
-  static const String _blue = '\x1B[34m';
-  static const String _cyan = '\x1B[36m';
-
-  static void log(String message, {String color = ''}) {
-    stdout.write('$color$message$_reset\n');
+  factory Logger() {
+    return _instance;
   }
 
-  static void error(String message) {
-    log(message, color: _red);
+  Logger._internal();
+
+  static LogLevel _currentLevel = LogLevel.fine;
+
+  static set level(LogLevel newLevel) {
+    _currentLevel = newLevel;
   }
 
-  static void success(String message) {
-    log(message, color: _green);
+  void log(LogLevel level, String message) {
+    if (level.index >= _currentLevel.index) {
+      final pen = _getLevelPen(level);
+      print('${pen('[${level.name.toUpperCase()}]')} $message');
+    }
   }
 
-  static void warning(String message) {
-    log(message, color: _yellow);
+  static void fine(String message) {
+    _instance.log(LogLevel.fine, message);
   }
 
   static void info(String message) {
-    log(message, color: _blue);
+    _instance.log(LogLevel.info, message);
+  }
+
+  static void warning(String message) {
+    _instance.log(LogLevel.warning, message);
+  }
+
+  static void error(String message, {StackTrace? stackTrace}) {
+    _instance.log(LogLevel.error, '$message\n$stackTrace');
   }
 
   static void debug(String message) {
-    log(message, color: _cyan);
+    _instance.log(LogLevel.debug, message);
   }
 
-  static void severe(String message, [Object? error, StackTrace? stackTrace]) {
-    final details = [if (error != null) 'Error: $error', if (stackTrace != null) 'StackTrace: $stackTrace'].join('\n');
+  static void success(String message) {
+    _instance.log(LogLevel.success, message);
+  }
 
-    log('$message${details.isEmpty ? '' : '\n$details'}', color: _red);
+  AnsiPen _getLevelPen(LogLevel level) {
+    switch (level) {
+      case LogLevel.fine:
+        return AnsiPen()..white(bold: true);
+      case LogLevel.success:
+        return AnsiPen()..rgb(r: 0.11, g: 0.69, b: 0.38);
+      case LogLevel.debug:
+        return AnsiPen()..rgb(r: 0.463, g: 0.557, b: 0.6);
+      case LogLevel.info:
+        return AnsiPen()..rgb(r: 0.067, g: 0.612, b: 0.6);
+      case LogLevel.warning:
+        return AnsiPen()..rgb(r: 0.612, g: 0.439, b: 0.067);
+      case LogLevel.error:
+        return AnsiPen()..rgb(r: 0.678, g: 0.216, b: 0.216);
+    }
   }
 }
+
+enum LogLevel { fine, debug, info, success, warning, error }

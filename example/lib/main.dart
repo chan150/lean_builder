@@ -6,7 +6,7 @@ part 'main.g.dart';
 class Sample {
   final Sample sample;
   final String name;
-  final int age8 = 43;
+  final int age82323 = 43333;
 
   Sample(this.sample, this.name);
 }

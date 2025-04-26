@@ -55,13 +55,13 @@ class IsolateSymbolsScanner {
 
   IsolateSymbolsScanner({required this.assetsGraph, required this.fileResolver, required this.targetPackage});
 
-  Future<List<ProcessableAsset>> scanAssets() async {
+  Future<Set<ProcessableAsset>> scanAssets() async {
     final assetsReader = FileAssetReader(fileResolver);
     final packagesToScan = assetsGraph.loadedFromCache ? {targetPackage} : fileResolver.packages;
 
     final assets = assetsReader.listAssetsFor(packagesToScan);
     final assetsList = assets.values.expand((e) => e).toList();
-    final List<ProcessableAsset> results;
+    final Set<ProcessableAsset> results;
     // Only distribute work if building from scratch
     if (!assetsGraph.loadedFromCache) {
       results = await scanWithIsolates(assetsList, fileResolver.toJson());
@@ -75,13 +75,13 @@ class IsolateSymbolsScanner {
           processableAssets.add(ProcessableAsset(asset, AssetState.inserted, hasAnnotation));
         }
       }
-      results = [...processableAssets, ...updateIncrementalAssets(scanner)];
+      results = {...processableAssets, ...updateIncrementalAssets(scanner)};
     }
 
     return results;
   }
 
-  Future<List<ProcessableAsset>> scanWithIsolates(List<Asset> assets, Map<String, dynamic> packageResolverData) async {
+  Future<Set<ProcessableAsset>> scanWithIsolates(List<Asset> assets, Map<String, dynamic> packageResolverData) async {
     final isolateCount = Platform.numberOfProcessors - 1; // Leave one core free
     final actualIsolateCount = isolateCount.clamp(1, assets.length);
 
@@ -103,7 +103,7 @@ class IsolateSymbolsScanner {
     }
     // Wait for all isolates to complete
     final results = await Future.wait(futures);
-    return List.unmodifiable(results.expand((e) => e));
+    return Set.unmodifiable(results.expand((e) => e));
   }
 
   Future<List<ProcessableAsset>> processChunkInIsolate(
@@ -154,8 +154,8 @@ class IsolateSymbolsScanner {
     return List.of(processableAssets);
   }
 
-  List<ProcessableAsset> updateIncrementalAssets(SymbolsScanner scanner) {
-    final processableAssets = <ProcessableAsset>[];
+  Set<ProcessableAsset> updateIncrementalAssets(SymbolsScanner scanner) {
+    final processableAssets = <ProcessableAsset>{};
     for (final entry in assetsGraph.getAssetsForPackage(targetPackage)) {
       final asset = fileResolver.assetForUri(entry.uri);
       if (!asset.existsSync()) {
@@ -217,6 +217,18 @@ class ProcessableAsset {
   @override
   String toString() {
     return 'Asset{uri: ${asset.uri}, state: ${state.name}, hasTopLevelMetadata: $hasTopLevelMetadata}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! ProcessableAsset) return false;
+    return asset == other.asset;
+  }
+
+  @override
+  int get hashCode {
+    return asset.hashCode;
   }
 }
 

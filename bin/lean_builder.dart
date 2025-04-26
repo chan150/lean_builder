@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:lean_builder/src/build_script/build_script.dart';
 import 'package:lean_builder/src/build_script/compile.dart';
 import 'package:lean_builder/src/logger.dart';
-import 'package:args/args.dart';
 
 void main(List<String> args) async {
   try {
@@ -14,7 +13,6 @@ void main(List<String> args) async {
       Logger.info('No valid build script found. Exiting.');
       exit(0);
     }
-
     final int exitCode;
     if (isDevMode) {
       invalidateExecutable();
@@ -23,10 +21,10 @@ void main(List<String> args) async {
       exitCode = await _runAot(scriptPath, args);
     }
     if (exitCode != 0) {
-      Logger.severe('Build failed with exit code: $exitCode');
+      Logger.error('Build failed with exit code: $exitCode');
     }
   } catch (e) {
-    Logger.severe('Error preparing build script: $e');
+    Logger.error('Error preparing build script: $e');
     exit(1);
   }
 }
@@ -38,7 +36,9 @@ Future<int> _runJit(String scriptPath, List<String> args) async {
 
 Future<int> _runAot(String scriptPath, List<String> args) async {
   final executableFile = File(getExecutablePath());
+
   if (!executableFile.existsSync()) {
+    Logger.info('Compiling build script to AOT executable...');
     compileScript(scriptPath);
   }
   final dartExecutable = Platform.resolvedExecutable;

@@ -22,9 +22,6 @@ class BuildPhase {
   BuildPhase(this.assetsGraph, this.fileResolver, this.builders);
 
   Future<PhaseResult> build(List<ProcessableAsset> assets) async {
-    for (final entry in assets) {
-      print('${entry.asset.uri} -> ${entry.state}');
-    }
     Logger.debug('Running build phase for $builders, assets count: ${assets.length}');
     final chunks = calculateChunks(assets);
     final chunkResults = <Future<BuildResult>>[];

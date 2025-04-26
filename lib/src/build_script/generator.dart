@@ -1,5 +1,3 @@
-import 'dart:isolate';
-
 import 'package:lean_builder/src/build_script/parsed_builder_entry.dart';
 
 String generateBuildScript(List<BuilderDefinitionEntry> entries) {

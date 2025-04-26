@@ -9,11 +9,11 @@ part of 'main.dart';
 class SampleSerializer {
   final Sample sample;
   final String name;
-  final int age8;
+  final int age82323;
   SampleSerializer({
     required this.sample,
     required this.name,
-    required this.age8,
+    required this.age82323,
   });
 }
 

@@ -6,6 +6,7 @@ import 'package:lean_builder/src/asset/package_file_resolver.dart';
 import 'package:lean_builder/src/build_script/errors.dart';
 import 'package:lean_builder/src/build_script/generator.dart';
 import 'package:lean_builder/src/build_script/parsed_builder_entry.dart';
+import 'package:lean_builder/src/logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 import 'compile.dart' as compile;
@@ -40,6 +41,7 @@ String? prepareBuildScript() {
       return scriptFile.path;
     }
   }
+  Logger.info('Generating a new build script...');
   var script = generateBuildScript(withOverrides);
   final formatter = DartFormatter(languageVersion: DartFormatter.latestShortStyleLanguageVersion);
   script = formatter.format(script);

@@ -28,15 +28,17 @@ Future<void> runBuilders(List<BuilderEntry> builders, List<String> args) async {
   if (isDevMode) {
     // invalidate all generated files
     for (final input in assetsGraph.outputs.keys) {
-      final uri = assetsGraph.uriForAssetOrNull(input);
-      if (uri == null) continue;
-      final inputAsset = fileResolver.assetForUri(uri);
-      assets.add(ProcessableAsset(inputAsset, AssetState.needUpdate, true));
+      if (!assets.any((e) => e.asset.id == input)) {
+        final uri = assetsGraph.uriForAssetOrNull(input);
+        if (uri == null) continue;
+        final inputAsset = fileResolver.assetForUri(uri);
+        assets.add(ProcessableAsset(inputAsset, AssetState.needUpdate, true));
+      }
     }
   }
 
   if (assets.isEmpty) {
-    Logger.success('No assets to process');
+    Logger.success('Done with (0) outputs, took ${stopWatch.elapsed.inMilliseconds} ms');
     return;
   }
 
@@ -87,11 +89,9 @@ Future<List<ProcessableAsset>> scanPackageAssets({
     targetPackage: rootPackageName,
   );
   final scannedAssets = await symbolsScanner.scanAssets();
-
   final processableAssets = List.of(
     scannedAssets.where((e) {
-      final asset = e.asset;
-      return asset.packageName == fileResolver.rootPackage && !asset.uri.path.endsWith('.g.dart');
+      return e.asset.packageName == fileResolver.rootPackage;
     }),
   );
 
@@ -112,7 +112,6 @@ Future<int> build({
 
   int outputCount = 0;
   final phases = calculateBuilderPhases(builders);
-  print('Running build phases: phases, ${phases.length}, assets: ${assets.length}');
   final assetsToProcess = List.of(assets);
 
   for (final phase in phases) {
