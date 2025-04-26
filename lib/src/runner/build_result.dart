@@ -1,27 +1,18 @@
 import 'package:lean_builder/src/asset/asset.dart';
 
+import '../graph/isolate_symbols_scanner.dart';
+
 class BuildResult {
   final Map<Asset, Set<Uri>> outputs;
   final List<FieldAsset> fieldAssets;
 
   BuildResult(this.outputs, this.fieldAssets);
 
-  factory BuildResult.empty() {
-    return BuildResult({}, []);
-  }
-
   @override
   String toString() {
     final outputCount = outputs.length;
     final failedCount = fieldAssets.length;
     return 'BuildResult(outputs: $outputCount, fieldAssets: $failedCount)';
-  }
-
-  void append(BuildResult other) {
-    for (final entry in other.outputs.entries) {
-      outputs.putIfAbsent(entry.key, () => {}).addAll(entry.value);
-    }
-    fieldAssets.addAll(other.fieldAssets);
   }
 }
 
@@ -38,4 +29,14 @@ class FieldAsset {
 
   @override
   int get hashCode => asset.hashCode ^ error.hashCode;
+}
+
+class PhaseResult {
+  final List<ProcessableAsset> outputs;
+
+  final List<FieldAsset> failedAssets;
+
+  bool get hasErrors => failedAssets.isNotEmpty;
+
+  PhaseResult(this.outputs, this.failedAssets);
 }

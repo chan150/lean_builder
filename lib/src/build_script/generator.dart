@@ -21,11 +21,13 @@ String generateBuildScript(List<BuilderDefinitionEntry> entries) {
     final props = [
       '\'${entry.key}\'',
       '$prefix.${entry.builderFactory}',
-      'hideOutput: ${entry.hideOutput}',
+      'generateToCache: ${entry.generateToCache}',
       if (entry.generateFor?.isNotEmpty == true) 'generateFor: ${entry.generateFor}',
+      if (entry.runsBefore?.isNotEmpty == true) 'runsBefore: ${entry.runsBefore}',
       if (entry.options?.isNotEmpty == true) 'options: ${entry.options.toString()}',
     ];
-    buffer.writeln(props.join(',\n'));
+    buffer.writeln('${props.join(',\n')},');
+
     buffer.writeln('),');
   }
   buffer.writeln('];');

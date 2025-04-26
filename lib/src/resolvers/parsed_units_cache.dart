@@ -2,7 +2,7 @@ import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:lean_builder/src/asset/asset.dart';
 
-class SrcParser {
+class SourceParser {
   final _cache = <String, CompilationUnit>{};
 
   CompilationUnit? get(String key) => _cache[key];

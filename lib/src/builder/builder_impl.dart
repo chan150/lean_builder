@@ -166,7 +166,7 @@ class LibraryBuilder extends _Builder {
   LibraryBuilder(
     Generator generator, {
     super.formatOutput = _defaultFormatOutput,
-    super.outputExtensions,
+    required super.outputExtensions,
     super.writeDescriptions,
     super.header,
     super.allowSyntaxErrors,
@@ -181,6 +181,8 @@ class LibraryBuilder extends _Builder {
 }
 
 class SharedPartBuilder extends _Builder {
+  static const extension = '.g.dart';
+
   /// A [Builder] that writes partial content, to the output writer
   ///
   /// [formatOutput] is called to format the generated code. Defaults to
@@ -188,20 +190,27 @@ class SharedPartBuilder extends _Builder {
   ///
   /// [allowSyntaxErrors] indicates whether to allow syntax errors in input
   /// libraries.
-  SharedPartBuilder(super._generators, {super.formatOutput = _defaultFormatOutput, super.allowSyntaxErrors})
-    : super(outputExtensions: {'.g.dart'}, header: '');
+  SharedPartBuilder(
+    super._generators, {
+    super.formatOutput = _defaultFormatOutput,
+    super.allowSyntaxErrors,
+    super.writeDescriptions,
+  }) : super(outputExtensions: {extension}, header: '');
 
   @override
   FutureOr<void> writeOutput(BuildStep buildStep, String content, String extension) {
-    if (!buildStep.hasValidPartDirectiveFor('.g.dart')) {
-      final outputUri = buildStep.asset.uriWithExtension('.g.dart');
+    if (extension != SharedPartBuilder.extension) {
+      throw ArgumentError('The Shared extension must be $extension');
+    }
+    if (!buildStep.hasValidPartDirectiveFor(extension)) {
+      final outputUri = buildStep.asset.uriWithExtension(extension);
       final part = p.relative(outputUri.path, from: p.dirname(buildStep.asset.uri.path));
       throw ArgumentError(
         'The input library must have a part directive for the generated part\n'
         'file. Please add a part directive (part \'$part\';) to the input library ${buildStep.inputLibrary.src.shortUri}',
       );
     }
-    return buildStep.writeAsString(extension, content, isPart: true);
+    return buildStep.writeAsString(extension, content);
   }
 }
 

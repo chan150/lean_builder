@@ -23,7 +23,7 @@ void main() {
     fileResolver = PackageFileResolverImpl(packageToPath, packagesHash: '', rootPackage: 'root');
     final AssetsGraph graph = AssetsGraph('hash');
     scanner = SymbolsScanner(graph, fileResolver!);
-    resolver = Resolver(graph, fileResolver!, SrcParser());
+    resolver = Resolver(graph, fileResolver!, SourceParser());
   });
 
   test('should resolve simple enum element', () {

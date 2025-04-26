@@ -295,11 +295,11 @@ class AssetsScanResults extends ScanResults {
 
   static T populate<T extends ScanResults>(T instance, Map<String, dynamic> json) {
     instance.assets.addAll((json['assets'] as Map<String, dynamic>).cast<String, List<dynamic>>());
-    for (final directive in json['directives'].entries) {
+    for (final directive in (json['directives'] as Map<String, dynamic>).entries) {
       instance.directives[directive.key] = (directive.value as List<dynamic>).cast<List<dynamic>>();
     }
     instance.identifiers.addAll((json['identifiers'] as List<dynamic>).cast<List<dynamic>>());
-    for (final entry in json['outputs'].entries) {
+    for (final entry in (json['outputs'] as Map<String, dynamic>).entries) {
       instance.outputs[entry.key] = (entry.value as List<dynamic>).cast<String>().toSet();
     }
     return instance;

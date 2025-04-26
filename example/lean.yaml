@@ -2,4 +2,8 @@ builders:
   serializationBuilder:
     import: "package:example/src/serialization_builder.dart"
     builder_factory: "serializationBuilder"
-
+#  serializationBuilder2:
+#    import: "package:example/src/serialization_builder2.dart"
+#    builder_factory: "serializationBuilder2"
+#    runs_before:
+#      - example|serializationBuilder

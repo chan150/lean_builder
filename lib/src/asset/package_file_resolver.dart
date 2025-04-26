@@ -42,7 +42,7 @@ abstract class PackageFileResolver {
 
   /// Creates a resolver for the current working directory
   factory PackageFileResolver.forRoot() {
-    final configUri = p.join(Directory.current.path, _packageConfigLocation);
+    final configUri = p.join(p.current, _packageConfigLocation);
     return PackageFileResolverImpl.forRoot(configUri, rootPackageName);
   }
 

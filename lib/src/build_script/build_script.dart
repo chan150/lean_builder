@@ -30,8 +30,8 @@ String? prepareBuildScript() {
     return null;
   }
 
-  final finalEntries = _handleOverrides(entries, resolver);
-  final scriptHash = const ListEquality().hash(finalEntries);
+  final withOverrides = _handleOverrides(entries, resolver);
+  final scriptHash = const ListEquality().hash(withOverrides);
 
   if (scriptFile.existsSync() && digestFile.existsSync()) {
     final currentHash = digestFile.readAsStringSync();
@@ -40,7 +40,7 @@ String? prepareBuildScript() {
       return scriptFile.path;
     }
   }
-  var script = generateBuildScript(finalEntries);
+  var script = generateBuildScript(withOverrides);
   final formatter = DartFormatter(languageVersion: DartFormatter.latestShortStyleLanguageVersion);
   script = formatter.format(script);
 
@@ -122,9 +122,10 @@ List<ParsedBuilderEntry> _parseAll(Map<String, File> configFiles) {
             package: config.key,
             import: import,
             builderFactory: builderFactory,
-            options: builder['options'] as Map<String, dynamic>?,
-            hideOutput: builder['hide_output'] == true,
+            options: (builder['options'] as YamlMap?)?.map((k, v) => MapEntry("'$k'", v)),
+            generateToCache: builder['generate_to_cache'] == true,
             generateFor: generateFor?.map((e) => "'$e'").toSet(),
+            runsBefore: getRunsBeforeSet(builder['runs_before']),
           );
           parsedEntries.add(builderEntry);
         }
@@ -136,16 +137,18 @@ List<ParsedBuilderEntry> _parseAll(Map<String, File> configFiles) {
         }
         for (final entry in buildersOverride.entries) {
           final builder = entry.value;
-          final generateFor = builder['generate_for'] as List<String>?;
+          final generateFor = builder['generate_for'] as YamlList?;
+
           final key = entry.key.toString();
-          if (key.split(':').length != 2) {
-            throw BuildConfigError("Expected a valid builder key '<package>:<builder>' in ${file.path}");
+          if (key.split('|').length != 2) {
+            throw BuildConfigError("Expected a valid builder key '<package>|<builder>' in ${file.path}");
           }
           final builderEntry = BuilderOverrideEntry(
             key: key,
             package: config.key,
             options: builder['options'] as Map<String, dynamic>?,
-            generateFor: generateFor?.toSet(),
+            generateFor: generateFor?.map((e) => "'$e'").toSet(),
+            runsBefore: getRunsBeforeSet(builder['runs_before']),
           );
           parsedEntries.add(builderEntry);
         }
@@ -155,4 +158,23 @@ List<ParsedBuilderEntry> _parseAll(Map<String, File> configFiles) {
   } catch (e) {
     throw BuildConfigError(e.toString());
   }
+}
+
+Set<String>? getRunsBeforeSet(YamlList? list) {
+  if (list == null) {
+    return null;
+  }
+  final runsBefore = <String>{};
+  for (final entry in list) {
+    if (entry is String) {
+      final parts = entry.split('|');
+      if (parts.length != 2) {
+        throw BuildConfigError('Expected a valid builder name `<package>|<builder-name>` in `runs_before`');
+      }
+      runsBefore.add("'$entry'");
+    } else {
+      throw BuildConfigError('Expected a string in `runs_before` key');
+    }
+  }
+  return runsBefore;
 }

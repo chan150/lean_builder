@@ -1,24 +1,13 @@
-import 'dart:collection';
 import 'dart:io';
-import 'dart:isolate';
-
 import 'package:args/args.dart';
-import 'package:collection/collection.dart';
-import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
-import 'package:lean_builder/src/builder/build_step.dart';
-import 'package:lean_builder/src/builder/builder.dart';
-import 'package:lean_builder/src/builder/output_writer.dart';
 import 'package:lean_builder/src/graph/assets_graph.dart';
 import 'package:lean_builder/src/graph/isolate_symbols_scanner.dart';
-import 'package:lean_builder/src/graph/symbols_scanner.dart';
 import 'package:lean_builder/src/logger.dart';
-import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
-import 'package:lean_builder/src/resolvers/resolver.dart';
+import 'package:lean_builder/src/runner/build_phase.dart';
+import 'package:lean_builder/src/runner/build_utils.dart';
 import 'package:lean_builder/src/runner/builder_entry.dart';
 import 'package:lean_builder/src/utils.dart';
-
-import 'build_result.dart';
 
 Future<void> runBuilders(List<BuilderEntry> builders, List<String> args) async {
   final stopWatch = Stopwatch()..start();
@@ -26,6 +15,48 @@ Future<void> runBuilders(List<BuilderEntry> builders, List<String> args) async {
   final fileResolver = PackageFileResolver.forRoot();
   final assetsGraph = AssetsGraph.init(fileResolver.packagesHash);
 
+  final argResults = _parseArgs(args);
+
+  final isDevMode = argResults['dev'] as bool;
+
+  final assets = await scanPackageAssets(
+    rootPackageName: rootPackageName,
+    assetsGraph: assetsGraph,
+    fileResolver: fileResolver,
+  );
+
+  if (isDevMode) {
+    // invalidate all generated files
+    for (final input in assetsGraph.outputs.keys) {
+      final uri = assetsGraph.uriForAssetOrNull(input);
+      if (uri == null) continue;
+      final inputAsset = fileResolver.assetForUri(uri);
+      assets.add(ProcessableAsset(inputAsset, AssetState.needUpdate, true));
+    }
+  }
+
+  if (assets.isEmpty) {
+    Logger.success('No assets to process');
+    return;
+  }
+
+  try {
+    final outputCount = await build(
+      assets: assets,
+      builders: builders,
+      assetsGraph: assetsGraph,
+      fileResolver: fileResolver,
+    );
+    await assetsGraph.save();
+    Logger.success('Done with ($outputCount) outputs, took ${stopWatch.elapsed.inMilliseconds} ms');
+  } catch (e) {
+    await assetsGraph.save();
+    Logger.error('Error while building assets: $e');
+    rethrow;
+  }
+}
+
+ArgResults _parseArgs(List<String> args) {
   final parser = ArgParser();
   parser.addFlag(
     'dev',
@@ -41,74 +72,7 @@ Future<void> runBuilders(List<BuilderEntry> builders, List<String> args) async {
     print(parser.usage);
     exit(0);
   }
-
-  final isDevMode = argResults['dev'] as bool;
-  final assets = await scanPackageAssets(
-    rootPackageName: rootPackageName,
-    assetsGraph: assetsGraph,
-    fileResolver: fileResolver,
-  );
-
-  if (isDevMode) {
-    for (final key in assetsGraph.outputs.keys) {
-      final uri = assetsGraph.uriForAssetOrNull(key);
-      if (uri == null) continue;
-      final input = fileResolver.assetForUri(uri);
-      assets.add(ProcessableAsset(input, AssetState.needUpdate, true));
-    }
-  }
-
-  if (assets.isEmpty) {
-    Logger.success('No assets to process');
-    return;
-  }
-
-  try {
-    final buildResult = await buildAssets(
-      assets: assets,
-      builders: builders,
-      assetsGraph: assetsGraph,
-      fileResolver: fileResolver,
-    );
-    final outputCount = await _finalizeBuild(assetsGraph, fileResolver, buildResult.outputs);
-    final errors = buildResult.fieldAssets;
-    if (errors.isNotEmpty) {
-      Logger.error('Errors while building assets:');
-      for (final error in errors) {
-        assetsGraph.invalidateDigest(error.asset.id);
-        Logger.error('${error.error} while processing: ${error.asset.shortUri}');
-      }
-    }
-    await assetsGraph.save();
-    if (errors.isNotEmpty) {
-      exit(1);
-    }
-
-    Logger.success('Done with ($outputCount) outputs, took ${stopWatch.elapsed.inMilliseconds} ms');
-  } catch (e) {
-    await assetsGraph.save();
-    Logger.error('Error while building assets: $e');
-    rethrow;
-  }
-}
-
-Future<int> _finalizeBuild(
-  AssetsGraph assetsGraph,
-  PackageFileResolver fileResolver,
-  Map<Asset, Set<Uri>> outputs,
-) async {
-  int outputCount = 0;
-  final scanner = SymbolsScanner(assetsGraph, fileResolver);
-  for (final entry in outputs.entries) {
-    for (final uri in entry.value) {
-      outputCount++;
-      final output = fileResolver.assetForUri(uri);
-      assetsGraph.invalidateDigest(output.id);
-      scanner.scan(output);
-      assetsGraph.addOutput(entry.key, output);
-    }
-  }
-  return outputCount;
+  return argResults;
 }
 
 /// Scans assets from the root package and returns processable assets
@@ -138,7 +102,7 @@ Future<List<ProcessableAsset>> scanPackageAssets({
   return processableAssets;
 }
 
-Future<BuildResult> buildAssets({
+Future<int> build({
   required List<ProcessableAsset> assets,
   required List<BuilderEntry> builders,
   required AssetsGraph assetsGraph,
@@ -146,81 +110,26 @@ Future<BuildResult> buildAssets({
 }) async {
   assert(assets.isNotEmpty);
 
-  final parser = SrcParser();
-  // Parallelize processing
-  final isolateCount = Platform.numberOfProcessors - 1;
-  final actualIsolateCount = isolateCount.clamp(1, assets.length);
-  final chunkSize = (assets.length / actualIsolateCount).ceil();
-  final chunks = <List<ProcessableAsset>>[];
+  int outputCount = 0;
+  final phases = calculateBuilderPhases(builders);
+  print('Running build phases: phases, ${phases.length}, assets: ${assets.length}');
+  final assetsToProcess = List.of(assets);
 
-  for (int i = 0; i < assets.length; i += chunkSize) {
-    final end = (i + chunkSize < assets.length) ? i + chunkSize : assets.length;
-    chunks.add(assets.sublist(i, end));
-  }
-
-  final outputResults = <Future<BuildResult>>[];
-
-  for (final chunk in chunks) {
-    final future = Isolate.run<BuildResult>(() async {
-      final chunkOutputs = HashMap<Asset, Set<Uri>>();
-      final chunkErrors = <FieldAsset>[];
-      final chunkResolver = Resolver(assetsGraph, fileResolver, parser);
-      for (final entry in chunk) {
-        // delete all possible generated files
-        final outputs = assetsGraph.outputs[entry.asset.id];
-        if (outputs != null) {
-          for (final output in outputs) {
-            final outputUri = assetsGraph.uriForAssetOrNull(output);
-            if (outputUri == null) continue;
-            final outputAsset = fileResolver.assetForUri(outputUri);
-            assetsGraph.outputs.remove(entry.asset.id);
-            outputAsset.safeDelete();
-          }
-        }
-
-        if (entry.state == AssetState.deleted) {
-          continue;
-        }
-
-        final candidate = BuildCandidate(
-          entry.asset,
-          entry.hasTopLevelMetadata,
-          assetsGraph.exportedSymbolsOf(entry.asset.id),
-        );
-
-        try {
-          final outputWriter = DeferredOutputWriter(entry.asset);
-
-          for (final builderEntry in builders) {
-            if (!builderEntry.shouldGenerateFor(candidate)) continue;
-
-            final buildStep = BuildStepImpl(
-              entry.asset,
-              chunkResolver,
-              outputWriter,
-              allowedExtensions: builderEntry.builder.outputExtensions,
-            );
-            await builderEntry.build(buildStep);
-            final generatedOutputs = await outputWriter.flushOutputs();
-            chunkOutputs.putIfAbsent(entry.asset, () => <Uri>{}).addAll(generatedOutputs);
-          }
-
-          final output = await outputWriter.flushSharedOutput();
-          if (output != null) {
-            chunkOutputs.putIfAbsent(entry.asset, () => <Uri>{}).add(output);
-          }
-        } catch (e) {
-          chunkErrors.add(FieldAsset(entry.asset, e));
-        }
+  for (final phase in phases) {
+    final buildPhase = BuildPhase(assetsGraph, fileResolver, phase);
+    final result = await buildPhase.build(assetsToProcess);
+    if (result.hasErrors) {
+      final errorMessages = [];
+      for (final asset in result.failedAssets) {
+        assetsGraph.invalidateDigest(asset.asset.id);
+        errorMessages.add('${asset.error} while processing: ${asset.asset.shortUri}\n');
       }
-      return BuildResult(chunkOutputs, chunkErrors);
-    });
-    outputResults.add(future);
-  }
+      throw Exception('Errors while building assets:\n$errorMessages');
+    }
+    outputCount += result.outputs.length;
 
-  final allResults = BuildResult.empty();
-  for (final result in await Future.wait(outputResults)) {
-    allResults.append(result);
+    /// update the target assets with the outputs of this phase
+    assetsToProcess.addAll(result.outputs);
   }
-  return allResults;
+  return outputCount;
 }

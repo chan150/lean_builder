@@ -24,7 +24,7 @@ typedef ElementPredicate<T> = bool Function(T element);
 
 class Resolver {
   final AssetsGraph graph;
-  final SrcParser parser;
+  final SourceParser parser;
   final PackageFileResolver fileResolver;
   final _libraryCache = HashMap<String, LibraryElementImpl>();
   final _typeCheckersCache = HashMap<String, TypeChecker>();

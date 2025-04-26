@@ -10,7 +10,8 @@ abstract class ParsedBuilderEntry {
 class BuilderDefinitionEntry extends ParsedBuilderEntry {
   final String import;
   final String builderFactory;
-  final bool hideOutput;
+  final bool generateToCache;
+  final Set<String>? runsBefore;
   final Set<String>? generateFor;
   final Map<String, dynamic>? options;
 
@@ -20,8 +21,9 @@ class BuilderDefinitionEntry extends ParsedBuilderEntry {
     required this.options,
     required this.import,
     required this.builderFactory,
-    required this.hideOutput,
+    required this.generateToCache,
     required this.generateFor,
+    required this.runsBefore,
   });
 
   BuilderDefinitionEntry merge(BuilderOverrideEntry override) {
@@ -34,9 +36,10 @@ class BuilderDefinitionEntry extends ParsedBuilderEntry {
       package: package,
       import: import,
       builderFactory: builderFactory,
-      hideOutput: hideOutput,
+      generateToCache: generateToCache,
       options: mergedOptions.isEmpty ? null : mergedOptions,
       generateFor: override.generateFor ?? generateFor,
+      runsBefore: override.runsBefore ?? runsBefore,
     );
   }
 
@@ -47,7 +50,8 @@ class BuilderDefinitionEntry extends ParsedBuilderEntry {
           runtimeType == other.runtimeType &&
           import == other.import &&
           builderFactory == other.builderFactory &&
-          hideOutput == other.hideOutput &&
+          generateToCache == other.generateToCache &&
+          const SetEquality().equals(runsBefore, other.runsBefore) &&
           const SetEquality().equals(generateFor, other.generateFor) &&
           const MapEquality().equals(options, other.options);
 
@@ -55,16 +59,24 @@ class BuilderDefinitionEntry extends ParsedBuilderEntry {
   int get hashCode =>
       import.hashCode ^
       builderFactory.hashCode ^
-      hideOutput.hashCode ^
+      generateToCache.hashCode ^
       const SetEquality().hash(generateFor) ^
+      const SetEquality().hash(runsBefore) ^
       const MapEquality().hash(options);
 }
 
 class BuilderOverrideEntry extends ParsedBuilderEntry {
   final Set<String>? generateFor;
   final Map<String, dynamic>? options;
+  final Set<String>? runsBefore;
 
-  BuilderOverrideEntry({required super.key, required super.package, required this.options, required this.generateFor});
+  BuilderOverrideEntry({
+    required super.key,
+    required super.package,
+    required this.options,
+    required this.generateFor,
+    required this.runsBefore,
+  });
 
   @override
   bool operator ==(Object other) =>
@@ -72,8 +84,10 @@ class BuilderOverrideEntry extends ParsedBuilderEntry {
       other is BuilderOverrideEntry &&
           runtimeType == other.runtimeType &&
           const SetEquality().equals(generateFor, other.generateFor) &&
+          const SetEquality().equals(runsBefore, other.runsBefore) &&
           const MapEquality().equals(options, other.options);
 
   @override
-  int get hashCode => const SetEquality().hash(generateFor) ^ const MapEquality().hash(options);
+  int get hashCode =>
+      const SetEquality().hash(generateFor) ^ const MapEquality().hash(options) ^ const SetEquality().hash(runsBefore);
 }
