@@ -1,16 +1,21 @@
+import 'dart:collection';
+import 'dart:io';
+
 import 'package:lean_builder/builder.dart';
 import 'package:lean_builder/runner.dart' show BuilderEntry;
+import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
 import 'package:lean_builder/src/graph/asset_scan_manager.dart';
 import 'package:lean_builder/src/graph/assets_graph.dart';
+import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/logger.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
 import 'package:lean_builder/src/runner/build_phase.dart' show BuildPhase;
 import 'package:lean_builder/src/runner/build_result.dart';
 import 'package:lean_builder/src/runner/build_utils.dart';
 import 'package:lean_builder/src/runner/command/base_command.dart';
+import 'package:lean_builder/src/runner/command/utils.dart';
 import 'package:lean_builder/src/utils.dart';
-import 'package:synchronized/synchronized.dart';
 import 'package:watcher/watcher.dart';
 import 'package:path/path.dart' as p;
 
@@ -35,14 +40,14 @@ class BuildCommand extends BaseCommand<int> {
     final fileResolver = PackageFileResolver.forRoot();
     var assetsGraph = AssetsGraph.init('${fileResolver.packagesHash}-${buildRunner.buildScriptHash}');
 
-    // if (assetsGraph.shouldInvalidate) {
-    //   Logger.info('Cache is invalidated, deleting old outputs...');
-    //   _deleteExistingOutputs(assetsGraph, fileResolver);
-    //   assetsGraph = AssetsGraph(assetsGraph.hash);
-    // }
-    // if (argResults?['dev'] == true) {
-    //   _deleteExistingOutputs(assetsGraph, fileResolver);
-    // }
+    if (assetsGraph.shouldInvalidate) {
+      Logger.info('Cache is invalidated, deleting old outputs...');
+      _deleteExistingOutputs(assetsGraph, fileResolver);
+      assetsGraph = AssetsGraph(assetsGraph.hash);
+    }
+    if (argResults?['dev'] == true) {
+      _deleteExistingOutputs(assetsGraph, fileResolver);
+    }
 
     final scanManager = AssetScanManager(
       assetsGraph: assetsGraph,
@@ -50,9 +55,9 @@ class BuildCommand extends BaseCommand<int> {
       rootPackage: rootPackageName,
     );
 
-    Logger.info('Scanning assets...');
+    Logger.info('Updating asset graph...');
     final assets = await scanManager.scanAssets(scanOnlyRoot: assetsGraph.loadedFromCache);
-    Logger.info('Finished scanning assets in: ${stopWatch.elapsed.inMilliseconds} ms');
+    Logger.info('Updating asset graph completed, took: ${stopWatch.elapsed.inMilliseconds} ms');
 
     final sourceParser = SourceParser();
     final resolver = Resolver(assetsGraph, fileResolver, sourceParser);
@@ -66,10 +71,6 @@ class BuildCommand extends BaseCommand<int> {
 
   Future<int> _processAssets(Set<ProcessableAsset> processableAssets, Resolver resolver) async {
     final stopWatch = Stopwatch()..start();
-    if (processableAssets.isEmpty) {
-      Logger.success('No assets to process, took ${stopWatch.elapsed.inMilliseconds} ms');
-      return 0;
-    }
 
     final assets = List.of(
       processableAssets.where((e) {
@@ -79,14 +80,14 @@ class BuildCommand extends BaseCommand<int> {
     );
 
     if (assets.isEmpty) {
-      Logger.success('Done with (0) outputs, took ${stopWatch.elapsed.inMilliseconds} ms');
+      Logger.success('Skipped: No assets to process ${stopWatch.elapsed.inMilliseconds} ms');
       return 0;
     }
 
     try {
       final outputCount = await build(assets: assets, builders: buildRunner.builderEntries, resolver: resolver);
       await resolver.graph.save();
-      Logger.success('Done with ($outputCount) outputs, took ${stopWatch.elapsed.inMilliseconds} ms');
+      Logger.success('Build succeeded in ${stopWatch.elapsed.inMilliseconds} ms: ($outputCount) outputs generated');
       return 0;
     } catch (e, stk) {
       await resolver.graph.save();
@@ -119,15 +120,15 @@ class BuildCommand extends BaseCommand<int> {
   }) async {
     assert(assets.isNotEmpty);
 
+    final fileResolver = resolver.fileResolver;
+    final graph = resolver.graph;
     // delete existing outputs for all possible inputs
+    final existingOutputs = <String>{};
     for (final entry in List.of(assets)) {
-      final outputs = resolver.graph.outputs.remove(entry.asset.id);
+      final outputs = graph.outputs[entry.asset.id];
       if (outputs != null) {
         for (final output in outputs) {
-          final outputUri = resolver.graph.uriForAssetOrNull(output);
-          if (outputUri == null) continue;
-          final outputAsset = resolver.fileResolver.assetForUri(outputUri);
-          outputAsset.safeDelete();
+          existingOutputs.add(output);
           assets.removeWhere((entry) => entry.asset.id == output);
         }
       }
@@ -148,10 +149,23 @@ class BuildCommand extends BaseCommand<int> {
       final result = await buildPhase.build(assetsToProcess);
       if (result.hasErrors) {
         for (final asset in result.failedAssets) {
-          resolver.graph.invalidateDigest(asset.asset.id);
+          graph.invalidateDigest(asset.asset.id);
         }
         throw MultiFieldAssetsException(result.failedAssets);
       }
+      final outputUris = result.outputs.map((e) => e.asset.shortUri);
+      for (final output in existingOutputs) {
+        final outputUri = graph.uriForAssetOrNull(output);
+        if (outputUri == null) continue;
+        if (!outputUris.contains(outputUri)) {
+          final file = File.fromUri(fileResolver.resolveFileUri(outputUri));
+          if (file.existsSync()) {
+            file.deleteSync();
+          }
+          graph.removeOutput(output);
+        }
+      }
+
       outputCount += result.outputs.length;
 
       /// add new outputs to the assets to process
@@ -181,40 +195,46 @@ class WatchCommand extends BuildCommand {
     final rootUri = Uri.parse(rootDir);
 
     final watchStream = DirectoryWatcher(rootUri.path).events;
-    final watchLock = Lock();
-
+    final pendingAssets = <ProcessableAsset>{};
+    final debouncer = AsyncDebouncer(const Duration(milliseconds: 250));
     watchStream.listen((event) async {
-      return watchLock.synchronized(() async {
-        final relative = p.relative(event.path, from: rootUri.path);
-        final subDir = relative.split('/').firstOrNull;
-        if (!PackageFileResolver.isDirSupported(subDir)) return;
-        final asset = fileResolver.assetForUri(Uri.file(event.path));
-        resolver.invalidateAssetCache(asset);
+      final relative = p.relative(event.path, from: rootUri.path);
+      final subDir = relative.split('/').firstOrNull;
+      if (!PackageFileResolver.isDirSupported(subDir)) return;
+      final asset = fileResolver.assetForUri(Uri.file(event.path));
 
-        if (assetsGraph.isAGeneratedSource(asset.id) && event.type != ChangeType.REMOVE) {
-          // skip generated sources, unless they are deleted
-          return;
-        }
+      final isGeneratedSource = assetsGraph.isAGeneratedSource(asset.id);
+      if (isGeneratedSource && event.type != ChangeType.REMOVE) {
+        // ignore generated sources changes
+        return;
+      }
 
-        final assetsToProcess = <ProcessableAsset>{};
-        switch (event.type) {
-          case ChangeType.ADD:
-            assetsToProcess.add(scanManager.handleInsertedAsset(asset));
-            break;
-          case ChangeType.REMOVE:
-            assetsToProcess.addAll(scanManager.handleDeletedAsset(asset));
-            break;
-          case ChangeType.MODIFY:
-            assetsToProcess.addAll(scanManager.handleUpdatedAsset(asset));
-            break;
-        }
-        if (assetsToProcess.isEmpty) return;
+      resolver.invalidateAssetCache(asset);
+      print('Asset changed: ${asset.shortUri} (${event.type}) generated: $isGeneratedSource');
+      switch (event.type) {
+        case ChangeType.ADD:
+          if (!isGeneratedSource) {
+            pendingAssets.add(scanManager.handleInsertedAsset(asset));
+          }
+          break;
+        case ChangeType.REMOVE:
+          pendingAssets.addAll(scanManager.handleDeletedAsset(asset));
+          break;
+        case ChangeType.MODIFY:
+          if (!isGeneratedSource) {
+            pendingAssets.addAll(scanManager.handleUpdatedAsset(asset));
+          }
+          break;
+      }
 
-        Logger.info('Detected changes in ${asset.shortUri}, processing...');
+      debouncer.run(() async {
+        if (pendingAssets.isEmpty) return;
+        final assetsToProcess = Set.of(pendingAssets);
+        pendingAssets.clear();
+        Logger.info('Changes detected, processing ${assetsToProcess.length} assets...');
         await _processAssets(assetsToProcess, resolver);
       });
     });
-    Logger.info('Watching for changes in ${rootUri.path}...');
     return 0;
   }
 }

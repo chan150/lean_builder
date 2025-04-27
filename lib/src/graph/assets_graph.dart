@@ -331,6 +331,27 @@ class AssetsGraph extends AssetsScanResults {
     }
     return false;
   }
+
+  List<dynamic>? getInputOf(String id) {
+    for (final entry in outputs.entries) {
+      if (entry.value.contains(id)) {
+        return assets[entry.key];
+      }
+    }
+    return null;
+  }
+
+  void removeOutput(String output) {
+    for (final entry in outputs.entries) {
+      if (entry.value.contains(output)) {
+        entry.value.remove(output);
+        if (entry.value.isEmpty) {
+          outputs.remove(entry.key);
+        }
+        break;
+      }
+    }
+  }
 }
 
 class ScannedAsset {

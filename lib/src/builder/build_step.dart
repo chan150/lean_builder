@@ -153,6 +153,7 @@ class SharedBuildStep extends BuildStepImpl {
   }
 
   Future<void> flush() async {
+    if (_buffer.isEmpty) return;
     final partOf = p.relative(asset.uri.path, from: p.dirname(outputUri.path));
     final header = [defaultFileHeader, "part of '$partOf';"].join('\n\n');
     final content = _buffer.toString();

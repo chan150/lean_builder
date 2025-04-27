@@ -124,21 +124,23 @@ abstract class _Builder extends Builder {
       contentBuffer.writeln(item.output);
     }
 
-    var content = contentBuffer.toString();
-    try {
-      content = formatOutput(content);
-    } catch (e, stack) {
-      Logger.error('''
-          An error `${e.runtimeType}` occurred while formatting the generated source for `${library.src.uri}`
-          which was output to to extension `$extension`.
-          This may indicate an issue in the generator, the input source code, or in the source formatter.
-        ''', stackTrace: stack);
-    }
-
-    await writeOutput(buildStep, content, extension);
+    await writeOutput(buildStep, contentBuffer.toString(), extension);
   }
 
   FutureOr<void> writeOutput(BuildStep buildStep, String content, String extension) {
+    try {
+      content = formatOutput(content);
+    } catch (e, stack) {
+      final fileResolver = buildStep.resolver.fileResolver;
+      final output = buildStep.asset.uriWithExtension(extension);
+      Logger.error(
+        '''An error `${e.runtimeType}` occurred while formatting the generated source for `${buildStep.asset.shortUri}`
+which was output to `${fileResolver.toShortUri(output)}`.
+This may indicate an issue in the generator, the input source code, or in the source formatter.''',
+        stackTrace: stack,
+      );
+      return Future.value(null);
+    }
     return buildStep.writeAsString(content, extension: extension);
   }
 
@@ -214,7 +216,7 @@ class SharedPartBuilder extends _Builder {
         'file. Please add a part directive (part \'$part\';) to the input library ${buildStep.inputLibrary.src.shortUri}',
       );
     }
-    return buildStep.writeAsString(content, extension: extension);
+    return super.writeOutput(buildStep, content, extension);
   }
 }
 
