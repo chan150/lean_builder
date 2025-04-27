@@ -1,6 +1,5 @@
 import 'package:lean_builder/src/asset/asset.dart';
-
-import '../graph/isolate_symbols_scanner.dart';
+import 'package:lean_builder/src/graph/asset_scan_manager.dart';
 
 class BuildResult {
   final Map<Asset, Set<Uri>> outputs;
@@ -18,9 +17,10 @@ class BuildResult {
 
 class FieldAsset {
   final Asset asset;
-  final Object? error;
+  final Object error;
+  final StackTrace? stackTrace;
 
-  FieldAsset(this.asset, this.error);
+  FieldAsset(this.asset, this.error, this.stackTrace);
 
   @override
   bool operator ==(Object other) =>
@@ -39,4 +39,10 @@ class PhaseResult {
   bool get hasErrors => failedAssets.isNotEmpty;
 
   PhaseResult(this.outputs, this.failedAssets);
+}
+
+class MultiFieldAssetsException implements Exception {
+  final List<FieldAsset> assets;
+
+  MultiFieldAssetsException(this.assets);
 }

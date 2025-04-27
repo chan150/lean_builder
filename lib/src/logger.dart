@@ -1,4 +1,6 @@
 import 'package:ansicolor/ansicolor.dart';
+import 'package:stack_trace/stack_trace.dart' show Trace;
+// import 'package:stack_trace/stack_trace.dart' show Trace;
 
 class Logger {
   static final Logger _instance = Logger._internal();
@@ -9,7 +11,7 @@ class Logger {
 
   Logger._internal();
 
-  static LogLevel _currentLevel = LogLevel.fine;
+  static LogLevel _currentLevel = LogLevel.info;
 
   static set level(LogLevel newLevel) {
     _currentLevel = newLevel;
@@ -35,7 +37,13 @@ class Logger {
   }
 
   static void error(String message, {StackTrace? stackTrace}) {
-    _instance.log(LogLevel.error, '$message\n$stackTrace');
+    if (stackTrace != null) {
+      final trace = Trace.from(stackTrace).terse;
+      final frames = _currentLevel == LogLevel.fine ? trace.frames : trace.frames.take(4);
+      _instance.log(LogLevel.error, '$message\n${frames.join('\n')}');
+    } else {
+      _instance.log(LogLevel.error, message);
+    }
   }
 
   static void debug(String message) {

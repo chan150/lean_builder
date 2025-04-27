@@ -62,20 +62,3 @@ abstract class GeneratorForAnnotation extends Generator {
 
   FutureOr<String?> generateForAnnotatedElement(BuildStep buildStep, AnnotatedElement annotatedElement);
 }
-
-class SimpleGeneratorForAnnotation extends GeneratorForAnnotation {
-  final TypeChecker Function(Resolver resolver) _buildTypeChecker;
-  final FutureOr<String?> Function(BuildStep buildStep, AnnotatedElement annotatedElement) _generateForAnnotatedElement;
-
-  SimpleGeneratorForAnnotation(this._buildTypeChecker, this._generateForAnnotatedElement);
-
-  @override
-  TypeChecker buildTypeChecker(Resolver resolver) {
-    return _buildTypeChecker(resolver);
-  }
-
-  @override
-  FutureOr<String?> generateForAnnotatedElement(BuildStep buildStep, AnnotatedElement annotatedElement) {
-    return _generateForAnnotatedElement(buildStep, annotatedElement);
-  }
-}

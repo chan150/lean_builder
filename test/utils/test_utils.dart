@@ -3,7 +3,7 @@ import 'package:lean_builder/src/asset/assets_reader.dart';
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
 import 'package:lean_builder/src/graph/symbols_scanner.dart';
 
-extension TopLevelScannerExt on SymbolsScanner {
+extension TopLevelScannerExt on AssetsScanner {
   // register the scanned asset in the assets cache so it's not resolved to FileAsset
   void scanAndRegister(Asset asset, {Asset? relativeTo}) {
     scan(asset);
@@ -11,7 +11,7 @@ extension TopLevelScannerExt on SymbolsScanner {
   }
 }
 
-void scanDartCoreAssets(SymbolsScanner scanner) {
+void scanDartCoreAssets(AssetsScanner scanner) {
   final assetsReader = FileAssetReader(scanner.fileResolver).listAssetsFor({PackageFileResolver.dartSdk, 'meta'});
   for (final asset in assetsReader.values.expand((e) => e)) {
     scanner.scan(asset);

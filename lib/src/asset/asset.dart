@@ -90,7 +90,7 @@ class FileAsset implements Asset {
   void safeDelete() {
     try {
       if (existsSync()) {
-        file.deleteSync();
+        file.deleteSync(recursive: true);
       }
     } catch (e) {
       final stack = e is Error ? e.stackTrace : StackTrace.current;

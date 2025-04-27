@@ -20,7 +20,7 @@ class SourceParser {
     return unit;
   }
 
-  void remove(String key) {
+  void invalidate(String key) {
     _cache.remove(key);
   }
 

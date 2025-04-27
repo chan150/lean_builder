@@ -11,7 +11,7 @@ import '../utils/test_utils.dart';
 
 void main() {
   PackageFileResolver? fileResolver;
-  SymbolsScanner? scanner;
+  AssetsScanner? scanner;
   Resolver? resolver;
 
   setUp(() {
@@ -21,7 +21,7 @@ void main() {
     };
     fileResolver = PackageFileResolverImpl(packageToPath, packagesHash: '', rootPackage: 'root');
     final AssetsGraph graph = AssetsGraph('hash');
-    scanner = SymbolsScanner(graph, fileResolver!);
+    scanner = AssetsScanner(graph, fileResolver!);
     resolver = Resolver(graph, fileResolver!, SourceParser());
   });
 

@@ -37,7 +37,10 @@ abstract class _Builder extends Builder {
   final bool allowSyntaxErrors;
 
   @override
-  final Set<String> outputExtensions;
+  final Map<String, Set<String>> buildExtensions;
+
+  @override
+  Set<String> get allowedExtensions => buildExtensions.values.expand((e) => e).toSet();
 
   /// Wrap [_generators] to form a [Builder]-compatible API.
   ///
@@ -51,18 +54,23 @@ abstract class _Builder extends Builder {
     bool? writeDescriptions,
     this.allowSyntaxErrors = false,
     BuilderOptions? options,
-  }) : outputExtensions = validatedBuildExtensionsFrom(outputExtensions),
+  }) : buildExtensions = validatedBuildExtensionsFrom(options != null ? Map.of(options.config) : null, {
+         '.dart': outputExtensions,
+       }),
        _writeDescriptions = writeDescriptions ?? true,
        _header = (header ?? defaultFileHeader).trim();
 
   @override
   bool shouldBuild(BuildCandidate candidate) {
-    return candidate.hasTopLevelMetadata;
+    return candidate.path.endsWith('.dart') && candidate.hasTopLevelMetadata;
   }
 
   @override
   Future<void> build(BuildStep buildStep) async {
     final resolver = buildStep.resolver;
+    if (!resolver.isLibrary(buildStep.asset)) {
+      return;
+    }
     final library = resolver.resolveLibrary(
       buildStep.asset,
       allowSyntaxErrors: allowSyntaxErrors,
@@ -131,11 +139,11 @@ abstract class _Builder extends Builder {
   }
 
   FutureOr<void> writeOutput(BuildStep buildStep, String content, String extension) {
-    return buildStep.writeAsString(extension, content);
+    return buildStep.writeAsString(content, extension: extension);
   }
 
   @override
-  String toString() => 'Generating $outputExtensions: ${_generators.join(', ')}';
+  String toString() => 'Generating $buildExtensions: ${_generators.join(', ')}';
 }
 
 class LibraryBuilder extends _Builder {
@@ -168,9 +176,9 @@ class LibraryBuilder extends _Builder {
     super.allowSyntaxErrors,
     super.options,
   }) : super([generator]) {
-    for (final ext in outputExtensions) {
-      if (ext == '.g.dart') {
-        throw ArgumentError('LibraryBuilder can not have a .g.dart extension');
+    for (final ext in buildExtensions.values.expand((e) => e)) {
+      if (ext == SharedPartBuilder.extension) {
+        throw ArgumentError('The LibraryBuilder cannot be used with the shared part extension');
       }
     }
   }
@@ -206,7 +214,7 @@ class SharedPartBuilder extends _Builder {
         'file. Please add a part directive (part \'$part\';) to the input library ${buildStep.inputLibrary.src.shortUri}',
       );
     }
-    return buildStep.writeAsString(extension, content);
+    return buildStep.writeAsString(content, extension: extension);
   }
 }
 
@@ -215,11 +223,50 @@ class SharedPartBuilder extends _Builder {
 ///
 /// Modifies [optionsMap] by removing the `build_extensions` key from it, if
 /// present.
-Set<String> validatedBuildExtensionsFrom(Set<String> defaultExtensions) {
-  for (final ext in defaultExtensions) {
-    if (ext.isEmpty || ext[0] != '.') {
-      throw ArgumentError('Extensions should be in the format of .*');
-    }
+Map<String, Set<String>> validatedBuildExtensionsFrom(
+  Map<String, dynamic>? optionsMap,
+  Map<String, Set<String>> defaultExtensions,
+) {
+  final extensionsOption = optionsMap?.remove('build_extensions');
+  if (extensionsOption == null) {
+    // defaultExtensions are provided by the builder author, not the end user.
+    // It should be safe to skip validation.
+    return defaultExtensions;
   }
-  return defaultExtensions;
+
+  if (extensionsOption is! Map) {
+    throw ArgumentError('Configured build_extensions should be a map from inputs to outputs.');
+  }
+
+  final result = <String, Set<String>>{};
+
+  for (final entry in extensionsOption.entries) {
+    final input = entry.key;
+    if (input is! String || !input.endsWith('.dart')) {
+      throw ArgumentError(
+        'Invalid key in build_extensions option: `$input` '
+        'should be a string ending with `.dart`',
+      );
+    }
+
+    final output = (entry.value is List) ? entry.value as List : [entry.value];
+
+    for (var i = 0; i < output.length; i++) {
+      final o = output[i];
+      if (o is! String || (i == 0 && !o.endsWith('.dart'))) {
+        throw ArgumentError(
+          'Invalid output extension `${entry.value}`. It should be a string '
+          'or a list of strings with the first ending with `.dart`',
+        );
+      }
+    }
+
+    result[input] = output.cast<String>().toSet();
+  }
+
+  if (result.isEmpty) {
+    throw ArgumentError('Configured build_extensions must not be empty.');
+  }
+
+  return result;
 }

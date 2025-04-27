@@ -16,9 +16,17 @@ import 'identifier_ref.dart';
 class AssetsGraph extends AssetsScanResults {
   static final cacheFile = File('.dart_tool/lean_build/assets_graph.json');
 
-  final String packagesHash;
+  static void invalidateCache() {
+    if (cacheFile.existsSync()) {
+      cacheFile.deleteSync(recursive: true);
+    }
+  }
+
+  final String hash;
 
   final bool loadedFromCache;
+
+  final bool shouldInvalidate;
 
   static const String version = '1.0.0';
 
@@ -26,17 +34,16 @@ class AssetsGraph extends AssetsScanResults {
 
   late final _coreImport = [DirectiveStatement.import, _coreImportId, '', null, null];
 
-  AssetsGraph(this.packagesHash) : loadedFromCache = false;
+  AssetsGraph(this.hash) : loadedFromCache = false, shouldInvalidate = false;
 
-  AssetsGraph._fromCache(this.packagesHash) : loadedFromCache = true;
+  AssetsGraph._fromCache(this.hash, {this.shouldInvalidate = false}) : loadedFromCache = true;
 
-  factory AssetsGraph.init(String packagesHash) {
+  factory AssetsGraph.init(String hash) {
     if (cacheFile.existsSync()) {
       try {
         final cachedGraph = jsonDecode(cacheFile.readAsStringSync());
-        final instance = AssetsGraph.fromCache(cachedGraph, packagesHash);
-        if (!instance.loadedFromCache) {
-          Logger.info('Cache is outdated, rebuilding...');
+        final instance = AssetsGraph.fromCache(cachedGraph, hash);
+        if (!instance.loadedFromCache || instance.shouldInvalidate) {
           cacheFile.deleteSync(recursive: true);
         }
         return instance;
@@ -45,7 +52,7 @@ class AssetsGraph extends AssetsScanResults {
         cacheFile.deleteSync(recursive: true);
       }
     }
-    return AssetsGraph(packagesHash);
+    return AssetsGraph(hash);
   }
 
   Future<void> save() async {
@@ -56,16 +63,11 @@ class AssetsGraph extends AssetsScanResults {
     await file.writeAsString(jsonEncode(toJson()));
   }
 
-  Uri uriForAsset(String id) {
-    final uri = uriForAssetOrNull(id);
-    assert(uri != null, 'Asset not found: $id');
-    return uri!;
-  }
-
-  Uri? uriForAssetOrNull(String id) {
-    final asset = assets[id];
-    if (asset == null) return null;
-    return Uri.parse(asset[GraphIndex.assetUri]);
+  void clearAll() {
+    assets.clear();
+    identifiers.clear();
+    directives.clear();
+    outputs.clear();
   }
 
   List<ScannedAsset> getAssetsForPackage(String package) {
@@ -106,10 +108,11 @@ class AssetsGraph extends AssetsScanResults {
           .map((e) => MapEntry(e[GraphIndex.identifierSrc], e[GraphIndex.identifierType])),
     );
 
+    final actualSrc = getParentSrc(importingSrc.id);
     // First check if the identifier is declared directly in this file
     for (final entry in possibleSrcs.entries) {
-      if (entry.key == importingSrc.id) {
-        return buildRef(entry, providerId: importingSrc.id);
+      if (entry.key == importingSrc.id || entry.key == actualSrc) {
+        return buildRef(entry, providerId: actualSrc);
       }
     }
 
@@ -243,17 +246,16 @@ class AssetsGraph extends AssetsScanResults {
 
   @override
   Map<String, dynamic> toJson() {
-    return {...super.toJson(), 'version': version, 'packagesHash': packagesHash};
+    return {...super.toJson(), 'version': version, 'hash': hash};
   }
 
-  // Create from cached data if valid
-  factory AssetsGraph.fromCache(Map<String, dynamic> json, String packagesHash) {
-    final storedPackagesHash = json['packagesHash'] as String?;
+  // Create from cached data
+  factory AssetsGraph.fromCache(Map<String, dynamic> json, String hash) {
+    final lastUsedHash = json['hash'] as String?;
     final version = json['version'] as String?;
-    if (storedPackagesHash != packagesHash || version != AssetsGraph.version) {
-      return AssetsGraph(packagesHash);
-    }
-    return AssetsScanResults.populate(AssetsGraph._fromCache(packagesHash), json);
+    final shouldInvalidate = lastUsedHash != hash || version != AssetsGraph.version;
+    final instance = AssetsGraph._fromCache(hash, shouldInvalidate: shouldInvalidate);
+    return AssetsScanResults.populate(instance, json);
   }
 
   void invalidateDigest(String assetId) {
@@ -300,7 +302,7 @@ class AssetsGraph extends AssetsScanResults {
     return dependents;
   }
 
-  List<dynamic>? getGeneratingSourceOf(String id) {
+  List<dynamic>? getGeneratedSourceOf(String id) {
     for (final entry in outputs.entries) {
       if (entry.value.contains(id)) {
         return assets[entry.key];
@@ -319,6 +321,15 @@ class AssetsGraph extends AssetsScanResults {
       }
     }
     return exportedSymbols;
+  }
+
+  bool isAGeneratedSource(String id) {
+    for (final entry in outputs.entries) {
+      if (entry.value.contains(id)) {
+        return true;
+      }
+    }
+    return false;
   }
 }
 

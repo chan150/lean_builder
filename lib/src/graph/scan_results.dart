@@ -320,6 +320,18 @@ class AssetsScanResults extends ScanResults {
     return 'AssetsScanResults{assets: $assets, identifiers: $identifiers, directives: $directives} ';
   }
 
+  Uri uriForAsset(String id) {
+    final uri = uriForAssetOrNull(id);
+    assert(uri != null, 'Asset not found: $id');
+    return uri!;
+  }
+
+  Uri? uriForAssetOrNull(String id) {
+    final asset = assets[id];
+    if (asset == null) return null;
+    return Uri.parse(asset[GraphIndex.assetUri]);
+  }
+
   @override
   Set<String> importPrefixesOf(String id) {
     final prefixes = <String>{};

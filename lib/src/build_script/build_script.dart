@@ -10,16 +10,14 @@ import 'package:lean_builder/src/logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 import 'compile.dart' as compile;
-
-const _scriptOutput = '.dart_tool/lean_build/lean_build.dart';
-const _scriptDigest = '.dart_tool/lean_build/lean_build.digest';
+import 'files.dart';
 
 String? prepareBuildScript() {
   final resolver = PackageFileResolver.forRoot();
   final configFiles = _detectConfigFiles(resolver);
   final entries = _parseAll(configFiles);
-  final digestFile = File(_scriptDigest);
-  final scriptFile = File(_scriptOutput);
+  final digestFile = File(scriptDigest);
+  final scriptFile = File(scriptOutput);
 
   if (entries.isEmpty) {
     if (scriptFile.existsSync()) {
@@ -32,17 +30,18 @@ String? prepareBuildScript() {
   }
 
   final withOverrides = _handleOverrides(entries, resolver);
-  final scriptHash = const ListEquality().hash(withOverrides);
+  final scriptHash = const ListEquality().hash(withOverrides).toString();
 
   if (scriptFile.existsSync() && digestFile.existsSync()) {
     final currentHash = digestFile.readAsStringSync();
-    if (currentHash == scriptHash.toString()) {
+    if (currentHash == scriptHash) {
       /// The script is up to date, no need to recompile.
       return scriptFile.path;
     }
   }
+
   Logger.info('Generating a new build script...');
-  var script = generateBuildScript(withOverrides);
+  var script = generateBuildScript(withOverrides, scriptHash);
   final formatter = DartFormatter(languageVersion: DartFormatter.latestShortStyleLanguageVersion);
   script = formatter.format(script);
 
@@ -142,8 +141,8 @@ List<ParsedBuilderEntry> _parseAll(Map<String, File> configFiles) {
           final generateFor = builder['generate_for'] as YamlList?;
 
           final key = entry.key.toString();
-          if (key.split('|').length != 2) {
-            throw BuildConfigError("Expected a valid builder key '<package>|<builder>' in ${file.path}");
+          if (key.split(':').length != 2) {
+            throw BuildConfigError("Expected a valid builder key '<package>:<builder>' in ${file.path}");
           }
           final builderEntry = BuilderOverrideEntry(
             key: key,
@@ -169,9 +168,9 @@ Set<String>? getRunsBeforeSet(YamlList? list) {
   final runsBefore = <String>{};
   for (final entry in list) {
     if (entry is String) {
-      final parts = entry.split('|');
+      final parts = entry.split(':');
       if (parts.length != 2) {
-        throw BuildConfigError('Expected a valid builder name `<package>|<builder-name>` in `runs_before`');
+        throw BuildConfigError('Expected a valid builder name `<package>:<builder-name>` in `runs_before`');
       }
       runsBefore.add("'$entry'");
     } else {

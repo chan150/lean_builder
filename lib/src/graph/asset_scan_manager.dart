@@ -27,7 +27,7 @@ Future<void> scannerWorker(SendPort sendPort) async {
     if (message is ScanningTask) {
       final fileResolver = PackageFileResolver.fromJson(message.packageResolverData);
       final resultsCollector = AssetsScanResults();
-      final scanner = SymbolsScanner(resultsCollector, fileResolver);
+      final scanner = AssetsScanner(resultsCollector, fileResolver);
       final processableAssets = <ProcessableAsset>[];
       for (final asset in message.assets) {
         final (didScane, hasAnnotation) = scanner.scan(asset);
@@ -48,16 +48,16 @@ Future<void> scannerWorker(SendPort sendPort) async {
   receivePort.close();
 }
 
-class IsolateSymbolsScanner {
+class AssetScanManager {
   final AssetsGraph assetsGraph;
   final PackageFileResolver fileResolver;
-  final String targetPackage;
+  final String rootPackage;
 
-  IsolateSymbolsScanner({required this.assetsGraph, required this.fileResolver, required this.targetPackage});
+  AssetScanManager({required this.assetsGraph, required this.fileResolver, required this.rootPackage});
 
-  Future<Set<ProcessableAsset>> scanAssets() async {
+  Future<Set<ProcessableAsset>> scanAssets({bool scanOnlyRoot = false}) async {
     final assetsReader = FileAssetReader(fileResolver);
-    final packagesToScan = assetsGraph.loadedFromCache ? {targetPackage} : fileResolver.packages;
+    final packagesToScan = scanOnlyRoot ? {rootPackage} : fileResolver.packages;
 
     final assets = assetsReader.listAssetsFor(packagesToScan);
     final assetsList = assets.values.expand((e) => e).toList();
@@ -68,14 +68,14 @@ class IsolateSymbolsScanner {
     } else {
       final processableAssets = <ProcessableAsset>[];
       // Use single-threaded approach for incremental updates
-      final scanner = SymbolsScanner(assetsGraph, fileResolver);
+      final scanner = AssetsScanner(assetsGraph, fileResolver);
       for (final asset in assetsList) {
         final (didScan, hasAnnotation) = scanner.scan(asset);
         if (didScan) {
           processableAssets.add(ProcessableAsset(asset, AssetState.inserted, hasAnnotation));
         }
       }
-      results = {...processableAssets, ...updateIncrementalAssets(scanner)};
+      results = {...processableAssets, ...getIncrementallyUpdatedAssets(assetsGraph.getAssetsForPackage(rootPackage))};
     }
 
     return results;
@@ -154,46 +154,66 @@ class IsolateSymbolsScanner {
     return List.of(processableAssets);
   }
 
-  Set<ProcessableAsset> updateIncrementalAssets(SymbolsScanner scanner) {
+  Set<ProcessableAsset> getIncrementallyUpdatedAssets(List<ScannedAsset> entries) {
     final processableAssets = <ProcessableAsset>{};
-    for (final entry in assetsGraph.getAssetsForPackage(targetPackage)) {
+    for (final entry in entries) {
       final asset = fileResolver.assetForUri(entry.uri);
       if (!asset.existsSync()) {
-        final generatingAssetArr = assetsGraph.getGeneratingSourceOf(asset.id);
-        if (generatingAssetArr != null) {
-          final uri = Uri.parse(generatingAssetArr[GraphIndex.assetUri]);
-          final generatedAsset = fileResolver.assetForUri(uri);
-          processableAssets.add(
-            ProcessableAsset(
-              generatedAsset,
-              AssetState.needUpdate,
-              generatingAssetArr[GraphIndex.assetAnnotationFlag] == 1,
-            ),
-          );
-        }
-        assetsGraph.removeAsset(asset.id);
-        processableAssets.add(ProcessableAsset(asset, AssetState.deleted, entry.hasTopLevelMetadata));
+        processableAssets.addAll(handleDeletedAsset(asset));
         continue;
       }
       final content = asset.readAsBytesSync();
-      final currentHash = xxh3String(content);
+      final currentDigest = xxh3String(content);
 
-      if (currentHash != entry.digest) {
-        assetsGraph.invalidateDigest(asset.id);
-        final dependents = assetsGraph.dependentsOf(asset.id);
-        final (didScane, hasAnnotation) = scanner.scan(asset);
-        if (didScane) {
-          processableAssets.add(ProcessableAsset(asset, AssetState.updated, hasAnnotation));
-        }
-        for (final dep in dependents) {
-          final asset = fileResolver.assetForUri(Uri.parse(dep[GraphIndex.assetUri]));
-          processableAssets.add(
-            ProcessableAsset(asset, AssetState.needUpdate, dep[GraphIndex.assetAnnotationFlag] == 1),
-          );
-        }
+      if (currentDigest != entry.digest) {
+        processableAssets.addAll(handleUpdatedAsset(asset));
       }
     }
     return processableAssets;
+  }
+
+  Set<ProcessableAsset> handleUpdatedAsset(Asset asset) {
+    final scanner = AssetsScanner(assetsGraph, fileResolver);
+    final processableAssets = <ProcessableAsset>{};
+    assetsGraph.invalidateDigest(asset.id);
+    final dependents = assetsGraph.dependentsOf(asset.id);
+    final (didScane, hasAnnotation) = scanner.scan(asset);
+    if (didScane) {
+      processableAssets.add(ProcessableAsset(asset, AssetState.updated, hasAnnotation));
+    }
+    for (final dep in dependents) {
+      final asset = fileResolver.assetForUri(Uri.parse(dep[GraphIndex.assetUri]));
+      processableAssets.add(ProcessableAsset(asset, AssetState.needsUpdate, dep[GraphIndex.assetAnnotationFlag] == 1));
+    }
+    return processableAssets;
+  }
+
+  Set<ProcessableAsset> handleDeletedAsset(Asset asset) {
+    final processableAssets = <ProcessableAsset>{};
+    final generatingAssetArr = assetsGraph.getGeneratedSourceOf(asset.id);
+    if (generatingAssetArr != null) {
+      final uri = Uri.parse(generatingAssetArr[GraphIndex.assetUri]);
+      final generatedAsset = fileResolver.assetForUri(uri);
+      processableAssets.add(
+        ProcessableAsset(
+          generatedAsset,
+          AssetState.needsUpdate,
+          generatingAssetArr[GraphIndex.assetAnnotationFlag] == 1,
+        ),
+      );
+    }
+    assetsGraph.removeAsset(asset.id);
+    processableAssets.add(ProcessableAsset(asset, AssetState.deleted, false));
+    return processableAssets;
+  }
+
+  ProcessableAsset handleInsertedAsset(Asset asset) {
+    final scanner = AssetsScanner(assetsGraph, fileResolver);
+    final (didScane, hasAnnotation) = scanner.scan(asset);
+    if (didScane) {
+      return ProcessableAsset(asset, AssetState.inserted, hasAnnotation);
+    }
+    return ProcessableAsset(asset, AssetState.inserted, false);
   }
 }
 
@@ -232,4 +252,4 @@ class ProcessableAsset {
   }
 }
 
-enum AssetState { inserted, updated, deleted, needUpdate }
+enum AssetState { inserted, updated, deleted, needsUpdate }

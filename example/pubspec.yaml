@@ -11,6 +11,7 @@ environment:
 dependencies:
   lean_builder:
     path: ../../lean_builder
+  meta:
   # path: ^1.8.0
 
 dev_dependencies:

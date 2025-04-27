@@ -55,6 +55,10 @@ class SourceBasedCache<T> {
       }
     }
   }
+
+  void invalidateForSource(String source) {
+    _cache.remove(source);
+  }
 }
 
 class CompoundKey {

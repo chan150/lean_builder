@@ -10,10 +10,6 @@ class FileAssetReader {
 
   FileAssetReader(this.fileResolver);
 
-  bool isValid(String package, File file) {
-    return file.path.endsWith('.dart');
-  }
-
   Map<String, List<Asset>> listAssetsFor(Set<String> packages) {
     final assets = <String, List<Asset>>{};
     for (final package in packages) {
@@ -22,8 +18,8 @@ class FileAssetReader {
       final dir = Directory.fromUri(Uri.parse(packagePath));
       assert(dir.existsSync(), 'Package $package not found at ${dir.path}');
       for (final subDir in PackageFileResolver.dirsScheme.keys) {
-        /// Skip test directory for non-root packages
-        if (subDir == 'test' && package != fileResolver.rootPackage) continue;
+        /// Skip test and bin directory for non-root packages
+        if (subDir != 'lib' && package != fileResolver.rootPackage) continue;
         final subDirPath = Directory(p.join(dir.path, subDir));
         if (subDirPath.existsSync()) {
           _collectAssets(package, subDirPath, collection);
@@ -38,7 +34,7 @@ class FileAssetReader {
     for (final entity in directory.listSync()) {
       if (entity is Directory) {
         _collectAssets(package, entity, assets);
-      } else if (entity is File && isValid(package, entity)) {
+      } else if (entity is File) {
         assets.add(fileResolver.assetForUri(entity.uri));
       }
     }

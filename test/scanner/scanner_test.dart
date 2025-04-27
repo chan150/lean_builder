@@ -2,7 +2,7 @@ import 'package:lean_builder/src/asset/package_file_resolver.dart' show PackageF
 import 'package:lean_builder/src/graph/assets_graph.dart' show AssetsGraph;
 import 'package:lean_builder/src/graph/directive_statement.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
-import 'package:lean_builder/src/graph/symbols_scanner.dart' show SymbolsScanner;
+import 'package:lean_builder/src/graph/symbols_scanner.dart' show AssetsScanner;
 
 import 'package:test/expect.dart';
 import 'package:test/scaffolding.dart';
@@ -10,12 +10,12 @@ import 'package:test/scaffolding.dart';
 import 'string_asset_src.dart';
 
 main() {
-  late SymbolsScanner scanner;
+  late AssetsScanner scanner;
   late AssetsGraph assetsGraph;
   setUp(() {
     final fileResolver = PackageFileResolverImpl({'test': 'path/to/test'}, packagesHash: '', rootPackage: 'root');
     assetsGraph = AssetsGraph(fileResolver.packagesHash);
-    scanner = SymbolsScanner(assetsGraph, fileResolver);
+    scanner = AssetsScanner(assetsGraph, fileResolver);
   });
 
   test('TopLevelScanner should scan a file with const variables', () {

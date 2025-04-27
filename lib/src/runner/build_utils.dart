@@ -1,8 +1,8 @@
 import 'dart:io' show Platform;
 import 'dart:math';
 import 'package:lean_builder/builder.dart';
-import 'package:lean_builder/src/graph/isolate_symbols_scanner.dart';
 import 'package:lean_builder/runner.dart';
+import 'package:lean_builder/src/graph/asset_scan_manager.dart';
 
 List<List<ProcessableAsset>> calculateChunks(List<ProcessableAsset> assets) {
   final isolateCount = max(1, Platform.numberOfProcessors - 1);

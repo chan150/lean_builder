@@ -35,6 +35,15 @@ class Resolver {
 
   Resolver(this.graph, this.fileResolver, this.parser);
 
+  void invalidateAssetCache(Asset src) {
+    parser.invalidate(src.id);
+    _libraryCache.remove(src.id);
+    _resolvedUnitsCache.invalidateForSource(src.id);
+    _resolvedTypeRefs.invalidateForSource(src.id);
+    _elementResolveLocks.invalidateForSource(src.id);
+    evaluatedConstantsCache.invalidateForSource(src.id);
+  }
+
   LibraryElement resolveLibrary(Asset src, {bool preResolveTopLevelMetadata = false, bool allowSyntaxErrors = false}) {
     final library = libraryFor(src, allowSyntaxErrors: allowSyntaxErrors);
     final visitor = ElementBuilder(this, library, preResolveTopLevelMetadata: preResolveTopLevelMetadata);
@@ -189,6 +198,13 @@ class Resolver {
 
   Uri uriForAsset(String id) {
     return graph.uriForAsset(id);
+  }
+
+  bool isLibrary(Asset asset) {
+    if (!asset.uri.path.endsWith('.dart')) {
+      return false;
+    }
+    return graph.getParentSrc(asset.id) == asset.id;
   }
 
   void resolveDirectives(LibraryElementImpl library) {

@@ -75,7 +75,7 @@ class BuilderEntryImpl implements BuilderEntry {
 
   @override
   FutureOr<Set<Uri>> build(Resolver resolver, Asset asset) async {
-    final buildStep = BuildStepImpl(asset, resolver, allowedExtensions: builder.outputExtensions);
+    final buildStep = BuildStepImpl(asset, resolver, allowedExtensions: builder.allowedExtensions);
     await builder.build(buildStep);
     return buildStep.outputs;
   }
@@ -141,7 +141,7 @@ class CombiningBuilderEntry implements BuilderEntry {
   }
 
   static CombiningBuilderEntry fromEntries(List<BuilderEntryImpl> entries) {
-    final key = entries.map((e) => e.key).join(':');
+    final key = entries.map((e) => e.key).join('#');
     final builders = entries.map((e) => e.builder).toList();
     return CombiningBuilderEntry(
       builders: builders,
@@ -152,5 +152,5 @@ class CombiningBuilderEntry implements BuilderEntry {
   }
 
   @override
-  String toString() => 'Combined: $key';
+  String toString() => key;
 }

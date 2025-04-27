@@ -9,7 +9,7 @@ import '../scanner/string_asset_src.dart';
 
 void main() {
   late PackageFileResolver fileResolver;
-  SymbolsScanner? scanner;
+  AssetsScanner? scanner;
   Resolver? resolver;
 
   setUpAll(() {
@@ -19,7 +19,7 @@ void main() {
 
   setUp(() {
     final AssetsGraph graph = AssetsGraph('hash');
-    scanner = SymbolsScanner(graph, fileResolver);
+    scanner = AssetsScanner(graph, fileResolver);
     resolver = Resolver(graph, fileResolver, SourceParser());
   });
 

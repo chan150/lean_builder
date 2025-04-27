@@ -1,16 +1,19 @@
 import 'package:example/src/annotations.dart';
+import 'package:meta/meta.dart';
 
 part 'main.g.dart';
 
+@immutable
+@Serializable2()
 @Serializable()
-class Sample {
-  final Sample sample;
+class SampleX {
   final String name;
-  final int age82323 = 43333;
+  final int age42123 = 123222222;
 
-  Sample(this.sample, this.name);
+  SampleX(this.name);
 }
 
+@Serializable2()
 @Serializable()
 class Sample2 {
   final Sample2 sample;

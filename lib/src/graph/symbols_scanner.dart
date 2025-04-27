@@ -10,11 +10,11 @@ import 'package:lean_builder/src/logger.dart';
 
 import 'directive_statement.dart';
 
-class SymbolsScanner {
+class AssetsScanner {
   final ScanResults results;
   final PackageFileResolver fileResolver;
 
-  SymbolsScanner(this.results, this.fileResolver);
+  AssetsScanner(this.results, this.fileResolver);
 
   (bool didScane, bool hasTopLevelAnnotation) scan(Asset asset) {
     try {

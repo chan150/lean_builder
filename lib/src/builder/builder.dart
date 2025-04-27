@@ -16,13 +16,20 @@ abstract class Builder {
   /// Generates the outputs for a given [BuildStep].
   FutureOr<void> build(BuildStep buildStep);
 
-  /// possible extensions for generated files
+  /// Mapping from input file extension to output file extensions.
   ///
-  /// The first extension is the primary output, and the rest are
-  /// additional outputs.
+  /// All input sources matching any key in this map will be passed as build
+  /// step to this builder. Only files with the same basename and an extension
+  /// from the values in this map are expected as outputs.
   ///
-  /// this can not be empty
-  Set<String> get outputExtensions;
+  /// - If an empty key exists, all inputs are considered matching.
+  /// - An instance of a builder must always return the same configuration.
+  ///   Typically, a builder will return a `const` map.
+  /// - Most builders will use a single input extension and one or more output
+  ///   extensions.
+  Map<String, Set<String>> get buildExtensions;
+
+  Set<String> get allowedExtensions;
 }
 
 class BuilderOptions {
@@ -65,6 +72,9 @@ class BuildCandidate {
   final List<ExportedSymbol> exportedSymbols;
 
   BuildCandidate(this.asset, this.hasTopLevelMetadata, this.exportedSymbols);
+
+  Uri get uri => asset.uri;
+  String get path => uri.path;
 }
 
 class ExportedSymbol {

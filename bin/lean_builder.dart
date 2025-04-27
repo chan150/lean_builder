@@ -38,8 +38,10 @@ Future<int> _runAot(String scriptPath, List<String> args) async {
   final executableFile = File(getExecutablePath());
 
   if (!executableFile.existsSync()) {
+    final stopwatch = Stopwatch()..start();
     Logger.info('Compiling build script to AOT executable...');
     compileScript(scriptPath);
+    Logger.info('Compilation completed in ${stopwatch.elapsed.inMilliseconds} ms');
   }
   final dartExecutable = Platform.resolvedExecutable;
   final dartSdkDir = Directory(dartExecutable).parent.path;

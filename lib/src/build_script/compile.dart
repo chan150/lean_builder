@@ -1,8 +1,7 @@
 import 'dart:io';
 
 import 'errors.dart';
-
-const _scriptExecutable = '.dart_tool/lean_build/lean_build';
+import 'files.dart';
 
 void compileScript(String scriptPath) {
   final execPath = getExecutablePath();
@@ -17,9 +16,9 @@ void compileScript(String scriptPath) {
 
 String getExecutablePath() {
   if (Platform.isWindows) {
-    return '$_scriptExecutable.exe';
+    return '$scriptExecutable.exe';
   } else {
-    return _scriptExecutable;
+    return scriptExecutable;
   }
 }
 

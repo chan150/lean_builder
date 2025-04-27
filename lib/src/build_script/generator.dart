@@ -1,6 +1,6 @@
 import 'package:lean_builder/src/build_script/parsed_builder_entry.dart';
 
-String generateBuildScript(List<BuilderDefinitionEntry> entries) {
+String generateBuildScript(List<BuilderDefinitionEntry> entries, String scriptHash) {
   assert(entries.isNotEmpty);
   final importPrefixes = <String, String>{};
 
@@ -32,7 +32,7 @@ String generateBuildScript(List<BuilderDefinitionEntry> entries) {
 
   buffer.write('''
   void main(List<String> args) async {
-   await i1.runBuilders(_builders, args);
+   await i1.runBuilders(_builders, args, '$scriptHash');
   }
   ''');
   return buffer.toString();

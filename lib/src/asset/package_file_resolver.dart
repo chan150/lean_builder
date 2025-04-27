@@ -14,9 +14,14 @@ const _skyEnginePackage = 'sky_engine';
 
 /// Abstract interface for resolving package file paths
 abstract class PackageFileResolver {
-  static const dirsScheme = {'lib': 'package', 'test': 'asset'};
+  static const dirsScheme = {'lib': 'package', 'test': 'asset', 'bin': 'asset'};
   static const dartSdk = r'$sdk';
   static final dartSdkPath = Uri.file(p.dirname(p.dirname(Platform.resolvedExecutable)));
+
+  static bool isDirSupported(String? scheme) {
+    if (scheme == null) return false;
+    return dirsScheme.containsKey(scheme);
+  }
 
   /// Resolves a URI to an absolute URI
   Uri resolveFileUri(Uri uri, {Uri? relativeTo});
