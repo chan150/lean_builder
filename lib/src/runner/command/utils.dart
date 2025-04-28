@@ -1,10 +1,10 @@
 import 'dart:async';
 
-class AsyncDebouncer {
+class Debouncer {
   final Duration duration;
   Timer? _timer;
 
-  AsyncDebouncer(this.duration);
+  Debouncer(this.duration);
 
   void run(FutureOr<void> Function() action) {
     cancel();
@@ -22,4 +22,13 @@ class AsyncDebouncer {
 
   /// Whether there's a pending operation
   bool get isActive => _timer != null && _timer!.isActive;
+}
+
+extension DurationX on Duration {
+  String get formattedMS {
+    if (inMilliseconds < 1000) {
+      return '${inMilliseconds}ms';
+    }
+    return '${(inMilliseconds / 1000).toStringAsFixed(2)}s';
+  }
 }

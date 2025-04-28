@@ -3,11 +3,9 @@ import 'dart:io';
 
 import 'package:lean_builder/builder.dart';
 import 'package:lean_builder/runner.dart' show BuilderEntry;
-import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
 import 'package:lean_builder/src/graph/asset_scan_manager.dart';
 import 'package:lean_builder/src/graph/assets_graph.dart';
-import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/logger.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
 import 'package:lean_builder/src/runner/build_phase.dart' show BuildPhase;
@@ -55,9 +53,9 @@ class BuildCommand extends BaseCommand<int> {
       rootPackage: rootPackageName,
     );
 
-    Logger.info('Updating asset graph...');
+    Logger.info('Syncing assets graph...');
     final assets = await scanManager.scanAssets(scanOnlyRoot: assetsGraph.loadedFromCache);
-    Logger.info('Updating asset graph completed, took: ${stopWatch.elapsed.inMilliseconds} ms');
+    Logger.info("Assets graph synced in ${stopWatch.elapsed.formattedMS}.");
 
     final sourceParser = SourceParser();
     final resolver = Resolver(assetsGraph, fileResolver, sourceParser);
@@ -80,14 +78,14 @@ class BuildCommand extends BaseCommand<int> {
     );
 
     if (assets.isEmpty) {
-      Logger.success('Skipped: No assets to process ${stopWatch.elapsed.inMilliseconds} ms');
+      Logger.success('Build succeeded with no outputs ${stopWatch.elapsed.formattedMS}');
       return 0;
     }
 
     try {
       final outputCount = await build(assets: assets, builders: buildRunner.builderEntries, resolver: resolver);
       await resolver.graph.save();
-      Logger.success('Build succeeded in ${stopWatch.elapsed.inMilliseconds} ms: ($outputCount) outputs generated');
+      Logger.success('Build succeeded in ${stopWatch.elapsed.formattedMS}, with ($outputCount) outputs');
       return 0;
     } catch (e, stk) {
       await resolver.graph.save();
@@ -196,34 +194,30 @@ class WatchCommand extends BuildCommand {
 
     final watchStream = DirectoryWatcher(rootUri.path).events;
     final pendingAssets = <ProcessableAsset>{};
-    final debouncer = AsyncDebouncer(const Duration(milliseconds: 250));
+    final debouncer = Debouncer(const Duration(milliseconds: 150));
     watchStream.listen((event) async {
       final relative = p.relative(event.path, from: rootUri.path);
       final subDir = relative.split('/').firstOrNull;
       if (!PackageFileResolver.isDirSupported(subDir)) return;
       final asset = fileResolver.assetForUri(Uri.file(event.path));
 
-      final isGeneratedSource = assetsGraph.isAGeneratedSource(asset.id);
-      if (isGeneratedSource && event.type != ChangeType.REMOVE) {
+      if (assetsGraph.isAGeneratedSource(asset.id) && event.type != ChangeType.REMOVE) {
         // ignore generated sources changes
         return;
       }
 
       resolver.invalidateAssetCache(asset);
-      print('Asset changed: ${asset.shortUri} (${event.type}) generated: $isGeneratedSource');
       switch (event.type) {
         case ChangeType.ADD:
-          if (!isGeneratedSource) {
-            pendingAssets.add(scanManager.handleInsertedAsset(asset));
-          }
+          pendingAssets.add(scanManager.handleInsertedAsset(asset));
+
           break;
         case ChangeType.REMOVE:
           pendingAssets.addAll(scanManager.handleDeletedAsset(asset));
           break;
         case ChangeType.MODIFY:
-          if (!isGeneratedSource) {
-            pendingAssets.addAll(scanManager.handleUpdatedAsset(asset));
-          }
+          pendingAssets.addAll(scanManager.handleUpdatedAsset(asset));
+
           break;
       }
 
@@ -231,7 +225,7 @@ class WatchCommand extends BuildCommand {
         if (pendingAssets.isEmpty) return;
         final assetsToProcess = Set.of(pendingAssets);
         pendingAssets.clear();
-        Logger.info('Changes detected, processing ${assetsToProcess.length} assets...');
+        Logger.info('Starting build for ${assetsToProcess.length} effected assets');
         await _processAssets(assetsToProcess, resolver);
       });
     });

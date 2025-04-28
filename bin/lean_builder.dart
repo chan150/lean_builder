@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:lean_builder/src/build_script/build_script.dart';
 import 'package:lean_builder/src/build_script/compile.dart';
 import 'package:lean_builder/src/logger.dart';
+import 'package:lean_builder/src/runner/command/utils.dart';
 
 void main(List<String> args) async {
   try {
@@ -41,7 +42,7 @@ Future<int> _runAot(String scriptPath, List<String> args) async {
     final stopwatch = Stopwatch()..start();
     Logger.info('Compiling build script to AOT executable...');
     compileScript(scriptPath);
-    Logger.info('Compilation completed in ${stopwatch.elapsed.inMilliseconds} ms');
+    Logger.info('Compilation completed in ${stopwatch.elapsed.formattedMS}');
   }
   final dartExecutable = Platform.resolvedExecutable;
   final dartSdkDir = Directory(dartExecutable).parent.path;

@@ -22,7 +22,7 @@ class SerializationGenerator extends GeneratorForAnnotation {
     }
 
     final buffer = StringBuffer();
-
+    buffer.writeln('// ${annotatedElement.annotation.constant.toString()}');
     buffer.writeln('class ${element.name}Serializer {');
     for (final field in element.fields) {
       buffer.writeln('final ${field.type} ${field.name};');
