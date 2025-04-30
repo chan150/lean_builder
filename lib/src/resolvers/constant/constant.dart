@@ -38,6 +38,13 @@ sealed class Constant {
   bool get isObject => this is ConstObject;
 
   bool get isInvalid => this is InvalidConst;
+
+  Object? get literalValue {
+    if (this is ConstLiteral) {
+      return (this as ConstLiteral).value;
+    }
+    return null;
+  }
 }
 
 class InvalidConst extends Constant {
@@ -54,13 +61,13 @@ class InvalidConst extends Constant {
 }
 
 // represents a primitive constant value
-abstract class ConstValue<T> extends Constant {
-  const ConstValue(this.value);
+abstract class ConstLiteral<T> extends Constant {
+  const ConstLiteral(this.value);
 
   final T value;
 }
 
-class ConstTypeRef extends ConstValue<DartType> {
+class ConstTypeRef extends ConstLiteral<DartType> {
   ConstTypeRef(super.value);
 
   @override
@@ -74,7 +81,7 @@ class ConstTypeRef extends ConstValue<DartType> {
   int get hashCode => value.hashCode;
 }
 
-class ConstString extends ConstValue<String> {
+class ConstString extends ConstLiteral<String> {
   ConstString(super.value);
 
   @override
@@ -88,7 +95,7 @@ class ConstString extends ConstValue<String> {
   int get hashCode => value.hashCode;
 }
 
-class ConstNum extends ConstValue<num> {
+class ConstNum extends ConstLiteral<num> {
   ConstNum(super.value);
 
   @override
@@ -102,7 +109,7 @@ class ConstNum extends ConstValue<num> {
   int get hashCode => value.hashCode;
 }
 
-class ConstInt extends ConstValue<int> {
+class ConstInt extends ConstLiteral<int> {
   ConstInt(super.value);
 
   @override
@@ -116,7 +123,7 @@ class ConstInt extends ConstValue<int> {
   int get hashCode => value.hashCode;
 }
 
-class ConstDouble extends ConstValue<double> {
+class ConstDouble extends ConstLiteral<double> {
   ConstDouble(super.value);
 
   @override
@@ -130,7 +137,7 @@ class ConstDouble extends ConstValue<double> {
   int get hashCode => value.hashCode;
 }
 
-class ConstSymbol extends ConstValue<String> {
+class ConstSymbol extends ConstLiteral<String> {
   ConstSymbol(super.value);
 
   @override
@@ -144,7 +151,7 @@ class ConstSymbol extends ConstValue<String> {
   int get hashCode => value.hashCode;
 }
 
-class ConstBool extends ConstValue<bool> {
+class ConstBool extends ConstLiteral<bool> {
   ConstBool(super.value);
 
   @override
@@ -158,11 +165,12 @@ class ConstBool extends ConstValue<bool> {
   int get hashCode => value.hashCode;
 }
 
-class ConstEnumValue extends ConstValue<String> {
+class ConstEnumValue extends ConstLiteral<String> {
   final String enumName;
   final int index;
+  final InterfaceType type;
 
-  ConstEnumValue(this.enumName, super.value, this.index);
+  ConstEnumValue(this.enumName, super.value, this.index, this.type);
 
   @override
   String toString() => '$enumName.$value';
@@ -229,7 +237,7 @@ class ConstFunctionReferenceImpl extends ConstFunctionReference {
   int get hashCode => type.hashCode ^ name.hashCode ^ declaration.hashCode ^ const ListEquality().hash(_typeArguments);
 }
 
-class ConstList extends ConstValue<List<Constant>> {
+class ConstList extends ConstLiteral<List<Constant>> {
   ConstList(super.value);
 
   @override
@@ -244,7 +252,7 @@ class ConstList extends ConstValue<List<Constant>> {
   int get hashCode => const ListEquality().hash(value);
 }
 
-class ConstMap extends ConstValue<Map<Constant, Constant>> {
+class ConstMap extends ConstLiteral<Map<Constant, Constant>> {
   ConstMap(super.value);
 
   @override
@@ -259,7 +267,7 @@ class ConstMap extends ConstValue<Map<Constant, Constant>> {
   int get hashCode => const MapEquality().hash(value);
 }
 
-class ConstSet extends ConstValue<Set<Constant>> {
+class ConstSet extends ConstLiteral<Set<Constant>> {
   ConstSet(super.value);
 
   @override
@@ -274,10 +282,14 @@ class ConstSet extends ConstValue<Set<Constant>> {
   int get hashCode => const SetEquality().hash(value);
 }
 
-abstract class ConstObject extends ConstValue<Null> {
-  ConstObject() : super(null);
+abstract class ConstObject extends Constant {
+  ConstObject() : super();
 
   DartType get type;
+
+  String? get constructorName;
+
+  List<Expression> get constructorArguments;
 
   Map<String, Constant?> get props;
 
@@ -309,7 +321,13 @@ abstract class ConstObject extends ConstValue<Null> {
 }
 
 class ConstObjectImpl extends ConstObject {
-  ConstObjectImpl(this.props, this.type, {this.positionalNames = const {}});
+  ConstObjectImpl(
+    this.props,
+    this.type, {
+    this.positionalNames = const {},
+    this.constructorName,
+    this.constructorArguments = const [],
+  });
 
   @override
   final DartType type;
@@ -357,13 +375,16 @@ class ConstObjectImpl extends ConstObject {
 
   T? _getTyped<T extends Constant>(String key) {
     final value = props[key];
+    if (value == null) {
+      return null;
+    }
     if (value is T) {
       return value;
     }
-    throw Exception('Value for $key is not of type $T');
+    throw Exception('Value for $key is expected to be $T, but got ${value.runtimeType}');
   }
 
-  ConstObjectImpl mergeArgs(ArgumentList args, ConstantEvaluator evaluator) {
+  ConstObjectImpl construct(ArgumentList args, String? name, ConstantEvaluator evaluator) {
     final props = Map.of(this.props);
     for (var i = 0; i < args.arguments.length; i++) {
       final arg = args.arguments[i];
@@ -377,7 +398,13 @@ class ConstObjectImpl extends ConstObject {
         }
       }
     }
-    return ConstObjectImpl(props, type, positionalNames: positionalNames);
+    return ConstObjectImpl(
+      props,
+      type,
+      positionalNames: positionalNames,
+      constructorName: name,
+      constructorArguments: List.of(args.arguments),
+    );
   }
 
   @override
@@ -390,4 +417,10 @@ class ConstObjectImpl extends ConstObject {
 
   @override
   int get hashCode => const MapEquality().hash(props) ^ type.hashCode;
+
+  @override
+  final List<Expression> constructorArguments;
+
+  @override
+  final String? constructorName;
 }

@@ -88,7 +88,8 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
       if (initializer is ConstructorFieldInitializer) {
         values[initializer.fieldName.name] = initializer.expression.accept(this);
       } else if (initializer is SuperConstructorInvocation) {
-        superConstObj = superConstObj?.mergeArgs(initializer.argumentList, this);
+        final constructorName = initializer.constructorName?.name;
+        superConstObj = superConstObj?.construct(initializer.argumentList, constructorName, this);
       }
     }
     if (superConstObj != null) {
@@ -135,7 +136,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
   }
 
   dynamic _valueOf(Constant? constant) {
-    if (constant is ConstValue) {
+    if (constant is ConstLiteral) {
       return constant.value;
     }
     return null;
@@ -331,7 +332,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
     });
 
     if (constant is ConstObjectImpl) {
-      return constant.mergeArgs(node.argumentList, this);
+      return constant.construct(node.argumentList, constructorNode.name?.lexeme, this);
     }
     return Constant.invalid;
   }
@@ -527,7 +528,8 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
       final name = node.name.lexeme;
       final enumDeclaration = node.parent as EnumDeclaration;
       final index = enumDeclaration.constants.indexWhere((e) => e.name.lexeme == name);
-      return ConstEnumValue(enumDeclaration.name.lexeme, node.name.lexeme, index);
+      final enumType = InterfaceTypeImpl(enumDeclaration.name.lexeme, loc, _resolver);
+      return ConstEnumValue(enumDeclaration.name.lexeme, node.name.lexeme, index, enumType);
     } else if (node is FieldDeclaration) {
       assert(node.isStatic, 'Fields reference in constant context should be static');
       final variable = node.fields.variables.firstWhere(

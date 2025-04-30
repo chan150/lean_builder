@@ -64,6 +64,8 @@ abstract class FunctionElement implements ExecutableElement {
   /// The name of the function used as an entry point.
   static const String kMainFunctionName = "main";
 
+  static final String kCALLMethodName = "call";
+
   /// Whether the function is an entry point, i.e. a top-level function and
   /// has the name `main`.
   bool get isEntryPoint;
@@ -94,7 +96,10 @@ abstract class ConstructorElement implements ClassMemberElement, ExecutableEleme
   ConstructorElementRef? get superConstructor;
 }
 
-abstract class MethodElement implements ClassMemberElement, ExecutableElement {}
+abstract class MethodElement implements ClassMemberElement, ExecutableElement {
+  @override
+  Element get enclosingElement;
+}
 
 abstract class ExecutableElementImpl extends ElementImpl
     with TypeParameterizedElementMixin

@@ -24,7 +24,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     final library = currentLibrary();
     if (library.hasElement(node.name.lexeme)) return;
     final extensionTypeElement = ExtensionTypeImpl(name: node.name.lexeme, library: library, compilationUnit: node);
-
+    _setCodeRange(extensionTypeElement, node);
     library.addElement(extensionTypeElement);
     visitElementScoped(extensionTypeElement, () {
       node.documentationComment?.accept(this);
@@ -62,6 +62,9 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       hasFinal: node.finalKeyword != null,
       isMixinApplication: true,
     );
+
+    _setCodeRange(clazzElement, node);
+
     visitElementScoped(clazzElement, () {
       node.documentationComment?.accept(this);
       node.typeParameters?.visitChildren(this);
@@ -133,6 +136,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     final library = currentLibrary();
     if (library.hasElement(node.name.lexeme)) return;
     final typeAliasElm = TypeAliasElementImpl(name: node.name.lexeme, library: library);
+    _setCodeRange(typeAliasElm, node);
     library.addElement(typeAliasElm);
     visitElementScoped(typeAliasElm, () {
       node.documentationComment?.accept(this);
@@ -156,6 +160,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     final library = currentLibrary();
     if (library.hasElement(node.name.lexeme)) return;
     final funcElement = FunctionElementImpl(name: node.name.lexeme, enclosingElement: library);
+    _setCodeRange(funcElement, node);
     visitElementScoped(funcElement, () {
       node.documentationComment?.accept(this);
       node.typeParameters?.visitChildren(this);
@@ -196,6 +201,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       isMixinApplication: false,
     );
     library.addElement(classElement);
+    _setCodeRange(classElement, node);
 
     visitElementScoped(classElement, () {
       node.documentationComment?.accept(this);
@@ -234,6 +240,8 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       library: libraryElement,
       isBase: node.baseKeyword != null,
     );
+
+    _setCodeRange(mixinElement, node);
     libraryElement.addElement(mixinElement);
 
     visitElementScoped(mixinElement, () {
@@ -266,6 +274,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
 
     final enumElement = EnumElementImpl(name: node.name.lexeme, library: library, compilationUnit: node);
     library.addElement(enumElement);
+    _setCodeRange(enumElement, node);
 
     enumElement.thisType = InterfaceTypeImpl(
       enumElement.name,
@@ -293,6 +302,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
   @override
   void visitEnumConstantDeclaration(EnumConstantDeclaration node) {
     final enumElement = currentElementAs<EnumElementImpl>();
+
     final fieldEle = FieldElementImpl(
       name: node.name.lexeme,
       isStatic: true,
@@ -306,6 +316,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       isLate: false,
       isExternal: false,
       type: enumElement.thisType,
+      isSynthetic: node.isSynthetic,
     );
     visitElementScoped(fieldEle, () {
       node.documentationComment?.accept(this);
@@ -321,10 +332,11 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
           orElse: () => throw Exception('Could not find constructor'),
         );
         final constantObj = constEvaluator.evaluate(constructor) as ConstObjectImpl?;
-        return constantObj?.mergeArgs(args.argumentList, constEvaluator);
+        return constantObj?.construct(args.argumentList, constructorName?.name, constEvaluator);
       });
     }
     enumElement.addField(fieldEle);
+    _setCodeRange(fieldEle, node);
     registerMetadataResolver(fieldEle, node.metadata);
   }
 
@@ -445,6 +457,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
         isConst: node.fields.isConst,
         isFinal: node.fields.isFinal,
         isLate: node.fields.isLate,
+        isSynthetic: variable.isSynthetic,
         type: fieldType,
       );
       fieldEle.initializer = variable.initializer;
@@ -454,14 +467,10 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
           return constEvaluator.evaluate(variable.initializer!);
         });
       }
+      _setCodeRange(fieldEle, variable);
       interfaceElement.addField(fieldEle);
       registerMetadataResolver(fieldEle, variable.metadata);
     }
-  }
-
-  @override
-  void visitPropertyAccess(PropertyAccess node) {
-    print(node);
   }
 
   @override
@@ -483,6 +492,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
         typeArgs.add(resolveTypeRef(typeArg, currentElement));
       }
       final elem = ElementAnnotationImpl(
+        annotatedElement: currentElement,
         type: InterfaceTypeImpl(className, decRef, resolver, typeArguments: typeArgs),
         declarationRef: decRef,
         constantValueCompute: () {
@@ -497,7 +507,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
           }
           final obj = constantEvaluator.evaluate(constructor) as ConstObjectImpl?;
           if (node.arguments != null) {
-            return obj?.mergeArgs(node.arguments!, constantEvaluator);
+            return obj?.construct(node.arguments!, constructor.name?.lexeme, constantEvaluator);
           }
           return obj;
         },
@@ -537,6 +547,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
         typeRef = InterfaceTypeImpl(identifier.topLevelTarget, declarationRef, resolver, typeArguments: typeArgs);
       }
       final elem = ElementAnnotationImpl(
+        annotatedElement: currentElement,
         type: typeRef,
         declarationRef: decRef,
         constantValueCompute: () {
@@ -561,6 +572,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       isGenerator: body.isGenerator,
       isSynchronous: body.isSynchronous,
     );
+    _setCodeRange(funcElement, node);
     libraryElement.addElement(funcElement);
     visitElementScoped(funcElement, () {
       node.documentationComment?.accept(this);
@@ -751,6 +763,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
 
     parameterElement.type = type ?? DartType.neverType;
     registerMetadataResolver(parameterElement, node.metadata);
+    _setCodeRange(parameterElement, node);
     return parameterElement;
   }
 
@@ -785,6 +798,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       if (!preResolveTopLevelMetadata) {
         registerMetadataResolver(topLevelVar, node.metadata);
       }
+      _setCodeRange(topLevelVar, variable);
       library.addElement(topLevelVar);
     }
   }
@@ -829,6 +843,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       isNullable: false,
     );
 
+    _setCodeRange(methodElement, node);
     registerMetadataResolver(methodElement, node.metadata);
   }
 
@@ -858,6 +873,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       superConstructor: superConstructor,
     );
 
+    _setCodeRange(constructorElement, node);
     interfaceElement.addConstructor(constructorElement);
     constructorElement.returnType = interfaceElement.thisType;
 
@@ -897,5 +913,23 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       }
     }
     currentElementAs<ElementImpl>().documentationComment = buffer.toString();
+  }
+
+  void _setCodeRange(ElementImpl element, AstNode node) {
+    var parent = node.parent;
+    if (node is FormalParameter && parent is DefaultFormalParameter) {
+      node = parent;
+    }
+
+    if (node is VariableDeclaration && parent is VariableDeclarationList) {
+      var fieldDeclaration = parent.parent;
+      if (fieldDeclaration != null && parent.variables.first == node) {
+        var offset = fieldDeclaration.offset;
+        element.setCodeRange(offset, node.end - offset);
+        return;
+      }
+    }
+
+    element.setCodeRange(node.offset, node.length);
   }
 }

@@ -2,6 +2,7 @@ import 'package:lean_builder/builder.dart';
 import 'package:lean_builder/src/element/element.dart';
 import 'package:collection/collection.dart';
 import 'package:lean_builder/src/graph/identifier_ref.dart' show DeclarationRef;
+import 'package:lean_builder/src/type/substitution.dart';
 
 import 'core_type_source.dart';
 
@@ -24,6 +25,7 @@ sealed class DartType {
   static const dynamicType = DynamicType.instance;
   static const neverType = NeverType.instance;
   static const invalidType = InvalidType.instance;
+  static const unknownInferredType = UnknownInferredType.instance;
 
   /// Return `true` if this type represents the type 'void'
   bool get isVoid;
@@ -299,6 +301,12 @@ class InvalidType extends NonElementType {
   bool get isInvalid => true;
 }
 
+class UnknownInferredType extends NonElementType {
+  const UnknownInferredType._() : super('UnknownInferred', isNullable: false);
+
+  static const UnknownInferredType instance = UnknownInferredType._();
+}
+
 abstract class InterfaceType extends NamedDartType {
   @override
   InterfaceElement get element;
@@ -309,7 +317,21 @@ abstract class InterfaceType extends NamedDartType {
 
   NamedDartType? get superType;
 
-  List<NamedDartType> get allSuperTypes;
+  List<NamedDartType> get allSupertypes;
+
+  MethodElement? getMethod(String name);
+
+  FieldElement? getField(String name);
+
+  ConstructorElement? getConstructor(String name);
+
+  bool hasMethod(String name);
+
+  bool hasPropertyAccessor(String name);
+
+  bool hasField(String name);
+
+  bool hasConstructor(String name);
 }
 
 class InterfaceTypeImpl extends TypeImpl implements InterfaceType {
@@ -450,7 +472,7 @@ class InterfaceTypeImpl extends TypeImpl implements InterfaceType {
   InterfaceElement _resolveElement() {
     final ele = resolver.elementOf(this);
     if (ele is! InterfaceElement) {
-      throw Exception('Element of $this is not an InterfaceElement');
+      throw Exception('Element of $this is not an InterfaceElement (${ele.runtimeType})');
     }
     return ele;
   }
@@ -459,7 +481,7 @@ class InterfaceTypeImpl extends TypeImpl implements InterfaceType {
   InterfaceElement get element => _element ??= _resolveElement();
 
   @override
-  List<NamedDartType> get allSuperTypes => element.allSuperTypes;
+  List<NamedDartType> get allSupertypes => element.allSupertypes;
 
   @override
   List<NamedDartType> get interfaces => element.interfaces;
@@ -469,6 +491,41 @@ class InterfaceTypeImpl extends TypeImpl implements InterfaceType {
 
   @override
   NamedDartType? get superType => element.superType;
+
+  @override
+  ConstructorElement? getConstructor(String name) {
+    return element.getConstructor(name);
+  }
+
+  @override
+  FieldElement? getField(String name) {
+    return element.getField(name);
+  }
+
+  @override
+  MethodElement? getMethod(String name) {
+    return element.getMethod(name);
+  }
+
+  @override
+  bool hasConstructor(String name) {
+    return element.hasConstructor(name);
+  }
+
+  @override
+  bool hasField(String name) {
+    return element.hasField(name);
+  }
+
+  @override
+  bool hasMethod(String name) {
+    return element.hasMethod(name);
+  }
+
+  @override
+  bool hasPropertyAccessor(String name) {
+    return element.hasPropertyAccessor(name);
+  }
 }
 
 abstract class TypeAliasType extends NamedDartType {
@@ -650,15 +707,45 @@ class FunctionType extends TypeImpl {
 
   @override
   Null get element => null;
+
+  FunctionType instantiate(List<DartType> argumentTypes) {
+    if (argumentTypes.length != typeParameters.length) {
+      throw ArgumentError(
+        "argumentTypes.length (${argumentTypes.length}) != "
+        "typeParameters.length (${typeParameters.length})",
+      );
+    }
+    if (argumentTypes.isEmpty) {
+      return this;
+    }
+
+    var substitution = Substitution.fromPairs(typeParameters, argumentTypes);
+
+    final newParams = List.of(parameters);
+    for (final param in parameters.whereType<ParameterElementImpl>()) {
+      param.type = substitution.substituteType(param.type);
+    }
+
+    return FunctionType(
+      returnType: substitution.substituteType(returnType),
+      typeParameters: const [],
+      parameters: newParams,
+      isNullable: isNullable,
+    );
+  }
 }
 
 class TypeParameterType extends TypeImpl {
   final DartType bound;
 
+  /// todo: investigate if implemented this is needed in the const context
+  /// for now it always returns null
+  final DartType? promotedBound;
+
   @override
   final String name;
 
-  TypeParameterType(this.name, {required this.bound, super.isNullable = false});
+  TypeParameterType(this.name, {required this.bound, super.isNullable = false, this.promotedBound});
 
   @override
   TypeParameterType withNullability(bool isNullable) {

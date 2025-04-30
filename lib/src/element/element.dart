@@ -102,6 +102,15 @@ abstract class Element {
   bool get isPrivate;
 
   bool get isPublic;
+
+  /// The length of the name of this element in the file that contains the
+  /// declaration of this element, or `0` if this element does not have a name.
+  int get nameLength;
+
+  /// The offset of the name of this element in the file that contains the
+  /// declaration of this element, or `-1` if this element is synthetic, does
+  /// not have a name, or otherwise does not have an offset.
+  int get nameOffset;
 }
 
 abstract class TypeParameterizedElement extends Element {
@@ -141,7 +150,7 @@ abstract class InstanceElement extends Element implements TypeParameterizedEleme
 abstract class InterfaceElement extends InstanceElement with TypeParameterizedElementMixin {
   NamedDartType? get superType;
 
-  List<InterfaceType> get allSuperTypes;
+  List<InterfaceType> get allSupertypes;
 
   List<NamedDartType> get mixins;
 
@@ -246,9 +255,14 @@ abstract class FieldElement extends ClassMemberElement implements VariableElemen
 
   bool get isExternal;
 
+  bool get isSynthetic;
+
   PropertyAccessorElement? get getter;
 
   PropertyAccessorElement? get setter;
+
+  @override
+  Element get enclosingElement;
 }
 
 abstract class ParameterElement extends VariableElement {

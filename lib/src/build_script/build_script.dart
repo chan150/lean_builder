@@ -110,7 +110,7 @@ List<ParsedBuilderEntry> _parseAll(Map<String, File> configFiles) {
         for (final entry in builders.entries) {
           final builder = entry.value;
           final import = builder['import'] as String?;
-          if (import == null || Uri.tryParse(import)?.scheme != 'package') {
+          if (import == null) {
             throw BuildConfigError('Expected a valid `import` key in ${file.path}');
           }
           final builderFactory = builder['builder_factory'] as String?;

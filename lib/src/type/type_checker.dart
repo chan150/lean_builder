@@ -106,7 +106,7 @@ abstract class TypeChecker {
   /// `void` or function types.
   bool isExactlyType(DartType typeRef);
 
-  NamedDartType? matchingTypeOrSuperType(DartType typeRef);
+  NamedDartType? matchingTypeOrSupertype(DartType typeRef);
 
   /// Returns `true` if representing a super class of [element].
   ///
@@ -114,7 +114,7 @@ abstract class TypeChecker {
   /// to check mixins and interfaces, use [isAssignableFrom].
   bool isSuperOf(Element element) {
     if (element is InterfaceElement) {
-      return isSuperTypeOf(element.thisType);
+      return isSupertypeOf(element.thisType);
     }
     return false;
   }
@@ -123,7 +123,7 @@ abstract class TypeChecker {
   ///
   /// This only takes into account the *extends* hierarchy. If you wish
   /// to check mixins and interfaces, use [isAssignableFromType].
-  bool isSuperTypeOf(DartType type);
+  bool isSupertypeOf(DartType type);
 }
 
 class _RefTypeChecker extends _TypeCheckerImpl {
@@ -186,7 +186,7 @@ abstract class _TypeCheckerImpl extends TypeChecker {
 
   final _superTypeChecksCache = <String, (bool, NamedDartType?)>{};
 
-  (bool, NamedDartType?) _checkSuperTypesRecursively(
+  (bool, NamedDartType?) _checkSupertypesRecursively(
     NamedDartType typeToCheck,
     LibraryElement importingLib, {
     bool extendClauseOnly = false,
@@ -225,7 +225,7 @@ abstract class _TypeCheckerImpl extends TypeChecker {
         if (match) {
           return _superTypeChecksCache[reqId] = (true, type);
         } else if (typesToSuperCheck.isNotEmpty) {
-          return _checkSuperTypesRecursively(typesToSuperCheck.keys.first, typesToSuperCheck.values.first);
+          return _checkSupertypesRecursively(typesToSuperCheck.keys.first, typesToSuperCheck.values.first);
         }
       }
       return _superTypeChecksCache[reqId] = (false, null);
@@ -268,7 +268,7 @@ abstract class _TypeCheckerImpl extends TypeChecker {
     }
 
     for (final entry in typesToSuperCheck.entries) {
-      final (match, type) = _checkSuperTypesRecursively(entry.key, entry.value);
+      final (match, type) = _checkSupertypesRecursively(entry.key, entry.value);
       if (match) {
         return _superTypeChecksCache[reqId] = (true, type);
       }
@@ -300,21 +300,21 @@ abstract class _TypeCheckerImpl extends TypeChecker {
   }
 
   @override
-  bool isSuperTypeOf(DartType typeRef) => _isSuperTypeOf(typeRef, extendClauseOnly: true);
+  bool isSupertypeOf(DartType typeRef) => _isSupertypeOf(typeRef, extendClauseOnly: true);
 
-  bool _isSuperTypeOf(DartType typeRef, {bool extendClauseOnly = false}) {
+  bool _isSupertypeOf(DartType typeRef, {bool extendClauseOnly = false}) {
     if (typeRef is InterfaceType) {
       final importingLibrary = typeRef.declarationRef.importingLibrary;
       if (importingLibrary == null) return false;
       final importingLib = typeRef.resolver.libraryFor(importingLibrary);
-      final (match, _) = _checkSuperTypesRecursively(typeRef, importingLib, extendClauseOnly: extendClauseOnly);
+      final (match, _) = _checkSupertypesRecursively(typeRef, importingLib, extendClauseOnly: extendClauseOnly);
       return match;
     }
     return false;
   }
 
   @override
-  NamedDartType? matchingTypeOrSuperType(DartType typeRef) {
+  NamedDartType? matchingTypeOrSupertype(DartType typeRef) {
     if (typeRef is InterfaceType) {
       if (isExactlyType(typeRef)) {
         return typeRef;
@@ -322,7 +322,7 @@ abstract class _TypeCheckerImpl extends TypeChecker {
       final importingLibrary = typeRef.declarationRef.importingLibrary;
       if (importingLibrary == null) return null;
       final importingLib = typeRef.resolver.libraryFor(importingLibrary);
-      final (match, superType) = _checkSuperTypesRecursively(typeRef, importingLib);
+      final (match, superType) = _checkSupertypesRecursively(typeRef, importingLib);
       return match ? superType : null;
     }
     return null;
@@ -334,7 +334,7 @@ abstract class _TypeCheckerImpl extends TypeChecker {
       return true;
     }
     if (typeRef is NamedDartType) {
-      return _isSuperTypeOf(typeRef);
+      return _isSupertypeOf(typeRef);
     }
     return false;
   }
@@ -354,14 +354,14 @@ class _AnyChecker extends TypeChecker {
   }
 
   @override
-  bool isSuperTypeOf(DartType typeRef) {
-    return _checkers.any((c) => c.isSuperTypeOf(typeRef));
+  bool isSupertypeOf(DartType typeRef) {
+    return _checkers.any((c) => c.isSupertypeOf(typeRef));
   }
 
   @override
-  NamedDartType? matchingTypeOrSuperType(DartType typeRef) {
+  NamedDartType? matchingTypeOrSupertype(DartType typeRef) {
     for (final checker in _checkers) {
-      final result = checker.matchingTypeOrSuperType(typeRef);
+      final result = checker.matchingTypeOrSupertype(typeRef);
       if (result != null) {
         return result;
       }

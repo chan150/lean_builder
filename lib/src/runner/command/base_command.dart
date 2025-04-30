@@ -1,8 +1,5 @@
-import 'dart:async';
-
 import 'package:args/command_runner.dart';
 import 'package:lean_builder/src/logger.dart';
-import 'package:meta/meta.dart';
 
 abstract class BaseCommand<T> extends Command<T> {
   BaseCommand() {

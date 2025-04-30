@@ -11,6 +11,8 @@ abstract class ElementAnnotation {
 
   DartType get type;
 
+  Element get annotatedElement;
+
   DeclarationRef get declarationRef;
 
   /// Whether the annotation marks the associated function as always throwing.
@@ -107,9 +109,12 @@ class ElementAnnotationImpl implements ElementAnnotation {
 
   @override
   String get name => declarationRef.identifier;
+  @override
+  final Element annotatedElement;
 
   ElementAnnotationImpl({
     required this.type,
+    required this.annotatedElement,
     required ConstantValueCompute constantValueCompute,
     required this.declarationRef,
   }) : _constantValueCompute = constantValueCompute;

@@ -15,6 +15,7 @@ import 'package:lean_builder/src/resolvers/source_based_cache.dart';
 import 'package:collection/collection.dart';
 import 'package:lean_builder/src/type/type.dart';
 import 'package:lean_builder/src/type/type_checker.dart';
+import 'package:lean_builder/src/type/type_utils.dart';
 import 'package:synchronized/synchronized.dart';
 import 'package:xxh3/xxh3.dart';
 
@@ -26,6 +27,8 @@ class Resolver {
   final AssetsGraph graph;
   final SourceParser parser;
   final PackageFileResolver fileResolver;
+  late final typeUtils = TypeUtils(this);
+
   final _libraryCache = HashMap<String, LibraryElementImpl>();
   final _typeCheckersCache = HashMap<String, TypeChecker>();
   final _resolvedUnitsCache = SourceBasedCache<(LibraryElementImpl, AstNode, DeclarationRef)>();
@@ -120,7 +123,7 @@ class Resolver {
     return null;
   }
 
-  List<InterfaceType> allSuperTypesOf(InterfaceElement element) {
+  List<InterfaceType> allSupertypesOf(InterfaceElement element) {
     final superTypes = <InterfaceType>[];
     final thisLevelTypes = <NamedDartType>[
       if (element.superType != null) element.superType!,
@@ -133,7 +136,7 @@ class Resolver {
       final supElement = type.element;
       if (supElement is InterfaceElement) {
         superTypes.add(type as InterfaceType);
-        final subTypes = allSuperTypesOf(supElement);
+        final subTypes = allSupertypesOf(supElement);
         superTypes.addAll(subTypes);
       } else if (supElement is TypeAliasElement && supElement.aliasedType is NamedDartType) {
         // if it's a NamedDartType it should eventually point to an InterfaceType
@@ -142,7 +145,7 @@ class Resolver {
           throw Exception('Type $type is not an interface type');
         }
         superTypes.add(aliasedType);
-        final subTypes = allSuperTypesOf(aliasedType.element);
+        final subTypes = allSupertypesOf(aliasedType.element);
         superTypes.addAll(subTypes);
       } else if (supElement != null) {
         throw Exception('Type $type is not an interface type');

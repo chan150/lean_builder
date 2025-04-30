@@ -108,6 +108,19 @@ abstract class ElementImpl implements Element {
   @override
   bool get isPublic => !isPrivate;
 
+  int _nameLength = 0;
+
+  int get nameLength => _nameLength;
+
+  int _nameOffset = -1;
+
+  int get nameOffset => _nameOffset;
+
+  void setCodeRange(int nameLength, int nameOffset) {
+    _nameLength = nameLength;
+    _nameOffset = nameOffset;
+  }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) || other is Element && runtimeType == other.runtimeType && identifier == other.identifier;
@@ -462,8 +475,8 @@ class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixi
   List<NamedDartType> get mixins => _mixins;
 
   @override
-  List<InterfaceType> get allSuperTypes {
-    return _allSuperTypes ??= library.resolver.allSuperTypesOf(this);
+  List<InterfaceType> get allSupertypes {
+    return _allSuperTypes ??= library.resolver.allSupertypesOf(this);
   }
 
   @override
@@ -564,7 +577,8 @@ abstract class VariableElementImpl extends ElementImpl implements VariableElemen
     required this.isFinal,
     required this.isLate,
     required this.isStatic,
-  });
+    DartType? type,
+  }) : _type = type;
 
   @override
   final Element enclosingElement;
@@ -645,6 +659,7 @@ class FieldElementImpl extends VariableElementImpl implements ClassMemberElement
     required super.isConst,
     required super.isFinal,
     required super.isLate,
+    required this.isSynthetic,
     required this.isAbstract,
     required this.isCovariant,
     required this.isEnumConstant,
@@ -660,6 +675,9 @@ class FieldElementImpl extends VariableElementImpl implements ClassMemberElement
   final bool isEnumConstant;
   @override
   final bool isExternal;
+
+  @override
+  final bool isSynthetic;
 
   @override
   LibraryElement get library => enclosingElement.library;
@@ -705,6 +723,7 @@ class ParameterElementImpl extends VariableElementImpl implements ParameterEleme
     required this.isRequiredPositional,
     required this.isRequiredNamed,
     required this.isSuperFormal,
+    super.type,
   }) : super(isStatic: false);
 
   @override
@@ -765,6 +784,36 @@ class ParameterElementImpl extends VariableElementImpl implements ParameterEleme
     }
     return [];
   }
+
+  ParameterElementImpl changeKind({
+    bool? isNamed,
+    bool? isOptional,
+    bool? isPositional,
+    bool? isRequired,
+    bool? isRequiredPositional,
+    bool? isRequiredNamed,
+    bool? isOptionalNamed,
+    bool? isOptionalPositional,
+  }) => ParameterElementImpl(
+    name: name,
+    enclosingElement: enclosingElement,
+    hasImplicitType: hasImplicitType,
+    isConst: isConst,
+    isFinal: isFinal,
+    isLate: isLate,
+    type: _type,
+    isSuperFormal: isSuperFormal,
+    isCovariant: isCovariant,
+    isInitializingFormal: isInitializingFormal,
+    isNamed: isNamed ?? this.isNamed,
+    isOptional: isOptional ?? this.isOptional,
+    isOptionalNamed: isOptionalNamed ?? this.isOptionalNamed,
+    isOptionalPositional: isOptionalPositional ?? this.isOptionalPositional,
+    isPositional: isPositional ?? this.isPositional,
+    isRequired: isRequired ?? this.isRequired,
+    isRequiredPositional: isRequiredPositional ?? this.isRequiredPositional,
+    isRequiredNamed: isRequiredNamed ?? this.isRequiredNamed,
+  );
 }
 
 class ClassElementImpl extends InterfaceElementImpl implements ClassElement {
