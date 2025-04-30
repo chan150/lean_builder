@@ -2,7 +2,7 @@ import 'package:example/src/annotations.dart';
 
 part 'model.g.dart';
 
-@Serializable('Hello')
+@Serializable('Heleelo')
 class Model {
   final String name;
   final int age = 123;

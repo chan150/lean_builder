@@ -100,7 +100,13 @@ abstract class ElementImpl implements Element {
   bool get hasVisibleForOverriding => metadata.any((m) => m.isVisibleForOverriding);
 
   @override
-  String get identifier => '${library.src}#$name';
+  String get identifier => '${library.src.shortUri}#$name';
+
+  @override
+  bool get isPrivate => Identifier.isPrivateName(name);
+
+  @override
+  bool get isPublic => !isPrivate;
 
   @override
   bool operator ==(Object other) =>
@@ -122,7 +128,9 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   @override
   final Resolver resolver;
 
-  final List<Element> resolvedElements = [];
+  List<Element> get resolvedElements => List.unmodifiable(_resolvedElements);
+
+  final List<Element> _resolvedElements = [];
 
   NamedCompilationUnitMember? getNamedUnitMember(String name) {
     return compilationUnit.declarations.whereType<NamedCompilationUnitMember>().firstWhereOrNull(
@@ -143,7 +151,7 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   bool _didResolveAllFunctions = false;
 
   void addElement(Element element) {
-    resolvedElements.add(element);
+    _resolvedElements.add(element);
   }
 
   @override
@@ -159,7 +167,7 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   LibraryElement get library => this;
 
   List<E> _elementsOfType<E extends Element>() {
-    return List<E>.unmodifiable(resolvedElements.whereType<E>());
+    return List<E>.unmodifiable(_resolvedElements.whereType<E>());
   }
 
   @override
@@ -318,17 +326,17 @@ class AnnotatedElement {
 }
 
 mixin TypeParameterizedElementMixin on Element implements TypeParameterizedElement {
-  final List<TypeParameterTypeRef> _typeParameters = [];
+  final List<TypeParameterType> _typeParameters = [];
 
   @override
-  List<TypeParameterTypeRef> get typeParameters => _typeParameters;
+  List<TypeParameterType> get typeParameters => _typeParameters;
 
-  void addTypeParameter(TypeParameterTypeRef typeParameter) {
+  void addTypeParameter(TypeParameterType typeParameter) {
     _typeParameters.add(typeParameter);
   }
 
-  List<TypeParameterTypeRef> get allTypeParameters {
-    final List<TypeParameterTypeRef> allTypeParameters = [];
+  List<TypeParameterType> get allTypeParameters {
+    final List<TypeParameterType> allTypeParameters = [];
     allTypeParameters.addAll(typeParameters);
     if (enclosingElement is TypeParameterizedElementMixin) {
       allTypeParameters.addAll((enclosingElement as TypeParameterizedElementMixin).allTypeParameters);
@@ -338,26 +346,36 @@ mixin TypeParameterizedElementMixin on Element implements TypeParameterizedEleme
 }
 
 class ExtensionTypeImpl extends InterfaceElementImpl {
-  ExtensionTypeImpl({required super.name, required super.library});
+  ExtensionTypeImpl({required super.name, required super.library, required super.compilationUnit});
 }
 
 class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixin implements InterfaceElement {
-  final List<NamedTypeRef> _mixins = [];
-  final List<NamedTypeRef> _interfaces = [];
-  final List<NamedTypeRef> _superConstrains = [];
+  final List<NamedDartType> _mixins = [];
+  final List<NamedDartType> _interfaces = [];
+  final List<NamedDartType> _superConstrains = [];
+  NamedDartType? _superType;
+  List<InterfaceType>? _allSuperTypes;
+  InterfaceType? _thisType;
   final List<MethodElement> _methods = [];
   final List<ConstructorElement> _constructors = [];
+  final NamedCompilationUnitMember compilationUnit;
 
   bool _didResolveMethods = false;
+  bool _didResolveFields = false;
+  bool _didResolveConstructors = false;
+
   final List<FieldElement> _fields = [];
 
-  NamedTypeRef? _superType;
-  NamedTypeRef? _thisType;
-
-  InterfaceElementImpl({required this.name, required this.library});
+  InterfaceElementImpl({required this.name, required this.library, required this.compilationUnit});
 
   @override
-  List<FieldElement> get fields => List.unmodifiable(_fields);
+  List<FieldElement> get fields {
+    if (!_didResolveFields) {
+      library.resolver.resolveFields(this);
+      _didResolveFields = true;
+    }
+    return List.unmodifiable(_fields);
+  }
 
   @override
   List<MethodElement> get methods {
@@ -411,7 +429,17 @@ class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixi
   }
 
   @override
-  List<ConstructorElement> get constructors => _constructors;
+  List<ConstructorElement> get constructors {
+    if (!_didResolveConstructors) {
+      if (_didResolveFields) {
+        library.resolver.resolveFields(this);
+        _didResolveFields = true;
+      }
+      library.resolver.resolveConstructors(this);
+      _didResolveConstructors = true;
+    }
+    return List.unmodifiable(_constructors);
+  }
 
   void addConstructor(ConstructorElement constructor) {
     _constructors.add(constructor);
@@ -419,28 +447,33 @@ class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixi
 
   @override
   ConstructorElement? getConstructor(String name) {
-    return _constructors.firstWhereOrNull((e) => e.name == name);
+    return constructors.firstWhereOrNull((e) => e.name == name);
   }
 
   @override
   ConstructorElement? get unnamedConstructor {
-    return _constructors.firstWhereOrNull((e) => e.name.isEmpty);
+    return constructors.firstWhereOrNull((e) => e.name.isEmpty);
   }
 
   @override
-  List<TypeRef> get interfaces => _interfaces;
+  List<NamedDartType> get interfaces => _interfaces;
 
   @override
-  List<TypeRef> get mixins => _mixins;
+  List<NamedDartType> get mixins => _mixins;
 
   @override
-  List<TypeParameterTypeRef> get typeParameters => _typeParameters;
+  List<InterfaceType> get allSuperTypes {
+    return _allSuperTypes ??= library.resolver.allSuperTypesOf(this);
+  }
 
-  void addMixin(NamedTypeRef mixin) {
+  @override
+  List<TypeParameterType> get typeParameters => _typeParameters;
+
+  void addMixin(NamedDartType mixin) {
     _mixins.add(mixin);
   }
 
-  void addInterface(NamedTypeRef interface) {
+  void addInterface(NamedDartType interface) {
     _interfaces.add(interface);
   }
 
@@ -453,9 +486,6 @@ class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixi
   }
 
   @override
-  List<TypeRef> get allSuperTypes => throw UnimplementedError();
-
-  @override
   final String name;
 
   @override
@@ -464,19 +494,19 @@ class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixi
   @override
   Element? get enclosingElement => library;
 
-  set superType(NamedTypeRef? value) {
+  set superType(NamedDartType? value) {
     _superType = value;
   }
 
   @override
-  NamedTypeRef? get superType => _superType;
+  NamedDartType? get superType => _superType;
 
-  set thisType(NamedTypeRef? value) {
+  set thisType(InterfaceType? value) {
     _thisType = value;
   }
 
   @override
-  NamedTypeRef get thisType => _thisType!;
+  InterfaceType get thisType => _thisType!;
 
   @override
   FieldElement? getField(String name) {
@@ -514,7 +544,7 @@ class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixi
   }
 
   @override
-  TypeRef instantiate(NamedTypeRef typeRef) {
+  DartType instantiate(NamedDartType typeRef) {
     var substitution = Substitution.fromPairs(typeParameters, typeRef.typeArguments);
     return substitution.substituteType(thisType, isNullable: typeRef.isNullable);
   }
@@ -579,11 +609,11 @@ abstract class VariableElementImpl extends ElementImpl implements VariableElemen
   Constant? _constantValue;
 
   @override
-  TypeRef get type => _type!;
+  DartType get type => _type!;
 
-  TypeRef? _type;
+  DartType? _type;
 
-  set type(TypeRef type) {
+  set type(DartType type) {
     _type = type;
   }
 }
@@ -635,13 +665,25 @@ class FieldElementImpl extends VariableElementImpl implements ClassMemberElement
   LibraryElement get library => enclosingElement.library;
 
   @override
-  final TypeRef type;
+  final DartType type;
 
   @override
-  bool get isPrivate => Identifier.isPrivateName(name);
+  PropertyAccessorElement? get getter {
+    final parent = enclosingElement;
+    if (parent is! InterfaceElement) return null;
+    return parent.accessors.firstWhereOrNull((e) {
+      return e.isGetter && e.name == name || e.name == '_$name';
+    });
+  }
 
   @override
-  bool get isPublic => !isPrivate;
+  PropertyAccessorElement? get setter {
+    final parent = enclosingElement;
+    if (parent is! InterfaceElement) return null;
+    return parent.accessors.firstWhereOrNull((e) {
+      return e.isSetter && e.name == name || e.name == '_$name';
+    });
+  }
 }
 
 class ParameterElementImpl extends VariableElementImpl implements ParameterElement, VariableElement {
@@ -709,16 +751,16 @@ class ParameterElementImpl extends VariableElementImpl implements ParameterEleme
   @override
   List<ParameterElement> get parameters {
     final type = this.type;
-    if (type is FunctionTypeRef) {
+    if (type is FunctionType) {
       return type.parameters;
     }
     return [];
   }
 
   @override
-  List<TypeParameterTypeRef> get typeParameters {
+  List<TypeParameterType> get typeParameters {
     final type = this.type;
-    if (type is FunctionTypeRef) {
+    if (type is FunctionType) {
       return type.typeParameters;
     }
     return [];
@@ -729,6 +771,7 @@ class ClassElementImpl extends InterfaceElementImpl implements ClassElement {
   ClassElementImpl({
     required super.name,
     required super.library,
+    required super.compilationUnit,
     required this.hasAbstract,
     required this.hasBase,
     required this.hasFinal,
@@ -764,19 +807,19 @@ class ClassElementImpl extends InterfaceElementImpl implements ClassElement {
 }
 
 class EnumElementImpl extends InterfaceElementImpl implements EnumElement {
-  EnumElementImpl({required super.name, required super.library});
+  EnumElementImpl({required super.name, required super.library, required super.compilationUnit});
 }
 
 class MixinElementImpl extends InterfaceElementImpl implements MixinElement {
-  MixinElementImpl({required super.name, required super.library, required this.isBase});
+  MixinElementImpl({required super.name, required super.library, required this.isBase, required super.compilationUnit});
 
   @override
   final bool isBase;
 
   @override
-  List<NamedTypeRef> get superclassConstraints => _superConstrains;
+  List<NamedDartType> get superclassConstraints => _superConstrains;
 
-  void addSuperConstrain(NamedTypeRef superConstrains) {
+  void addSuperConstrain(NamedDartType superConstrains) {
     _superConstrains.add(superConstrains);
   }
 }
@@ -794,19 +837,32 @@ class TypeAliasElementImpl extends ElementImpl with TypeParameterizedElementMixi
   Element get enclosingElement => library;
 
   @override
-  TypeRef get aliasedType {
+  DartType get aliasedType {
     return _aliasedType!;
   }
 
-  TypeRef? _aliasedType;
+  DartType? _aliasedType;
 
-  set aliasedType(TypeRef? aliasedType) {
+  set aliasedType(DartType? aliasedType) {
     _aliasedType = aliasedType;
   }
 
   @override
-  TypeRef instantiate(NamedTypeRef typeRef) {
+  DartType instantiate(NamedDartType typeRef) {
     var substitution = Substitution.fromPairs(typeParameters, typeRef.typeArguments);
     return substitution.substituteType(aliasedType, isNullable: typeRef.isNullable);
+  }
+
+  @override
+  InterfaceType? get aliasedInterfaceType => _getTargetInterfaceType(this);
+
+  InterfaceType? _getTargetInterfaceType(TypeAliasElement element) {
+    final aliasedType = element.aliasedType;
+    if (aliasedType is InterfaceType) {
+      return element.aliasedType as InterfaceType;
+    } else if (aliasedType is TypeAliasType) {
+      return _getTargetInterfaceType(aliasedType.element);
+    }
+    return null;
   }
 }

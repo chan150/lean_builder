@@ -1,18 +1,18 @@
 import 'package:lean_builder/src/element/element.dart';
-import 'package:lean_builder/src/type/type_ref.dart';
+import 'package:lean_builder/src/type/type.dart';
 
 class Substitution {
-  final Map<TypeParameterTypeRef, TypeRef> _map;
+  final Map<TypeParameterType, DartType> _map;
 
   Substitution(this._map);
 
   /// Creates a substitution that maps the given type parameters to the
   /// corresponding type arguments.
-  factory Substitution.fromPairs(List<TypeParameterTypeRef> typeParameters, List<TypeRef> typeArguments) {
-    final map = <TypeParameterTypeRef, TypeRef>{};
+  factory Substitution.fromPairs(List<TypeParameterType> typeParameters, List<DartType> typeArguments) {
+    final map = <TypeParameterType, DartType>{};
     for (var i = 0; i < typeParameters.length; i++) {
       if (i >= typeArguments.length) {
-        map[typeParameters[i]] = TypeRef.dynamicType;
+        map[typeParameters[i]] = DartType.dynamicType;
       } else {
         map[typeParameters[i]] = typeArguments[i];
       }
@@ -21,16 +21,34 @@ class Substitution {
   }
 
   /// Applies this substitution to the given [type].
-  TypeRef substituteType(TypeRef type, {bool isNullable = false}) {
-    if (type is TypeParameterTypeRef) {
+  DartType substituteType(DartType type, {bool isNullable = false}) {
+    if (type is TypeParameterType) {
       return _map[type]?.withNullability(type.isNullable) ?? type;
-    } else if (type is NamedTypeRef) {
+    } else if (type is InterfaceTypeImpl) {
       if (type.typeArguments.isEmpty) {
         return type;
       }
       final substitutedTypeArgs = type.typeArguments.map((typeArg) => substituteType(typeArg)).toList();
-      return NamedTypeRefImpl(type.name, type.src, typeArguments: substitutedTypeArgs, isNullable: isNullable);
-    } else if (type is FunctionTypeRef) {
+      return InterfaceTypeImpl(
+        type.name,
+        type.declarationRef,
+        type.resolver,
+        typeArguments: substitutedTypeArgs,
+        isNullable: isNullable,
+      );
+    } else if (type is TypeAliasTypeImpl) {
+      if (type.typeArguments.isEmpty) {
+        return type;
+      }
+      final substitutedTypeArgs = type.typeArguments.map((typeArg) => substituteType(typeArg)).toList();
+      return TypeAliasTypeImpl(
+        type.name,
+        type.declarationRef,
+        type.resolver,
+        typeArguments: substitutedTypeArgs,
+        isNullable: isNullable,
+      );
+    } else if (type is FunctionType) {
       final returnType = substituteType(type.returnType);
       final parameters =
           type.parameters.map((param) {
@@ -39,13 +57,13 @@ class Substitution {
             }
             return param;
           }).toList();
-      return FunctionTypeRef(
+      return FunctionType(
         returnType: returnType,
         typeParameters: type.typeParameters,
         parameters: parameters,
         isNullable: isNullable,
       );
-    } else if (type is RecordTypeRef) {
+    } else if (type is RecordType) {
       final positionalFields = <RecordTypePositionalField>[];
       for (final field in type.positionalFields) {
         positionalFields.add(RecordTypePositionalField(substituteType(field.type)));
@@ -54,7 +72,7 @@ class Substitution {
       for (final field in type.namedFields) {
         namedFields.add(RecordTypeNamedField(field.name, substituteType(field.type)));
       }
-      return RecordTypeRef(positionalFields: positionalFields, namedFields: namedFields, isNullable: isNullable);
+      return RecordType(positionalFields: positionalFields, namedFields: namedFields, isNullable: isNullable);
     }
     return type.withNullability(isNullable);
   }

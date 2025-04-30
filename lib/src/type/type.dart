@@ -1,19 +1,29 @@
-import 'package:analyzer/dart/element/type.dart';
+import 'package:lean_builder/builder.dart';
 import 'package:lean_builder/src/element/element.dart';
 import 'package:collection/collection.dart';
 import 'package:lean_builder/src/graph/identifier_ref.dart' show DeclarationRef;
 
-sealed class TypeRef {
-  const TypeRef();
+import 'core_type_source.dart';
+
+sealed class DartType {
+  const DartType();
 
   bool get isNullable;
 
+  /// Return the element representing the declaration of this type, or `null`
+  /// if the type is not associated with an element.
+  Element? get element;
+
   bool get isValid => this != invalidType;
 
-  static const voidType = NonElementTypeRef('void', isNullable: false);
-  static const dynamicType = NonElementTypeRef('dynamic', isNullable: true);
-  static const neverType = NonElementTypeRef('Never', isNullable: false);
-  static const invalidType = NonElementTypeRef('Invalid', isNullable: false);
+  /// returns the name of the type if it's a named type
+  /// otherwise returns null
+  String? get name;
+
+  static const voidType = VoidType.instance;
+  static const dynamicType = DynamicType.instance;
+  static const neverType = NeverType.instance;
+  static const invalidType = InvalidType.instance;
 
   /// Return `true` if this type represents the type 'void'
   bool get isVoid;
@@ -111,29 +121,36 @@ sealed class TypeRef {
   /// dart:core library.
   bool get isDartCoreDateTime;
 
-  TypeRef withNullability(bool isNullable);
+  DartType withNullability(bool isNullable);
 }
 
-abstract class NamedTypeRef extends TypeRef {
+abstract class ParameterizedType extends DartType {
+  List<DartType> get typeArguments;
+}
+
+// could be a type alias or a interface type
+abstract class NamedDartType extends ParameterizedType {
+  @override
   String get name;
 
-  List<TypeRef> get typeArguments;
+  Resolver get resolver;
 
-  String? get importPrefix;
+  @override
+  List<DartType> get typeArguments;
 
-  DeclarationRef get src;
+  DeclarationRef get declarationRef;
 
   /// then identifier that points to declaration of this type
   String get identifier;
 
-  bool isExactly(TypeRef other);
+  bool isExactly(DartType other);
 }
 
-abstract class TypeRefImpl extends TypeRef {
+abstract class TypeImpl extends DartType {
   @override
   final bool isNullable;
 
-  const TypeRefImpl({required this.isNullable});
+  const TypeImpl({required this.isNullable});
 
   @override
   bool get isDartAsyncFuture => false;
@@ -211,23 +228,30 @@ abstract class TypeRefImpl extends TypeRef {
   bool get isInvalid => false;
 
   @override
-  bool operator ==(Object other) => identical(this, other) || other is TypeRefImpl && runtimeType == other.runtimeType;
+  bool operator ==(Object other) => identical(this, other) || other is TypeImpl && runtimeType == other.runtimeType;
 
   @override
   int get hashCode => 0;
 
   @override
-  TypeRef withNullability(bool isNullable);
+  DartType withNullability(bool isNullable);
+
+  @override
+  String? get name => null;
 }
 
-class NonElementTypeRef extends TypeRefImpl {
-  const NonElementTypeRef(this.name, {required super.isNullable});
+abstract class NonElementType extends TypeImpl {
+  const NonElementType(this.name, {required super.isNullable});
 
+  @override
+  Null get element => null;
+
+  @override
   final String name;
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || other is NonElementTypeRef && runtimeType == other.runtimeType;
+      identical(this, other) || other is NonElementType && runtimeType == other.runtimeType && name == other.name;
 
   @override
   int get hashCode => name.hashCode;
@@ -236,105 +260,147 @@ class NonElementTypeRef extends TypeRefImpl {
   String toString() => name;
 
   @override
-  NonElementTypeRef withNullability(bool isNullable) {
-    return this;
-  }
-
-  @override
-  bool get isVoid => name == 'void';
-
-  @override
-  bool get isDynamic => name == 'dynamic';
-
-  @override
-  bool get isNever => name == 'Never';
-
-  @override
-  bool get isInvalid => name == 'Invalid';
+  NonElementType withNullability(bool isNullable) => this;
 }
 
-class NamedTypeRefImpl extends TypeRefImpl implements NamedTypeRef {
-  @override
-  String get identifier => '$name@${src.srcId}';
+class VoidType extends NonElementType {
+  const VoidType._() : super('void', isNullable: false);
+
+  static const VoidType instance = VoidType._();
 
   @override
-  final List<TypeRef> typeArguments;
+  bool get isVoid => true;
+}
+
+class DynamicType extends NonElementType {
+  const DynamicType._() : super('dynamic', isNullable: true);
+
+  static const DynamicType instance = DynamicType._();
 
   @override
-  final String? importPrefix;
+  bool get isDynamic => true;
+}
+
+class NeverType extends NonElementType {
+  const NeverType._() : super('Never', isNullable: false);
+
+  static const NeverType instance = NeverType._();
+
+  @override
+  bool get isNever => true;
+}
+
+class InvalidType extends NonElementType {
+  const InvalidType._() : super('Invalid', isNullable: false);
+
+  static const InvalidType instance = InvalidType._();
+
+  @override
+  bool get isInvalid => true;
+}
+
+abstract class InterfaceType extends NamedDartType {
+  @override
+  InterfaceElement get element;
+
+  List<NamedDartType> get interfaces;
+
+  List<NamedDartType> get mixins;
+
+  NamedDartType? get superType;
+
+  List<NamedDartType> get allSuperTypes;
+}
+
+class InterfaceTypeImpl extends TypeImpl implements InterfaceType {
+  @override
+  String get identifier => '$name@${declarationRef.srcId}';
+
+  @override
+  final Resolver resolver;
+
+  @override
+  final List<DartType> typeArguments;
 
   @override
   final String name;
 
   @override
-  final DeclarationRef src;
+  final DeclarationRef declarationRef;
 
-  NamedTypeRefImpl(this.name, this.src, {super.isNullable = false, this.typeArguments = const [], this.importPrefix});
+  InterfaceTypeImpl(
+    this.name,
+    this.declarationRef,
+    this.resolver, {
+    super.isNullable = false,
+    this.typeArguments = const [],
+    InterfaceElement? element,
+  }) : _element = element;
 
-  String get _srcName => src.srcUri.toString();
-
-  @override
-  bool get isDartCoreBool => name == 'bool' && _srcName == 'dart:core/bool.dart';
-
-  @override
-  bool get isDartCoreDouble => name == 'double' && _srcName == 'dart:core/double.dart';
-
-  @override
-  bool get isDartCoreEnum => name == 'Enum' && _srcName == 'dart:core/enum.dart';
+  String get _srcName => declarationRef.srcUri.toString();
 
   @override
-  bool get isDartCoreFunction => name == 'Function' && _srcName == 'dart:core/function.dart';
+  bool get isDartCoreBool => name == 'bool' && _srcName == CoreTypeSource.coreBool;
 
   @override
-  bool get isDartCoreInt => name == 'int' && _srcName == 'dart:core/int.dart';
+  bool get isDartCoreDouble => name == 'double' && _srcName == CoreTypeSource.coreDouble;
 
   @override
-  bool get isDartCoreNum => name == 'num' && _srcName == 'dart:core/num.dart';
+  bool get isDartCoreEnum => name == 'Enum' && _srcName == CoreTypeSource.coreEnum;
 
   @override
-  bool get isDartCoreIterable => name == 'Iterable' && _srcName == 'dart:core/iterable.dart';
+  bool get isDartCoreFunction => name == 'Function' && _srcName == CoreTypeSource.coreFunction;
 
   @override
-  bool get isDartCoreList => name == 'List' && _srcName == 'dart:core/list.dart';
+  bool get isDartCoreInt => name == 'int' && _srcName == CoreTypeSource.coreInt;
 
   @override
-  bool get isDartCoreMap => name == 'Map' && _srcName == 'dart:core/map.dart';
+  bool get isDartCoreNum => name == 'num' && _srcName == CoreTypeSource.coreNum;
 
   @override
-  bool get isDartCoreNull => name == 'Null' && _srcName == 'dart:core/null.dart';
+  bool get isDartCoreIterable => name == 'Iterable' && _srcName == CoreTypeSource.coreIterable;
 
   @override
-  bool get isDartCoreObject => name == 'Object' && _srcName == 'dart:core/object.dart';
+  bool get isDartCoreList => name == 'List' && _srcName == CoreTypeSource.coreList;
 
   @override
-  bool get isDartCoreRecord => name == 'Record' && _srcName == 'dart:core/record.dart';
+  bool get isDartCoreMap => name == 'Map' && _srcName == CoreTypeSource.coreMap;
 
   @override
-  bool get isDartCoreSet => name == 'Set' && _srcName == 'dart:core/set.dart';
+  bool get isDartCoreNull => name == 'Null' && _srcName == CoreTypeSource.coreNull;
 
   @override
-  bool get isDartCoreString => name == 'String' && _srcName == 'dart:core/string.dart';
+  bool get isDartCoreObject => name == 'Object' && _srcName == CoreTypeSource.coreObject;
 
   @override
-  bool get isDartCoreSymbol => name == 'Symbol' && _srcName == 'dart:core/symbol.dart';
+  bool get isDartCoreRecord => name == 'Record' && _srcName == CoreTypeSource.coreRecord;
 
   @override
-  bool get isDartCoreType => name == 'Type' && _srcName == 'dart:core/type.dart';
+  bool get isDartCoreSet => name == 'Set' && _srcName == CoreTypeSource.coreSet;
 
   @override
-  bool get isDartAsyncFuture => name == 'Future' && _srcName == 'dart:async/future.dart';
+  bool get isDartCoreString => name == 'String' && _srcName == CoreTypeSource.coreString;
 
   @override
-  bool get isDartAsyncFutureOr => name == 'FutureOr' && _srcName == 'dart:async/future.dart';
+  bool get isDartCoreSymbol => name == 'Symbol' && _srcName == CoreTypeSource.coreSymbol;
 
   @override
-  bool get isDartAsyncStream => name == 'Stream' && _srcName == 'dart:async/stream.dart';
+  bool get isDartCoreType => name == 'Type' && _srcName == CoreTypeSource.coreType;
 
   @override
-  bool get isDartCoreBigInt => name == 'BigInt' && _srcName == 'dart:core/bigint.dart';
+  bool get isDartAsyncFuture => name == 'Future' && _srcName == CoreTypeSource.asyncFuture;
 
   @override
-  bool get isDartCoreDateTime => name == 'DateTime' && _srcName == 'dart:core/date_time.dart';
+  bool get isDartAsyncFutureOr => name == 'FutureOr' && _srcName == CoreTypeSource.asyncFutureOr;
+
+  @override
+  bool get isDartAsyncStream => name == 'Stream' && _srcName == CoreTypeSource.asyncStream;
+
+  @override
+  bool get isDartCoreBigInt => name == 'BigInt' && _srcName == CoreTypeSource.coreBigInt;
+
+  @override
+  bool get isDartCoreDateTime => name == 'DateTime' && _srcName == CoreTypeSource.coreDateTime;
 
   @override
   String toString() {
@@ -352,46 +418,124 @@ class NamedTypeRefImpl extends TypeRefImpl implements NamedTypeRef {
   }
 
   @override
-  NamedTypeRefImpl withNullability(bool isNullable) {
+  InterfaceTypeImpl withNullability(bool isNullable) {
     if (this.isNullable == isNullable) {
       return this;
     }
-    return NamedTypeRefImpl(
-      name,
-      src,
-      isNullable: isNullable,
-      typeArguments: typeArguments,
-      importPrefix: importPrefix,
-    );
+    return InterfaceTypeImpl(name, declarationRef, resolver, isNullable: isNullable, typeArguments: typeArguments);
   }
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is NamedTypeRefImpl &&
+      other is InterfaceTypeImpl &&
           runtimeType == other.runtimeType &&
           name == other.name &&
-          src.srcId == other.src.srcId &&
+          declarationRef.srcId == other.declarationRef.srcId &&
           const ListEquality().equals(typeArguments, other.typeArguments);
 
   @override
-  int get hashCode => name.hashCode ^ src.srcId.hashCode ^ const ListEquality().hash(typeArguments);
+  int get hashCode => name.hashCode ^ declarationRef.srcId.hashCode ^ const ListEquality().hash(typeArguments);
 
   @override
-  bool isExactly(TypeRef other) {
-    if (other is NamedTypeRef) {
-      return name == other.name && src.srcId == other.src.srcId;
+  bool isExactly(DartType other) {
+    if (other is NamedDartType) {
+      return name == other.name && declarationRef.srcId == other.declarationRef.srcId;
     }
     return false;
   }
+
+  InterfaceElement? _element;
+
+  InterfaceElement _resolveElement() {
+    final ele = resolver.elementOf(this);
+    if (ele is! InterfaceElement) {
+      throw Exception('Element of $this is not an InterfaceElement');
+    }
+    return ele;
+  }
+
+  @override
+  InterfaceElement get element => _element ??= _resolveElement();
+
+  @override
+  List<NamedDartType> get allSuperTypes => element.allSuperTypes;
+
+  @override
+  List<NamedDartType> get interfaces => element.interfaces;
+
+  @override
+  List<NamedDartType> get mixins => element.mixins;
+
+  @override
+  NamedDartType? get superType => element.superType;
 }
 
-class FunctionTypeRef extends TypeRefImpl {
-  final List<ParameterElement> parameters;
-  final List<TypeParameterTypeRef> typeParameters;
-  final TypeRef returnType;
+abstract class TypeAliasType extends NamedDartType {
+  @override
+  TypeAliasElement get element;
+}
 
-  FunctionTypeRef({
+class TypeAliasTypeImpl extends TypeImpl implements TypeAliasType {
+  @override
+  final List<DartType> typeArguments;
+
+  @override
+  final Resolver resolver;
+
+  @override
+  final String name;
+
+  @override
+  final DeclarationRef declarationRef;
+
+  TypeAliasTypeImpl(
+    this.name,
+    this.declarationRef,
+    this.resolver, {
+    super.isNullable = false,
+    this.typeArguments = const [],
+  });
+
+  @override
+  TypeAliasElement get element => _element ??= _resolveElement();
+
+  TypeAliasElement? _element;
+
+  TypeAliasElement _resolveElement() {
+    final ele = resolver.elementOf(this);
+    if (ele is! TypeAliasElement) {
+      throw Exception('Element of $this is not a TypeAliasElement');
+    }
+    return ele;
+  }
+
+  @override
+  String get identifier => '$name@${declarationRef.srcId}';
+
+  @override
+  bool isExactly(DartType other) {
+    if (other is TypeAliasTypeImpl) {
+      return name == other.name && declarationRef.srcId == other.declarationRef.srcId;
+    }
+    return false;
+  }
+
+  @override
+  DartType withNullability(bool isNullable) {
+    if (this.isNullable == isNullable) {
+      return this;
+    }
+    return TypeAliasTypeImpl(name, declarationRef, resolver, isNullable: isNullable, typeArguments: typeArguments);
+  }
+}
+
+class FunctionType extends TypeImpl {
+  final List<ParameterElement> parameters;
+  final List<TypeParameterType> typeParameters;
+  final DartType returnType;
+
+  FunctionType({
     required super.isNullable,
     required this.parameters,
     this.typeParameters = const [],
@@ -399,11 +543,11 @@ class FunctionTypeRef extends TypeRefImpl {
   });
 
   @override
-  FunctionTypeRef withNullability(bool isNullable) {
+  FunctionType withNullability(bool isNullable) {
     if (this.isNullable == isNullable) {
       return this;
     }
-    return FunctionTypeRef(
+    return FunctionType(
       isNullable: isNullable,
       parameters: parameters,
       typeParameters: typeParameters,
@@ -418,7 +562,7 @@ class FunctionTypeRef extends TypeRefImpl {
     final namedParams = parameters.where((p) => p.isNamed);
 
     final buffer = StringBuffer();
-    if (returnType != TypeRef.neverType) {
+    if (returnType != DartType.neverType) {
       buffer.write('$returnType ');
     }
     if (typeParameters.isNotEmpty) {
@@ -459,7 +603,7 @@ class FunctionTypeRef extends TypeRefImpl {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is FunctionTypeRef &&
+      other is FunctionType &&
           runtimeType == other.runtimeType &&
           const ListEquality().equals(parameters, other.parameters) &&
           const ListEquality().equals(typeParameters, other.typeParameters) &&
@@ -468,27 +612,67 @@ class FunctionTypeRef extends TypeRefImpl {
   @override
   int get hashCode =>
       const ListEquality().hash(parameters) ^ const ListEquality().hash(typeParameters) ^ returnType.hashCode;
-}
 
-class TypeParameterTypeRef extends TypeRefImpl {
-  final TypeRef bound;
-  final String name;
+  Map<String, DartType> get namedParameterTypes {
+    Map<String, DartType> types = <String, DartType>{};
+    for (final parameter in parameters) {
+      if (parameter.isNamed && parameter.isRequiredNamed) {
+        types[parameter.name] = parameter.type;
+      }
+    }
+    return types;
+  }
 
-  TypeParameterTypeRef(this.name, {required this.bound, super.isNullable = false});
+  List<DartType> get normalParameterTypes {
+    List<DartType> types = <DartType>[];
+    for (final parameter in parameters) {
+      if (parameter.isRequired) {
+        types.add(parameter.type);
+      }
+    }
+    return types;
+  }
+
+  List<DartType> get optionalParameterTypes {
+    List<DartType> types = <DartType>[];
+    for (final parameter in parameters) {
+      if (parameter.isOptional) {
+        types.add(parameter.type);
+      }
+    }
+    return types;
+  }
+
+  List<String> get normalParameterNames => parameters.where((p) => p.isRequiredPositional).map((p) => p.name).toList();
+
+  List<String> get optionalParameterNames =>
+      parameters.where((p) => p.isOptionalPositional).map((p) => p.name).toList();
 
   @override
-  TypeParameterTypeRef withNullability(bool isNullable) {
+  Null get element => null;
+}
+
+class TypeParameterType extends TypeImpl {
+  final DartType bound;
+
+  @override
+  final String name;
+
+  TypeParameterType(this.name, {required this.bound, super.isNullable = false});
+
+  @override
+  TypeParameterType withNullability(bool isNullable) {
     if (this.isNullable == isNullable) {
       return this;
     }
-    return TypeParameterTypeRef(name, bound: bound, isNullable: isNullable);
+    return TypeParameterType(name, bound: bound, isNullable: isNullable);
   }
 
   @override
   String toString() {
     final buffer = StringBuffer();
     buffer.write(name);
-    if (bound != TypeRef.dynamicType) {
+    if (bound != DartType.dynamicType) {
       buffer.write(' extends ');
       buffer.write(bound.toString());
     }
@@ -501,17 +685,20 @@ class TypeParameterTypeRef extends TypeRefImpl {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is TypeParameterTypeRef && runtimeType == other.runtimeType && bound == other.bound && name == other.name;
+      other is TypeParameterType && runtimeType == other.runtimeType && bound == other.bound && name == other.name;
 
   @override
   int get hashCode => bound.hashCode;
+
+  @override
+  Null get element => null;
 }
 
-class RecordTypeRef extends TypeRefImpl {
+class RecordType extends TypeImpl {
   List<RecordTypeNamedField> namedFields;
   List<RecordTypePositionalField> positionalFields;
 
-  RecordTypeRef({required this.positionalFields, required this.namedFields, required super.isNullable});
+  RecordType({required this.positionalFields, required this.namedFields, required super.isNullable});
 
   @override
   String toString() {
@@ -536,17 +723,20 @@ class RecordTypeRef extends TypeRefImpl {
   }
 
   @override
-  RecordTypeRef withNullability(bool isNullable) {
+  RecordType withNullability(bool isNullable) {
     if (this.isNullable == isNullable) {
       return this;
     }
-    return RecordTypeRef(positionalFields: positionalFields, namedFields: namedFields, isNullable: isNullable);
+    return RecordType(positionalFields: positionalFields, namedFields: namedFields, isNullable: isNullable);
   }
+
+  @override
+  Element? get element => null;
 }
 
 abstract class RecordTypeField {
   /// The type of the field.
-  TypeRef get type;
+  DartType get type;
 
   const RecordTypeField();
 }
@@ -559,7 +749,7 @@ class RecordTypeNamedField implements RecordTypeField {
   final String name;
 
   @override
-  final TypeRef type;
+  final DartType type;
 
   RecordTypeNamedField(this.name, this.type);
 }
@@ -569,7 +759,7 @@ class RecordTypeNamedField implements RecordTypeField {
 /// Clients may not extend, implement or mix-in this class.
 class RecordTypePositionalField implements RecordTypeField {
   @override
-  final TypeRef type;
+  final DartType type;
 
   const RecordTypePositionalField(this.type);
 }

@@ -13,8 +13,8 @@ import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
 import 'package:lean_builder/src/resolvers/source_based_cache.dart';
 import 'package:collection/collection.dart';
+import 'package:lean_builder/src/type/type.dart';
 import 'package:lean_builder/src/type/type_checker.dart';
-import 'package:lean_builder/src/type/type_ref.dart';
 import 'package:synchronized/synchronized.dart';
 import 'package:xxh3/xxh3.dart';
 
@@ -60,23 +60,28 @@ class Resolver {
     if (_typeCheckersCache.containsKey(key)) {
       return _typeCheckersCache[key]!;
     }
-    final typeRef = getNamedTypeRef(name, packageImport);
-    final typeChecker = TypeChecker.fromTypeRef(this, typeRef);
+    final typeRef = getNamedType(name, packageImport);
+    final typeChecker = TypeChecker.fromTypeRef(typeRef);
     return _typeCheckersCache[key] = typeChecker;
   }
 
-  NamedTypeRef getNamedTypeRef(String name, String packageImport) {
-    final uri = Uri.parse(packageImport);
-    if (uri.scheme != 'package') {
-      throw Exception('Invalid package import: $packageImport');
+  NamedDartType getNamedType(String name, String packageUrl) {
+    var uri = Uri.parse(packageUrl);
+    if (uri.scheme != 'package' && uri.scheme != 'dart') {
+      throw Exception('Invalid package import: $packageUrl, must be a package or dart import');
     }
-    final srcId = xxh3String(Uint8List.fromList(packageImport.codeUnits));
+    if (uri.scheme == 'dart' && !packageUrl.endsWith('.dart')) {
+      uri = Uri.parse('$packageUrl/$name.dart');
+    }
+    final srcId = xxh3String(Uint8List.fromList(packageUrl.codeUnits));
     final declarationRef = graph.lookupIdentifierByProvider(name, srcId);
     if (declarationRef == null) {
-      throw Exception('Identifier $name not found in $packageImport');
+      throw Exception('Identifier $name not found in $packageUrl');
     }
-    if (declarationRef.type.representsNamedType) {
-      return NamedTypeRefImpl(name, declarationRef);
+    if (declarationRef.type.representsInterfaceType) {
+      return InterfaceTypeImpl(name, declarationRef, this);
+    } else if (declarationRef.type == TopLevelIdentifierType.$typeAlias) {
+      return TypeAliasTypeImpl(name, declarationRef, this);
     } else {
       throw Exception('$name does not refer to a named type');
     }
@@ -91,31 +96,59 @@ class Resolver {
     return graph.getDeclarationRef(identifier, importingSrc, importPrefix: importPrefix);
   }
 
-  Future<Element?> elementOf(TypeRef ref) async {
-    if (ref is NamedTypeRef) {
-      final key = _resolvedTypeRefs.keyFor(ref.src.srcId, ref.name);
+  Element? elementOf(DartType type) {
+    if (type is NamedDartType) {
+      final key = _resolvedTypeRefs.keyFor(type.declarationRef.srcId, type.name);
 
       if (_resolvedTypeRefs.contains(key)) {
         return _resolvedTypeRefs[key];
       }
-      final importingLibrary = ref.src.importingLibrary;
+      final importingLibrary = type.declarationRef.importingLibrary;
       if (importingLibrary == null) return null;
-      final lock = _elementResolveLocks.putIfAbsent(key, () => Lock());
-      return await lock.synchronized(() async {
-        final importingLib = libraryFor(importingLibrary);
-        final identifier = IdentifierRef(ref.name, importPrefix: ref.importPrefix);
-        final (library, unit, _) = astNodeFor(identifier, importingLib);
-        final visitor = ElementBuilder(this, library);
-        unit.accept(visitor);
-        final element = library.getElement(ref.name);
-        if (element != null) {
-          _resolvedTypeRefs.cacheKey(key, element);
-          _elementResolveLocks.remove(key);
-        }
-        return element;
-      });
+
+      final importingLib = libraryFor(importingLibrary);
+      final identifier = IdentifierRef(type.name, declarationRef: type.declarationRef);
+      final (library, unit, _) = astNodeFor(identifier, importingLib);
+      final visitor = ElementBuilder(this, library);
+      unit.accept(visitor);
+      final element = library.getElement(type.name);
+      if (element != null) {
+        _resolvedTypeRefs.cacheKey(key, element);
+      }
+      return element;
     }
     return null;
+  }
+
+  List<InterfaceType> allSuperTypesOf(InterfaceElement element) {
+    final superTypes = <InterfaceType>[];
+    final thisLevelTypes = <NamedDartType>[
+      if (element.superType != null) element.superType!,
+      ...element.mixins,
+      ...element.interfaces,
+      if (element is MixinElement) ...(element as MixinElement).superclassConstraints,
+    ];
+
+    for (final type in thisLevelTypes) {
+      final supElement = type.element;
+      if (supElement is InterfaceElement) {
+        superTypes.add(type as InterfaceType);
+        final subTypes = allSuperTypesOf(supElement);
+        superTypes.addAll(subTypes);
+      } else if (supElement is TypeAliasElement && supElement.aliasedType is NamedDartType) {
+        // if it's a NamedDartType it should eventually point to an InterfaceType
+        final aliasedType = supElement.aliasedInterfaceType;
+        if (aliasedType == null) {
+          throw Exception('Type $type is not an interface type');
+        }
+        superTypes.add(aliasedType);
+        final subTypes = allSuperTypesOf(aliasedType.element);
+        superTypes.addAll(subTypes);
+      } else if (supElement != null) {
+        throw Exception('Type $type is not an interface type');
+      }
+    }
+    return superTypes;
   }
 
   LibraryElementImpl libraryFor(Asset src, {bool allowSyntaxErrors = false}) {
@@ -133,7 +166,7 @@ class Resolver {
     }
 
     final declarationRef =
-        identifier.location ??
+        identifier.declarationRef ??
         getDeclarationRef(identifier.topLevelTarget, enclosingAsset, importPrefix: identifier.importPrefix);
 
     final srcUri = uriForAsset(declarationRef.srcId);
@@ -217,16 +250,35 @@ class Resolver {
 
   void resolveMethods(InterfaceElement elem, {ElementPredicate<MethodDeclaration>? predicate}) {
     final elementBuilder = ElementBuilder(this, elem.library);
-    final declarations = elem.library.compilationUnit.declarations;
-    final namedUnit = declarations.whereType<NamedCompilationUnitMember>();
-    final interfaceElemDeclaration = namedUnit.firstWhere(
-      (d) => d.name.lexeme == elem.name,
-      orElse: () => throw Exception('Could not find element declaration named ${elem.name}'),
-    );
-    final methods = interfaceElemDeclaration.childEntities.filterAs<MethodDeclaration>(predicate);
+    final namedUnit = (elem as InterfaceElementImpl).compilationUnit;
+    final methods = namedUnit.childEntities.filterAs<MethodDeclaration>(predicate);
     elementBuilder.visitElementScoped(elem, () {
       for (final method in methods) {
         method.accept(elementBuilder);
+      }
+    });
+  }
+
+  void resolveFields(InterfaceElement elem) {
+    final elementBuilder = ElementBuilder(this, elem.library);
+    final interfaceElem = elem as InterfaceElementImpl;
+    final namedUnit = interfaceElem.compilationUnit;
+    final fields = namedUnit.childEntities.whereType<FieldDeclaration>();
+    elementBuilder.visitElementScoped(interfaceElem, () {
+      for (final field in fields) {
+        field.accept(elementBuilder);
+      }
+    });
+  }
+
+  void resolveConstructors(InterfaceElement elem) {
+    final elementBuilder = ElementBuilder(this, elem.library);
+    final interfaceElem = elem as InterfaceElementImpl;
+    final namedUnit = interfaceElem.compilationUnit;
+    final constructors = namedUnit.childEntities.whereType<ConstructorDeclaration>();
+    elementBuilder.visitElementScoped(interfaceElem, () {
+      for (final constructor in constructors) {
+        constructor.accept(elementBuilder);
       }
     });
   }

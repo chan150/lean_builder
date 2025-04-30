@@ -6,8 +6,8 @@ import 'package:lean_builder/src/resolvers/constant/constant.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:collection/collection.dart';
 import 'package:lean_builder/src/type/substitution.dart';
+import 'package:lean_builder/src/type/type.dart';
 import 'package:lean_builder/src/type/type_checker.dart';
-import 'package:lean_builder/src/type/type_ref.dart';
 
 part 'element_annotation.dart';
 
@@ -98,20 +98,34 @@ abstract class Element {
 
   /// Whether the element has an annotation of the form `@visibleForOverriding`.
   bool get hasVisibleForOverriding;
+
+  bool get isPrivate;
+
+  bool get isPublic;
 }
 
 abstract class TypeParameterizedElement extends Element {
-  List<TypeParameterTypeRef> get typeParameters;
+  List<TypeParameterType> get typeParameters;
 
-  TypeRef instantiate(NamedTypeRef typeRef);
+  DartType instantiate(NamedDartType typeRef);
 }
 
 abstract class TypeAliasElement implements TypeParameterizedElement {
-  TypeRef get aliasedType;
+  DartType get aliasedType;
+
+  /// gets the target interface of the type alias if this is an interface type alias or points to
+  /// another interface type alias.
+  ///
+  /// e.g typedef A = RealInterfaceType
+  /// typedef B = A
+  ///
+  /// In this case, aliasedInterfaceType will be RealInterfaceType
+
+  InterfaceType? get aliasedInterfaceType;
 }
 
 abstract class InstantiatableElement extends Element {
-  TypeRef instantiate(NamedTypeRef typeRef);
+  DartType instantiate(NamedDartType typeRef);
 }
 
 abstract class InstanceElement extends Element implements TypeParameterizedElement {
@@ -121,23 +135,23 @@ abstract class InstanceElement extends Element implements TypeParameterizedEleme
 
   List<MethodElement> get methods;
 
-  NamedTypeRef get thisType;
+  InterfaceType get thisType;
 }
 
 abstract class InterfaceElement extends InstanceElement with TypeParameterizedElementMixin {
-  TypeRef? get superType;
+  NamedDartType? get superType;
 
-  List<TypeRef> get allSuperTypes;
+  List<InterfaceType> get allSuperTypes;
 
-  List<TypeRef> get mixins;
+  List<NamedDartType> get mixins;
 
-  List<TypeRef> get interfaces;
+  List<NamedDartType> get interfaces;
 
   List<ConstructorElement> get constructors;
 
-  ConstructorElement? getConstructor(String name);
-
   ConstructorElement? get unnamedConstructor;
+
+  ConstructorElement? getConstructor(String name);
 
   MethodElement? getMethod(String name);
 
@@ -208,7 +222,7 @@ abstract class VariableElement extends Element {
   @override
   String get name;
 
-  TypeRef get type;
+  DartType get type;
 
   Constant? get constantValue;
 
@@ -232,9 +246,9 @@ abstract class FieldElement extends ClassMemberElement implements VariableElemen
 
   bool get isExternal;
 
-  bool get isPrivate;
+  PropertyAccessorElement? get getter;
 
-  bool get isPublic;
+  PropertyAccessorElement? get setter;
 }
 
 abstract class ParameterElement extends VariableElement {
@@ -269,7 +283,7 @@ abstract class ParameterElement extends VariableElement {
 
   List<ParameterElement> get parameters;
 
-  List<TypeParameterTypeRef> get typeParameters;
+  List<TypeParameterType> get typeParameters;
 }
 
 abstract class ClassElement extends InterfaceElement {
@@ -304,7 +318,7 @@ abstract class ClassElement extends InterfaceElement {
 abstract class EnumElement implements InterfaceElement {}
 
 abstract class MixinElement implements Element {
-  List<TypeRef> get superclassConstraints;
+  List<NamedDartType> get superclassConstraints;
 
   /// Whether the declaration has an explicit `base` modifier.
   bool get isBase;

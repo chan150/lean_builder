@@ -282,6 +282,7 @@ class AssetsScanResults extends ScanResults {
     directives.remove(id);
     // remove all identifiers that reference this asset
     identifiers.removeWhere((element) => element[GraphIndex.identifierSrc] == id);
+    outputs.remove(id);
   }
 
   Map<String, dynamic> toJson() {
@@ -393,6 +394,7 @@ class AssetsScanResults extends ScanResults {
 }
 
 enum TopLevelIdentifierType {
+  unknown(-1),
   $class(0),
   $mixin(1),
   $extension(2),
@@ -403,8 +405,8 @@ enum TopLevelIdentifierType {
 
   final int value;
 
-  bool get representsNamedType {
-    return this == $class || this == $mixin || this == $extension || this == $enum || this == $typeAlias;
+  bool get representsInterfaceType {
+    return this == $class || this == $mixin || this == $enum;
   }
 
   const TopLevelIdentifierType(this.value);

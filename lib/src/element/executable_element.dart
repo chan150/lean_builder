@@ -5,10 +5,10 @@ abstract class FunctionTypedElement implements TypeParameterizedElement {
   List<ParameterElement> get parameters;
 
   /// The return type defined by this element.
-  TypeRef get returnType;
+  DartType get returnType;
 
   /// The type defined by this element.
-  FunctionTypeRef get type;
+  FunctionType get type;
 
   ParameterElement? getParameter(String name);
 }
@@ -112,7 +112,7 @@ abstract class ExecutableElementImpl extends ElementImpl
   });
 
   @override
-  bool get hasImplicitReturnType => returnType == TypeRef.invalidType;
+  bool get hasImplicitReturnType => returnType == DartType.invalidType;
 
   @override
   final String name;
@@ -147,10 +147,10 @@ abstract class ExecutableElementImpl extends ElementImpl
   @override
   List<ParameterElement> get parameters => _parameters;
 
-  TypeRef? _returnType;
+  DartType? _returnType;
 
   @override
-  TypeRef get returnType => _returnType!;
+  DartType get returnType => _returnType!;
 
   @override
   ParameterElement? getParameter(String name) {
@@ -162,26 +162,26 @@ abstract class ExecutableElementImpl extends ElementImpl
     return null;
   }
 
-  set returnType(TypeRef type) {
+  set returnType(DartType type) {
     _returnType = type;
   }
 
   @override
-  FunctionTypeRef get type => _type!;
+  FunctionType get type => _type!;
 
   final List<ParameterElement> _parameters = [];
-  FunctionTypeRef? _type;
+  FunctionType? _type;
 
   void addParameter(ParameterElement parameter) {
     _parameters.add(parameter);
   }
 
-  set type(FunctionTypeRef type) {
+  set type(FunctionType type) {
     _type = type;
   }
 
   @override
-  TypeRef instantiate(NamedTypeRef typeRef) {
+  DartType instantiate(NamedDartType typeRef) {
     var substitution = Substitution.fromPairs(typeParameters, typeRef.typeArguments);
     return substitution.substituteType(type, isNullable: typeRef.isNullable);
   }
@@ -265,13 +265,13 @@ class ConstructorElementImpl extends ExecutableElementImpl implements Constructo
     required super.isGenerator,
     this.superConstructor,
   }) : super(
-    isAsynchronous: false,
-    isExternal: false,
-    isOperator: false,
-    isStatic: false,
-    isSynchronous: true,
-    isAbstract: false,
-  );
+         isAsynchronous: false,
+         isExternal: false,
+         isOperator: false,
+         isStatic: false,
+         isSynchronous: true,
+         isAbstract: false,
+       );
 
   @override
   final bool isConst;
@@ -296,10 +296,35 @@ class ConstructorElementImpl extends ExecutableElementImpl implements Constructo
 
   @override
   bool get isGenerative => !isFactory;
+
+  @override
+  String toString() {
+    final buffer = StringBuffer();
+    buffer.write('ConstructorElementImpl(');
+    buffer.write('name: $name, ');
+    buffer.write('isConst: $isConst, ');
+    buffer.write('isFactory: $isFactory, ');
+    buffer.write('isAbstract: $isAbstract, ');
+    buffer.write('isAsynchronous: $isAsynchronous, ');
+    buffer.write('isExternal: $isExternal, ');
+    buffer.write('isGenerator: $isGenerator, ');
+    buffer.write('isOperator: $isOperator, ');
+    buffer.write('isStatic: $isStatic, ');
+    buffer.write('isSynchronous: $isSynchronous, ');
+    buffer.write('enclosingElement: ${enclosingElement.name}, ');
+    if (redirectedConstructor != null) {
+      buffer.write('redirectedConstructor: ${redirectedConstructor!.name}, ');
+    }
+    if (superConstructor != null) {
+      buffer.write('superConstructor: ${superConstructor!.name}, ');
+    }
+    buffer.write(')');
+    return buffer.toString();
+  }
 }
 
 class ConstructorElementRef {
-  final NamedTypeRef classType;
+  final NamedDartType classType;
   final String name;
 
   ConstructorElementRef(this.classType, this.name);

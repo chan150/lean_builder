@@ -62,5 +62,6 @@ class IdentifierNotFoundError extends ResolverError {
   IdentifierNotFoundError(this.identifier, this.importPrefix, this.importingLibrary);
 
   @override
-  String toString() => 'Could not resolve "${importPrefix == null ? '' : '$importPrefix.'}$identifier"';
+  String toString() =>
+      'Could not resolve "${importPrefix == null ? '' : '$importPrefix.'}$identifier" in $importingLibrary';
 }

@@ -9,7 +9,7 @@ abstract class ElementAnnotation {
 
   Constant get constant;
 
-  TypeRef get type;
+  DartType get type;
 
   DeclarationRef get declarationRef;
 
@@ -93,7 +93,7 @@ abstract class ElementAnnotation {
 
 class ElementAnnotationImpl implements ElementAnnotation {
   @override
-  final TypeRef type;
+  final DartType type;
 
   @override
   final DeclarationRef declarationRef;

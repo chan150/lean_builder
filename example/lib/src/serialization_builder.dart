@@ -20,7 +20,6 @@ class SerializationGenerator extends GeneratorForAnnotation {
     if (element is! ClassElement) {
       throw Exception('Expected a class element, but got ${element.runtimeType}');
     }
-
     final buffer = StringBuffer();
     buffer.writeln('// ${annotatedElement.annotation.constant.toString()}');
     buffer.writeln('class ${element.name}Serializer {');
@@ -33,7 +32,6 @@ class SerializationGenerator extends GeneratorForAnnotation {
     }
     buffer.writeln('});');
     buffer.writeln('}');
-    // buffer.writeln('// Hel2232322lo');
 
     return buffer.toString();
   }

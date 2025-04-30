@@ -32,7 +32,8 @@ class BuildCommand extends BaseCommand<int> {
   LeanCommandRunner get buildRunner => runner as LeanCommandRunner;
 
   @override
-  Future<int> run() async {
+  Future<int>? run() async {
+    prepare();
     final stopWatch = Stopwatch()..start();
 
     final fileResolver = PackageFileResolver.forRoot();
@@ -101,8 +102,9 @@ class BuildCommand extends BaseCommand<int> {
   }
 
   void _deleteExistingOutputs(AssetsGraph assetsGraph, PackageFileResolver fileResolver) {
-    for (final entry in assetsGraph.outputs.entries) {
+    for (final entry in List.of(assetsGraph.outputs.entries)) {
       for (final output in entry.value) {
+        assetsGraph.removeAsset(entry.key);
         final outputUri = assetsGraph.uriForAssetOrNull(output);
         if (outputUri == null) continue;
         final outputAsset = fileResolver.assetForUri(outputUri);

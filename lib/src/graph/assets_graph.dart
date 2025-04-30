@@ -372,9 +372,9 @@ class IdentifierRef {
   final String name;
   final String? prefix;
   final String? importPrefix;
-  final DeclarationRef? location;
+  final DeclarationRef? declarationRef;
 
-  IdentifierRef(this.name, {this.prefix, this.importPrefix, this.location});
+  IdentifierRef(this.name, {this.prefix, this.importPrefix, this.declarationRef});
 
   bool get isPrefixed => prefix != null;
 

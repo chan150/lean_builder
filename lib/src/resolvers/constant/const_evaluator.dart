@@ -10,7 +10,7 @@ import 'package:lean_builder/src/graph/assets_graph.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:collection/collection.dart';
-import 'package:lean_builder/src/type/type_ref.dart';
+import 'package:lean_builder/src/type/type.dart';
 
 import 'constant.dart';
 
@@ -19,11 +19,11 @@ import 'constant.dart';
 class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementStack<Constant> {
   final Resolver _resolver;
 
-  final ElementBuilder _elementResolverVisitor;
+  final ElementBuilder _elementBuilder;
 
   LibraryElement get _library => currentLibrary();
 
-  ConstantEvaluator(this._resolver, LibraryElement library, this._elementResolverVisitor) {
+  ConstantEvaluator(this._resolver, LibraryElement library, this._elementBuilder) {
     pushElement(library);
   }
 
@@ -113,9 +113,10 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
     }
 
     final interfaceName = interfaceDec.name.lexeme;
-    final type = NamedTypeRefImpl(
+    final type = InterfaceTypeImpl(
       interfaceName,
       _library.buildDeclarationRef(interfaceName, TopLevelIdentifierType.$class),
+      _resolver,
     );
     return ConstObjectImpl(values, type, positionalNames: positionalNames);
   }
@@ -395,13 +396,10 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
 
   @override
   Constant? visitSetOrMapLiteral(SetOrMapLiteral node) {
-    // There are a lot of constants that this class does not support, so we
-    // didn't add support for set literals. As a result, this assumes that we're
-    // looking at a map literal until we prove otherwise.
-    Map<String, Constant> map = HashMap<String, Constant>();
+    Map<Constant, Constant> map = HashMap<Constant, Constant>();
     for (CollectionElement element in node.elements) {
       if (element is MapLiteralEntry) {
-        var key = _valueOf(element.key.accept(this));
+        var key = element.key.accept(this) ?? Constant.invalid;
         var value = element.value.accept(this);
         if (key is String && value != null && !identical(value, Constant.invalid)) {
           map[key] = value;
@@ -442,7 +440,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
     final value = node.function.accept(this);
     if (value is ConstFunctionReferenceImpl) {
       for (final typeArg in [...?node.typeArguments?.arguments]) {
-        final type = _elementResolverVisitor.resolveTypeRef((typeArg), _library);
+        final type = _elementBuilder.resolveTypeRef((typeArg), _library);
         value.addTypeArgument(type);
       }
     }
@@ -495,30 +493,41 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
         }
       }
     } else if (node is FunctionDeclaration) {
-      _elementResolverVisitor.visitFunctionDeclaration(node);
+      _elementBuilder.visitFunctionDeclaration(node);
       final function = lib.getElement(node.name.lexeme);
       if (function is FunctionElement) {
-        return ConstFunctionReferenceImpl(node.name.lexeme, function.type, loc);
+        return ConstFunctionReferenceImpl(name: node.name.lexeme, element: function, declaration: loc);
       } else {
         throw Exception('Function ${node.name.lexeme} not found in ${lib.src.uri}');
       }
     } else if (node is NamedCompilationUnitMember) {
-      final type = NamedTypeRefImpl(node.name.lexeme, loc);
+      final type = InterfaceTypeImpl(node.name.lexeme, loc, _resolver);
       return ConstTypeRef(type);
     } else if (node is MethodDeclaration) {
       assert(node.isStatic, 'Methods reference in constant context should be static');
-      final tempInterfaceElm = InterfaceElementImpl(name: '_', library: lib);
-      _elementResolverVisitor.visitElementScoped(tempInterfaceElm, () {
-        _elementResolverVisitor.visitMethodDeclaration(node);
+
+      final method = _elementBuilder.visitElementScoped(lib, () {
+        final parent = node.parent as NamedCompilationUnitMember;
+        parent.accept(_elementBuilder);
+        final interfaceElement = lib.getElement(parent.name.lexeme);
+        if (interfaceElement is! InterfaceElement) {
+          throw Exception('Expected InterfaceElement, but got ${interfaceElement.runtimeType}');
+        }
+        _elementBuilder.visitElementScoped(interfaceElement, () {
+          _elementBuilder.visitMethodDeclaration(node);
+        });
+        final method = interfaceElement.getMethod(node.name.lexeme);
+        if (method == null) {
+          throw Exception('Method ${node.name.lexeme} not found in ${lib.src.uri}');
+        }
+        return method;
       });
-      final method = tempInterfaceElm.getMethod(node.name.lexeme);
-      if (method == null) {
-        throw Exception('Method ${node.name.lexeme} not found in ${lib.src.uri}');
-      }
-      return ConstFunctionReferenceImpl(node.name.lexeme, method.type, loc);
+      return ConstFunctionReferenceImpl(name: method!.name, element: method, declaration: loc);
     } else if (node is EnumConstantDeclaration) {
-      final enumDeclaration = node.thisOrAncestorOfType<EnumDeclaration>();
-      return ConstEnumValue(enumDeclaration?.name.lexeme ?? '', node.name.lexeme);
+      final name = node.name.lexeme;
+      final enumDeclaration = node.parent as EnumDeclaration;
+      final index = enumDeclaration.constants.indexWhere((e) => e.name.lexeme == name);
+      return ConstEnumValue(enumDeclaration.name.lexeme, node.name.lexeme, index);
     } else if (node is FieldDeclaration) {
       assert(node.isStatic, 'Fields reference in constant context should be static');
       final variable = node.fields.variables.firstWhere(

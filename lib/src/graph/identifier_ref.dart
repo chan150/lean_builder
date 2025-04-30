@@ -1,5 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
+import 'package:xxh3/xxh3.dart';
 
 class DeclarationRef {
   DeclarationRef({
@@ -19,6 +22,16 @@ class DeclarationRef {
   final TopLevelIdentifierType type;
   final Asset? importingLibrary;
   final String? importPrefix;
+
+  factory DeclarationRef.from(String name, String uri, TopLevelIdentifierType type) {
+    return DeclarationRef(
+      identifier: name,
+      srcId: xxh3String(Uint8List.fromList(uri.codeUnits)),
+      providerId: uri,
+      type: type,
+      srcUri: Uri.parse(uri),
+    );
+  }
 
   @override
   String toString() {

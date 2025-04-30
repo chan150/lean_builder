@@ -1,7 +1,8 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:collection/collection.dart';
+import 'package:lean_builder/element.dart';
 import 'package:lean_builder/src/graph/identifier_ref.dart';
-import 'package:lean_builder/src/type/type_ref.dart';
+import 'package:lean_builder/src/type/type.dart';
 
 import 'const_evaluator.dart';
 
@@ -9,6 +10,34 @@ sealed class Constant {
   const Constant();
 
   static const Constant invalid = InvalidConst();
+
+  bool get isString => this is ConstString;
+
+  bool get isNum => this is ConstNum;
+
+  bool get isInt => this is ConstInt;
+
+  bool get isDouble => this is ConstDouble;
+
+  bool get isBool => this is ConstBool;
+
+  bool get isSymbol => this is ConstSymbol;
+
+  bool get isTypeRef => this is ConstTypeRef;
+
+  bool get isEnumValue => this is ConstEnumValue;
+
+  bool get isFunctionReference => this is ConstFunctionReference;
+
+  bool get isList => this is ConstList;
+
+  bool get isMap => this is ConstMap;
+
+  bool get isSet => this is ConstSet;
+
+  bool get isObject => this is ConstObject;
+
+  bool get isInvalid => this is InvalidConst;
 }
 
 class InvalidConst extends Constant {
@@ -31,7 +60,7 @@ abstract class ConstValue<T> extends Constant {
   final T value;
 }
 
-class ConstTypeRef extends ConstValue<TypeRef> {
+class ConstTypeRef extends ConstValue<DartType> {
   ConstTypeRef(super.value);
 
   @override
@@ -131,8 +160,9 @@ class ConstBool extends ConstValue<bool> {
 
 class ConstEnumValue extends ConstValue<String> {
   final String enumName;
+  final int index;
 
-  ConstEnumValue(this.enumName, super.value);
+  ConstEnumValue(this.enumName, super.value, this.index);
 
   @override
   String toString() => '$enumName.$value';
@@ -149,33 +179,39 @@ class ConstEnumValue extends ConstValue<String> {
 abstract class ConstFunctionReference extends Constant {
   String get name;
 
-  DeclarationRef get src;
+  DeclarationRef get declaration;
 
-  FunctionTypeRef get type;
+  FunctionType get type;
 
-  List<TypeRef> get typeArguments;
+  List<DartType> get typeArguments;
+
+  ExecutableElement get element;
 }
 
 class ConstFunctionReferenceImpl extends ConstFunctionReference {
   @override
-  final FunctionTypeRef type;
+  FunctionType get type => element.type;
+
   @override
   final String name;
 
   @override
-  final DeclarationRef src;
+  final DeclarationRef declaration;
 
-  ConstFunctionReferenceImpl(this.name, this.type, this.src);
+  @override
+  final ExecutableElement element;
+
+  ConstFunctionReferenceImpl({required this.name, required this.element, required this.declaration});
 
   @override
   String toString() => name;
 
   @override
-  List<TypeRef> get typeArguments => _typeArguments;
+  List<DartType> get typeArguments => _typeArguments;
 
-  final List<TypeRef> _typeArguments = [];
+  final List<DartType> _typeArguments = [];
 
-  void addTypeArgument(TypeRef type) {
+  void addTypeArgument(DartType type) {
     _typeArguments.add(type);
   }
 
@@ -186,11 +222,11 @@ class ConstFunctionReferenceImpl extends ConstFunctionReference {
           runtimeType == other.runtimeType &&
           type == other.type &&
           name == other.name &&
-          src == other.src &&
+          declaration == other.declaration &&
           const ListEquality().equals(_typeArguments, other._typeArguments);
 
   @override
-  int get hashCode => type.hashCode ^ name.hashCode ^ src.hashCode ^ const ListEquality().hash(_typeArguments);
+  int get hashCode => type.hashCode ^ name.hashCode ^ declaration.hashCode ^ const ListEquality().hash(_typeArguments);
 }
 
 class ConstList extends ConstValue<List<Constant>> {
@@ -208,7 +244,7 @@ class ConstList extends ConstValue<List<Constant>> {
   int get hashCode => const ListEquality().hash(value);
 }
 
-class ConstMap extends ConstValue<Map<String, Constant>> {
+class ConstMap extends ConstValue<Map<Constant, Constant>> {
   ConstMap(super.value);
 
   @override
@@ -241,7 +277,7 @@ class ConstSet extends ConstValue<Set<Constant>> {
 abstract class ConstObject extends ConstValue<Null> {
   ConstObject() : super(null);
 
-  TypeRef get type;
+  DartType get type;
 
   Map<String, Constant?> get props;
 
@@ -267,6 +303,8 @@ abstract class ConstObject extends ConstValue<Null> {
 
   ConstSet? getSet(String key);
 
+  ConstEnumValue? getEnumValue(String key);
+
   ConstFunctionReference? getFunctionReference(String key);
 }
 
@@ -274,7 +312,7 @@ class ConstObjectImpl extends ConstObject {
   ConstObjectImpl(this.props, this.type, {this.positionalNames = const {}});
 
   @override
-  final TypeRef type;
+  final DartType type;
 
   @override
   final Map<String, Constant?> props;
@@ -310,6 +348,9 @@ class ConstObjectImpl extends ConstObject {
 
   @override
   ConstSet? getSet(String key) => _getTyped<ConstSet>(key);
+
+  @override
+  ConstEnumValue? getEnumValue(String key) => _getTyped<ConstEnumValue>(key);
 
   @override
   ConstFunctionReference? getFunctionReference(String key) => _getTyped<ConstFunctionReference>(key);

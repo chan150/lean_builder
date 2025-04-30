@@ -33,13 +33,13 @@ abstract class GeneratorForAnnotation extends Generator {
 
   TypeChecker? _typeChecker;
 
-  TypeChecker _getTypeChecker(BuildStep buildStep) {
+  TypeChecker getTypeChecker(BuildStep buildStep) {
     return _typeChecker ??= buildTypeChecker(buildStep.resolver);
   }
 
   @override
   FutureOr<String> generate(LibraryElement library, BuildStep buildStep) async {
-    final typeChecker = _getTypeChecker(buildStep);
+    final typeChecker = getTypeChecker(buildStep);
     final values = <String>{};
     final annotatedElements = library.annotatedWith(typeChecker);
     if (annotatedElements.isEmpty && throwOnUnresolved) {
@@ -50,9 +50,11 @@ abstract class GeneratorForAnnotation extends Generator {
     }
     for (var annotatedElement in annotatedElements) {
       final rawValue = generateForAnnotatedElement(buildStep, annotatedElement);
-      final value = rawValue is Future ? await rawValue : rawValue;
-      if (value != null && value.trim().isNotEmpty) {
-        values.add(value);
+      final normalized = await normalizeGeneratorOutput(rawValue);
+      for (final value in normalized) {
+        if (value.trim().isNotEmpty) {
+          values.add(value);
+        }
       }
     }
     return values.join('\n\n');
@@ -60,5 +62,35 @@ abstract class GeneratorForAnnotation extends Generator {
 
   TypeChecker buildTypeChecker(Resolver resolver);
 
-  FutureOr<String?> generateForAnnotatedElement(BuildStep buildStep, AnnotatedElement annotatedElement);
+  dynamic generateForAnnotatedElement(BuildStep buildStep, AnnotatedElement annotatedElement);
 }
+
+/// Converts [Future], [Iterable], or [String] to a normalized output.
+Future<Iterable<String>> normalizeGeneratorOutput(Object? value) async {
+  if (value == null) {
+    return Future.value(const Iterable.empty());
+  } else if (value is Future) {
+    return value.then(normalizeGeneratorOutput);
+  } else if (value is String) {
+    value = [value];
+  }
+
+  if (value is Iterable) {
+    return value
+        .where((e) => e != null)
+        .map((e) {
+          if (e is String) {
+            return e.trim();
+          }
+          throw _argError(e as Object);
+        })
+        .where((e) => e.isNotEmpty);
+  }
+
+  throw _argError(value);
+}
+
+ArgumentError _argError(Object value) => ArgumentError(
+  'Must be a String or be an Iterable/Stream containing String values. '
+  'Found `${Error.safeToString(value)}` (${value.runtimeType}).',
+);
