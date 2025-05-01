@@ -523,7 +523,7 @@ class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixi
 
   @override
   FieldElement? getField(String name) {
-    for (final field in _fields) {
+    for (final field in fields) {
       if (field.name == name) {
         return field;
       }

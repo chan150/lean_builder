@@ -83,7 +83,7 @@ class PackageFileResolverImpl implements PackageFileResolver {
     if (packageToPath.containsKey(package)) {
       return packageToPath[package]!;
     }
-    throw PackageNotFoundError('Package $package not found');
+    throw PackageNotFoundError('Package "$package" not found');
   }
 
   /// Creates a resolver for the specified root directory
@@ -154,7 +154,7 @@ class PackageFileResolverImpl implements PackageFileResolver {
       }
     }
     if (bestMatch == null) {
-      throw PackageNotFoundError(path);
+      throw PackageNotFoundError('Package not found for URI: $uri');
     }
     return bestMatch;
   }

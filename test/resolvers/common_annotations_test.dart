@@ -52,8 +52,8 @@ void main() {
       @Target()
       class AnnotatedClass {}
     ''');
-    scanner!.scanAndRegister(asset);
-    scanDartCoreAssets(scanner!);
+    scanner!.registerAndScan(asset);
+    scanDartSdk(scanner!, also: {'meta'});
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('AnnotatedClass');
     expect(classElement, isNotNull);

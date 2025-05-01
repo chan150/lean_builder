@@ -135,7 +135,7 @@ void main() {
     expect(phases.length, 2);
     expect(phases[0][0].key, 'c');
     expect(phases[1][0], isA<CombiningBuilderEntry>());
-    expect(phases[1][0].key, 'a:d:b');
+    expect(phases[1][0].key, 'a|d|b');
   });
 
   test('Should detect cycles in combining builders', () {

@@ -7,13 +7,16 @@ import 'package:lean_builder/src/graph/assets_scanner.dart' show AssetsScanner;
 import 'package:test/expect.dart';
 import 'package:test/scaffolding.dart';
 
+import '../utils/test_utils.dart';
 import 'string_asset_src.dart';
 
 main() {
   late AssetsScanner scanner;
   late AssetsGraph assetsGraph;
+
   setUp(() {
-    final fileResolver = PackageFileResolverImpl({'test': 'path/to/test'}, packagesHash: '', rootPackage: 'root');
+    final fileResolver = PackageFileResolverImpl({'root': 'file:///root'}, packagesHash: '', rootPackage: 'root');
+
     assetsGraph = AssetsGraph(fileResolver.packagesHash);
     scanner = AssetsScanner(assetsGraph, fileResolver);
   });
@@ -263,142 +266,145 @@ main() {
   });
 
   test('Should parse simple import', () {
-    final src = StringAsset("import 'path.dart';", uriString: 'path.dart');
-    scanner.scan(src);
+    final src = StringAsset("import 'package:root/path.dart';");
+    scanner.registerAndScan(src);
     final imports = assetsGraph.importsOf(src.id);
     expect(imports.length, 1);
     final importArr = imports.first;
-    expect(importArr, [DirectiveStatement.import, src.id, 'path.dart', null, null]);
+    expect(importArr, [DirectiveStatement.import, src.id, 'package:root/path.dart', null, null]);
   });
 
   test('Should parse simple import with alias', () {
-    final file = StringAsset("import 'path.dart' as i;", uriString: 'path.dart');
+    final file = StringAsset("import 'package:root/path.dart' as i;");
     scanner.scan(file);
     final imports = assetsGraph.importsOf(file.id);
     expect(imports.length, 1);
-    expect(imports.first, [DirectiveStatement.import, file.id, 'path.dart', null, null, 'i']);
+    expect(imports.first, [DirectiveStatement.import, file.id, 'package:root/path.dart', null, null, 'i']);
   });
 
   test('Should parse simple deferred import', () {
-    final file = StringAsset("import 'path.dart' deferred as i;", uriString: 'path.dart');
+    final file = StringAsset("import 'package:root/path.dart' deferred as i;", uriString: 'package:root/path.dart');
     scanner.scan(file);
     final imports = assetsGraph.importsOf(file.id);
     expect(imports.length, 1);
-    expect(imports.first, [DirectiveStatement.import, file.id, 'path.dart', null, null, 'i', 1]);
+    expect(imports.first, [DirectiveStatement.import, file.id, 'package:root/path.dart', null, null, 'i', 1]);
   });
 
   test('Should parse simple import with show', () {
-    final file = StringAsset("import 'path.dart' show A, B;", uriString: 'path.dart');
-    scanner.scan(file);
-    final imports = assetsGraph.importsOf(file.id);
+    final asset = StringAsset("import 'package:root/path.dart' show A, B;");
+    scanner.registerAndScan(asset);
+    final imports = assetsGraph.importsOf(asset.id);
     expect(imports.length, 1);
     expect(imports.first, [
       DirectiveStatement.import,
-      file.id,
-      'path.dart',
+      asset.id,
+      'package:root/path.dart',
       ['A', 'B'],
       null,
     ]);
   });
 
   test('Should parse simple import with hide', () {
-    final file = StringAsset("import 'path.dart' hide A, B;", uriString: 'path.dart');
-    scanner.scan(file);
-    final imports = assetsGraph.importsOf(file.id);
+    final asset = StringAsset("import 'package:root/path.dart' hide A, B;");
+    scanner.registerAndScan(asset);
+    final imports = assetsGraph.importsOf(asset.id);
     expect(imports.first, [
       DirectiveStatement.import,
-      file.id,
-      'path.dart',
+      asset.id,
+      'package:root/path.dart',
       null,
       ['A', 'B'],
     ]);
   });
 
   test('Should parse simple import with show and hide', () {
-    final file = StringAsset("import 'path.dart' show A, B hide C, D;", uriString: 'path.dart');
+    final file = StringAsset("import 'package:root/path.dart' show A, B hide C, D;");
     scanner.scan(file);
     final imports = assetsGraph.importsOf(file.id);
     expect(imports.length, 1);
     expect(imports.first, [
       DirectiveStatement.import,
       file.id,
-      'path.dart',
+      'package:root/path.dart',
       ['A', 'B'],
       ['C', 'D'],
     ]);
   });
 
   test('Should parse simple export', () {
-    final file = StringAsset("export 'path.dart';", uriString: 'path.dart');
+    final file = StringAsset("export 'package:root/path.dart';");
     scanner.scan(file);
     final exports = assetsGraph.exportsOf(file.id);
-    expect(exports.first, [DirectiveStatement.export, file.id, 'path.dart', null, null]);
+    expect(exports.first, [DirectiveStatement.export, file.id, 'package:root/path.dart', null, null]);
   });
 
   test('Should parse simple export with show', () {
-    final file = StringAsset("export 'path.dart' show A, B;", uriString: 'path.dart');
+    final file = StringAsset("export 'package:root/path.dart' show A, B;", uriString: 'package:root/path.dart');
     scanner.scan(file);
     final exports = assetsGraph.exportsOf(file.id);
     expect(exports.first, [
       DirectiveStatement.export,
       file.id,
-      'path.dart',
+      'package:root/path.dart',
       ['A', 'B'],
       null,
     ]);
   });
 
   test('Should parse simple export with hide', () {
-    final file = StringAsset("export 'path.dart' hide A, B;", uriString: 'path.dart');
+    final file = StringAsset("export 'package:root/path.dart' hide A, B;", uriString: 'package:root/path.dart');
     scanner.scan(file);
     final exports = assetsGraph.exportsOf(file.id);
     expect(exports.first, [
       DirectiveStatement.export,
       file.id,
-      'path.dart',
+      'package:root/path.dart',
       null,
       ['A', 'B'],
     ]);
   });
 
   test('Should parse simple export with show and hide', () {
-    final file = StringAsset("export 'path.dart' show A, B hide C, D;", uriString: 'path.dart');
+    final file = StringAsset(
+      "export 'package:root/path.dart' show A, B hide C, D;",
+      uriString: 'package:root/path.dart',
+    );
     scanner.scan(file);
     final exports = assetsGraph.exportsOf(file.id);
     expect(exports.first, [
       DirectiveStatement.export,
       file.id,
-      'path.dart',
+      'package:root/path.dart',
       ['A', 'B'],
       ['C', 'D'],
     ]);
   });
 
   test('Should parse simple part', () {
-    final file = StringAsset("part 'path.dart';", uriString: 'path.dart');
-    scanner.scan(file);
+    final file = StringAsset("part 'package:root/path.dart';");
+    scanner.registerAndScan(file);
     final imports = assetsGraph.importsOf(file.id);
     final exports = assetsGraph.exportsOf(file.id);
     final parts = assetsGraph.partsOf(file.id);
-    expect(imports.first, [DirectiveStatement.part, file.id, 'path.dart', null, null]);
-    expect(exports.first, [DirectiveStatement.part, file.id, 'path.dart', null, null]);
-    expect(parts.first, [DirectiveStatement.part, file.id, 'path.dart', null, null]);
+    expect(imports.first, [DirectiveStatement.part, file.id, 'package:root/path.dart', null, null]);
+    expect(exports.first, [DirectiveStatement.part, file.id, 'package:root/path.dart', null, null]);
+    expect(parts.first, [DirectiveStatement.part, file.id, 'package:root/path.dart', null, null]);
   });
 
   test('Should parse part of', () {
-    final file = StringAsset("part of 'path.dart';");
-    scanner.scan(file);
-    expect(assetsGraph.partOfOf(file.id), isNotNull);
+    final asset = StringAsset("part of 'path.dart';", uriString: 'path.dart');
+    scanner.registerAndScan(asset, relativeTo: asset);
+    expect(assetsGraph.partOfOf(asset.id), isNotNull);
   });
 
   test('TopLevelScanner should detect class annotation', () {
-    final file = StringAsset('''
+    final asset = StringAsset('''
       @Annotation()
       class MyClass {}
     ''');
-    scanner.scan(file);
-    expect(assetsGraph.identifiers.first, ['MyClass', file.id, TopLevelIdentifierType.$class.value]);
-    expect(assetsGraph.assets[file.id]?[2], 1);
+    scanner.registerAndScan(asset);
+    expect(assetsGraph.identifiers.first, ['MyClass', asset.id, TopLevelIdentifierType.$class.value]);
+    expect(assetsGraph.assets[asset.id]?[2], 1);
   });
 
   test('TopLevelScanner should detect class annotation with arguments', () {

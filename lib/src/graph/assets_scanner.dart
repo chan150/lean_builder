@@ -19,7 +19,9 @@ class AssetsScanner {
   (bool didScane, bool hasTopLevelAnnotation) scan(Asset asset) {
     try {
       if (results.isVisited(asset.id)) return (false, false);
+
       final bytes = asset.readAsBytesSync();
+
       results.addAsset(asset);
 
       Token? token = fasta.scan(bytes).tokens;
@@ -111,7 +113,7 @@ class AssetsScanner {
       results.updateAssetInfo(asset, content: bytes, hasAnnotation: hasTopLevelAnnotation, libraryName: libraryName);
       return (true, hasTopLevelAnnotation);
     } catch (e, stack) {
-      Logger.error('Error scanning asset ${asset.uri}', stackTrace: stack);
+      Logger.error('Error scanning asset ${asset.uri} ${e.toString()}', stackTrace: stack);
       return (false, false);
     }
   }

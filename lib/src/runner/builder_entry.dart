@@ -141,7 +141,7 @@ class CombiningBuilderEntry implements BuilderEntry {
   }
 
   static CombiningBuilderEntry fromEntries(List<BuilderEntryImpl> entries) {
-    final key = entries.map((e) => e.key).join('#');
+    final key = entries.map((e) => e.key).join('|');
     final builders = entries.map((e) => e.builder).toList();
     return CombiningBuilderEntry(
       builders: builders,

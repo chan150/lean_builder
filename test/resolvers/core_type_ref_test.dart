@@ -15,11 +15,7 @@ void main() {
   Resolver? resolver;
 
   setUp(() {
-    final packageToPath = {
-      PackageFileResolver.dartSdk: PackageFileResolver.dartSdkPath.toString(),
-      'root': 'path/to/root',
-    };
-    fileResolver = PackageFileResolverImpl(packageToPath, packagesHash: '', rootPackage: 'root');
+    fileResolver = PackageFileResolver.forRoot();
     final AssetsGraph graph = AssetsGraph('hash');
     scanner = AssetsScanner(graph, fileResolver!);
     resolver = Resolver(graph, fileResolver!, SourceParser());
@@ -56,8 +52,8 @@ void main() {
         Never neverMethod() {}
       }
     ''');
-    scanner!.scanAndRegister(asset);
-    scanDartCoreAssets(scanner!);
+    scanner!.registerAndScan(asset);
+    scanDartSdk(scanner!, also: {'meta'});
     final library = resolver!.resolveLibrary(asset);
     final classElement = library.getClass('CoreTypes');
     expect(classElement, isNotNull);

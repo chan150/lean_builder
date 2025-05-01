@@ -23,12 +23,12 @@ class PackageConfigParseError extends ResolverError {
 
 /// Requested package not found in configuration
 class PackageNotFoundError extends ResolverError {
-  final String package;
+  final String message;
 
-  PackageNotFoundError(this.package);
+  PackageNotFoundError(this.message);
 
   @override
-  String toString() => 'PackageNotFoundError: Package "$package" not found';
+  String toString() => message;
 }
 
 /// Asset URI could not be constructed

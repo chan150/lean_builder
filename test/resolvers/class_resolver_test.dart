@@ -13,8 +13,7 @@ void main() {
   Resolver? resolver;
 
   setUpAll(() {
-    final packageToPath = {PackageFileResolver.dartSdk: 'path/to/sdk', 'root': 'path/to/root'};
-    fileResolver = PackageFileResolverImpl(packageToPath, packagesHash: '', rootPackage: 'root');
+    fileResolver = PackageFileResolver.forRoot();
   });
 
   setUp(() {

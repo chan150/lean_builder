@@ -16,11 +16,7 @@ void main() {
   Resolver? resolver;
 
   setUp(() {
-    final packageToPath = {
-      PackageFileResolver.dartSdk: PackageFileResolver.dartSdkPath.toString(),
-      'root': 'path/to/root',
-    };
-    fileResolver = PackageFileResolverImpl(packageToPath, packagesHash: '', rootPackage: 'root');
+    fileResolver = PackageFileResolver.forRoot() as PackageFileResolverImpl;
     final AssetsGraph graph = AssetsGraph('hash');
     scanner = AssetsScanner(graph, fileResolver!);
     resolver = Resolver(graph, fileResolver!, SourceParser());
@@ -130,8 +126,8 @@ void main() {
         const Foo(this.value); 
       }
     ''');
-    scanner!.scanAndRegister(asset);
-    scanDartCoreAssets(scanner!);
+    scanner!.registerAndScan(asset);
+    scanDartSdk(scanner!);
     final library = resolver!.resolveLibrary(asset);
     final enumElement = library.getEnum('Foo');
     expect(enumElement, isNotNull);
@@ -152,8 +148,8 @@ void main() {
         const Foo(this.value, {this.name}); 
       }
     ''');
-    scanner!.scanAndRegister(asset);
-    scanDartCoreAssets(scanner!);
+    scanner!.registerAndScan(asset);
+    scanDartSdk(scanner!);
     final library = resolver!.resolveLibrary(asset);
     final enumElement = library.getEnum('Foo');
     expect(enumElement, isNotNull);

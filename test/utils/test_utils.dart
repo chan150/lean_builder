@@ -5,14 +5,14 @@ import 'package:lean_builder/src/graph/assets_scanner.dart';
 
 extension TopLevelScannerExt on AssetsScanner {
   // register the scanned asset in the assets cache so it's not resolved to FileAsset
-  void scanAndRegister(Asset asset, {Asset? relativeTo}) {
-    scan(asset);
+  void registerAndScan(Asset asset, {Asset? relativeTo}) {
     (fileResolver as PackageFileResolverImpl).registerAsset(asset, relativeTo: relativeTo);
+    scan(asset);
   }
 }
 
-void scanDartCoreAssets(AssetsScanner scanner) {
-  final assetsReader = FileAssetReader(scanner.fileResolver).listAssetsFor({PackageFileResolver.dartSdk, 'meta'});
+void scanDartSdk(AssetsScanner scanner, {Set<String> also = const {}}) {
+  final assetsReader = FileAssetReader(scanner.fileResolver).listAssetsFor({PackageFileResolver.dartSdk, ...also});
   for (final asset in assetsReader.values.expand((e) => e)) {
     scanner.scan(asset);
   }
