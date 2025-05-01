@@ -12,9 +12,12 @@ dependencies:
   lean_builder:
     path: ../../lean_builder
   meta:
+  json_annotation:
   # path: ^1.8.0
 
 dev_dependencies:
   lints: ^5.1.1
+  json_serializable:
+    path: ../../json_serializable.dart/json_serializable
 
 

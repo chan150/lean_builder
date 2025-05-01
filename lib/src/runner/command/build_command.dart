@@ -151,7 +151,7 @@ class BuildCommand extends BaseCommand<int> {
         for (final asset in result.failedAssets) {
           graph.invalidateDigest(asset.asset.id);
         }
-        throw MultiFieldAssetsException(result.failedAssets);
+        throw MultiFieldAssetsException(result.failedAssets.take(1).toList());
       }
       final outputUris = result.outputs.map((e) => e.asset.shortUri);
       for (final output in existingOutputs) {

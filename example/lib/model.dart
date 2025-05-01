@@ -1,17 +1,16 @@
-import 'package:example/src/annotations.dart';
+import 'package:json_annotation/json_annotation.dart';
 
 part 'model.g.dart';
 
-@Serializable('Heleelo')
+@JsonSerializable()
 class Model {
   final String name;
-  final int age = 123;
-  final String? email;
-  final String? phone;
-  final double? address;
-  final bool? isActive;
+  final int age;
+  final bool isActive;
 
-  Model(this.name, this.email, this.phone, this.address, this.isActive);
+  Model({required this.name, required this.age, required this.isActive});
 
-  /// hello
+  factory Model.fromJson(Map<String, dynamic> json) => _$ModelFromJson(json);
+
+  Map<String, dynamic> toJson() => _$ModelToJson(this);
 }

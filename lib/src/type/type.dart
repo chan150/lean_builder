@@ -472,7 +472,7 @@ class InterfaceTypeImpl extends TypeImpl implements InterfaceType {
   InterfaceElement _resolveElement() {
     final ele = resolver.elementOf(this);
     if (ele is! InterfaceElement) {
-      throw Exception('Element of $this is not an InterfaceElement (${ele.runtimeType})');
+      throw Exception('Element of $this (${ele.runtimeType}) is not an InterfaceElement');
     }
     return ele;
   }

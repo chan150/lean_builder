@@ -6,7 +6,7 @@ import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/asset/assets_reader.dart';
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
-import 'package:lean_builder/src/graph/symbols_scanner.dart';
+import 'package:lean_builder/src/graph/assets_scanner.dart';
 import 'package:xxh3/xxh3.dart';
 
 import 'assets_graph.dart';

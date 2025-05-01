@@ -101,7 +101,7 @@ class ElementAnnotationImpl implements ElementAnnotation {
   final DeclarationRef declarationRef;
 
   @override
-  Constant get constant => _constValue ??= _constantValueCompute() ?? Constant.invalid;
+  Constant get constant => _constValue ??= _constantValueCompute()!;
 
   Constant? _constValue;
 

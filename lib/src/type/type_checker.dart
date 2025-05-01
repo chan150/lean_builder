@@ -145,7 +145,8 @@ class _RefTypeChecker extends _TypeCheckerImpl {
 
 class _UriTypeChecker extends _TypeCheckerImpl {
   final String name;
-  final String srcId;
+  final Uri uri;
+  final String? srcId;
 
   factory _UriTypeChecker(String url) {
     final parts = url.split('#');
@@ -157,22 +158,30 @@ class _UriTypeChecker extends _TypeCheckerImpl {
     if (libraryUrl.scheme != 'package' && libraryUrl.scheme != 'dart') {
       throw ArgumentError('Invalid url format: $url, expected format e.g package:foo/bar.dart#baz or dart:core#int');
     }
-
-    if (libraryUrl.scheme == 'dart' && !libraryUrl.path.endsWith('.dart')) {
-      libraryUrl = libraryUrl.replace(path: '${libraryUrl.path}/${_toSnakeCase(typeName)}.dart');
+    String? srcId;
+    if (libraryUrl.path.endsWith('.dart')) {
+      srcId = xxh3String(Uint8List.fromList(libraryUrl.toString().codeUnits));
     }
 
-    final srcId = xxh3String(Uint8List.fromList(libraryUrl.toString().codeUnits));
-
-    return _UriTypeChecker._(typeName, srcId);
+    return _UriTypeChecker._(typeName, libraryUrl, srcId);
   }
 
-  _UriTypeChecker._(this.name, this.srcId);
+  _UriTypeChecker._(this.name, this.uri, this.srcId);
 
   @override
   bool isExactlyType(DartType typeRef) {
     if (typeRef is NamedDartType) {
-      return typeRef.name == name && srcId == typeRef.declarationRef.srcId;
+      if (typeRef.name != name) {
+        return false;
+      }
+      if (srcId != null) {
+        return typeRef.declarationRef.srcId == srcId;
+      }
+      // at this point we should have something like dart:core;
+      // we convert it to dart:core/core.dart
+      final resolver = typeRef.resolver;
+      final type = resolver.getNamedType(name, uri.toString());
+      return type.isExactly(typeRef);
     }
     return false;
   }

@@ -3,7 +3,7 @@ import 'package:lean_builder/src/graph/asset_scan_manager.dart';
 
 class BuildResult {
   final Map<Asset, Set<Uri>> outputs;
-  final List<FieldAsset> fieldAssets;
+  final List<FailedAsset> fieldAssets;
 
   BuildResult(this.outputs, this.fieldAssets);
 
@@ -15,17 +15,17 @@ class BuildResult {
   }
 }
 
-class FieldAsset {
+class FailedAsset {
   final Asset asset;
   final Object error;
   final StackTrace? stackTrace;
 
-  FieldAsset(this.asset, this.error, this.stackTrace);
+  FailedAsset(this.asset, this.error, this.stackTrace);
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is FieldAsset && runtimeType == other.runtimeType && asset == other.asset && error == other.error;
+      other is FailedAsset && runtimeType == other.runtimeType && asset == other.asset && error == other.error;
 
   @override
   int get hashCode => asset.hashCode ^ error.hashCode;
@@ -34,7 +34,7 @@ class FieldAsset {
 class PhaseResult {
   final List<ProcessableAsset> outputs;
 
-  final List<FieldAsset> failedAssets;
+  final List<FailedAsset> failedAssets;
 
   bool get hasErrors => failedAssets.isNotEmpty;
 
@@ -42,7 +42,7 @@ class PhaseResult {
 }
 
 class MultiFieldAssetsException implements Exception {
-  final List<FieldAsset> assets;
+  final List<FailedAsset> assets;
 
   MultiFieldAssetsException(this.assets);
 }

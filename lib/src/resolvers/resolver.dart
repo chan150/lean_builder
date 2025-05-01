@@ -1,4 +1,5 @@
 import 'dart:collection';
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:analyzer/dart/ast/ast.dart';
@@ -33,7 +34,7 @@ class Resolver {
   final _typeCheckersCache = HashMap<String, TypeChecker>();
   final _resolvedUnitsCache = SourceBasedCache<(LibraryElementImpl, AstNode, DeclarationRef)>();
   final _elementResolveLocks = SourceBasedCache<Lock>();
-  final _resolvedTypeRefs = SourceBasedCache<Element?>();
+  final _resolvedTypeRefs = SourceBasedCache<Element>();
   final evaluatedConstantsCache = SourceBasedCache<Constant>();
 
   Resolver(this.graph, this.fileResolver, this.parser);
@@ -65,6 +66,7 @@ class Resolver {
     }
     final typeRef = getNamedType(name, packageImport);
     final typeChecker = TypeChecker.fromTypeRef(typeRef);
+
     return _typeCheckersCache[key] = typeChecker;
   }
 
@@ -74,9 +76,10 @@ class Resolver {
       throw Exception('Invalid package import: $packageUrl, must be a package or dart import');
     }
     if (uri.scheme == 'dart' && !packageUrl.endsWith('.dart')) {
-      uri = Uri.parse('$packageUrl/$name.dart');
+      final absoluteUri = fileResolver.resolveFileUri(uri);
+      uri = fileResolver.toShortUri(absoluteUri);
     }
-    final srcId = xxh3String(Uint8List.fromList(packageUrl.codeUnits));
+    final srcId = xxh3String(Uint8List.fromList(uri.toString().codeUnits));
     final declarationRef = graph.lookupIdentifierByProvider(name, srcId);
     if (declarationRef == null) {
       throw Exception('Identifier $name not found in $packageUrl');
@@ -106,8 +109,8 @@ class Resolver {
       if (_resolvedTypeRefs.contains(key)) {
         return _resolvedTypeRefs[key];
       }
-      final importingLibrary = type.declarationRef.importingLibrary;
-      if (importingLibrary == null) return null;
+      var importingLibrary = type.declarationRef.importingLibrary;
+      importingLibrary ??= fileResolver.assetForUri(type.declarationRef.srcUri);
 
       final importingLib = libraryFor(importingLibrary);
       final identifier = IdentifierRef(type.name, declarationRef: type.declarationRef);

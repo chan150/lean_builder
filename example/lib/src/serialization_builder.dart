@@ -11,7 +11,8 @@ Builder serializationBuilder(BuilderOptions options) {
 class SerializationGenerator extends GeneratorForAnnotation {
   @override
   TypeChecker buildTypeChecker(Resolver resolver) {
-    return resolver.typeCheckerFor('Serializable', 'package:example/src/annotations.dart');
+    // return resolver.typeCheckerFor('Serializable', 'package:example/src/annotations.dart');
+    return resolver.typeCheckerFor('JsonSerializable', 'package:json_annotation/json_annotation.dart');
   }
 
   @override
@@ -21,7 +22,6 @@ class SerializationGenerator extends GeneratorForAnnotation {
       throw Exception('Expected a class element, but got ${element.runtimeType}');
     }
     final buffer = StringBuffer();
-    buffer.writeln('// ${annotatedElement.annotation.constant.toString()}');
     buffer.writeln('class ${element.name}Serializer {');
     for (final field in element.fields) {
       buffer.writeln('final ${field.type} ${field.name};');

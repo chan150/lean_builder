@@ -84,9 +84,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
 
   void registerMetadataResolver(ElementImpl elm, NodeList<Annotation> meta) {
     elm.metadataResolveCallback = () {
-      visitElementScoped(elm, () {
-        meta.accept(this);
-      });
+      visitElementScoped(elm, () => meta.accept(this));
     };
   }
 
@@ -469,7 +467,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       }
       _setCodeRange(fieldEle, variable);
       interfaceElement.addField(fieldEle);
-      registerMetadataResolver(fieldEle, variable.metadata);
+      registerMetadataResolver(fieldEle, node.metadata);
     }
   }
 
@@ -507,7 +505,9 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
           }
           final obj = constantEvaluator.evaluate(constructor) as ConstObjectImpl?;
           if (node.arguments != null) {
-            return obj?.construct(node.arguments!, constructor.name?.lexeme, constantEvaluator);
+            return constantEvaluator.visitElementScoped(currentElement.library, () {
+              return obj?.construct(node.arguments!, constructor.name?.lexeme, constantEvaluator);
+            });
           }
           return obj;
         },

@@ -110,9 +110,8 @@ class AssetsScanner {
 
       results.updateAssetInfo(asset, content: bytes, hasAnnotation: hasTopLevelAnnotation, libraryName: libraryName);
       return (true, hasTopLevelAnnotation);
-    } catch (e) {
-      final stack = e is Error ? e.stackTrace : StackTrace.current;
-      Logger.error('Error scanning asset ${asset.id}', stackTrace: stack);
+    } catch (e, stack) {
+      Logger.error('Error scanning asset ${asset.uri}', stackTrace: stack);
       return (false, false);
     }
   }

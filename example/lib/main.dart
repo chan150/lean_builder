@@ -1,18 +1,37 @@
-import 'package:example/src/annotations.dart';
+import 'package:json_annotation/json_annotation.dart';
 
 part 'main.g.dart';
 
-@Serializable('SSS')
+@ArgConverter()
+@JsonSerializable()
 class SampleX {
-  final String name;
-  final int age33233331 = 1222434343343222;
+  // final int age33233331 = 1222434343343222;
+  @JsonKey()
+  final Arg x, y;
 
-  SampleX(this.name);
+  // static const Arg arg = Arg(1);
+  @JsonKey(defaultValue: 'defaultV')
+  final String t;
+
+  const SampleX(this.x, this.y, [this.t = 'Text']);
 }
 
-@Serializable('sdfd')
-class Sample2 {
-  final Sample2 sample;
+Arg serialize(int sample) {
+  return Arg(sample);
+}
 
-  Sample2(this.sample);
+class Arg {
+  const Arg(this.x);
+
+  final int x;
+}
+
+class ArgConverter implements JsonConverter<Arg, int> {
+  const ArgConverter();
+
+  @override
+  Arg fromJson(int json) => Arg(json);
+
+  @override
+  int toJson(Arg object) => object.x;
 }

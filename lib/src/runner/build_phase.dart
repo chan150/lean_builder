@@ -5,7 +5,7 @@ import 'package:lean_builder/builder.dart' show BuildCandidate, Resolver;
 import 'package:lean_builder/runner.dart';
 import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/graph/asset_scan_manager.dart';
-import 'package:lean_builder/src/graph/symbols_scanner.dart';
+import 'package:lean_builder/src/graph/assets_scanner.dart';
 import 'package:lean_builder/src/logger.dart';
 import 'package:lean_builder/src/runner/build_utils.dart';
 
@@ -35,7 +35,7 @@ class BuildPhase {
     }
 
     final phaseOutputs = HashMap<Asset, Set<Uri>>();
-    final failedAssets = <FieldAsset>[];
+    final failedAssets = <FailedAsset>[];
     for (final result in await Future.wait(chunkResults)) {
       phaseOutputs.addAll(result.outputs);
       failedAssets.addAll(result.fieldAssets);
@@ -45,7 +45,7 @@ class BuildPhase {
 
   Future<BuildResult> _buildChunk(List<ProcessableAsset> chunk) async {
     final chunkOutputs = HashMap<Asset, Set<Uri>>();
-    final chunkErrors = <FieldAsset>[];
+    final chunkErrors = <FailedAsset>[];
     for (final entry in chunk) {
       try {
         final candidate = BuildCandidate(
@@ -59,7 +59,7 @@ class BuildPhase {
           chunkOutputs.putIfAbsent(entry.asset, () => <Uri>{}).addAll(generatedOutputs);
         }
       } catch (e, stack) {
-        chunkErrors.add(FieldAsset(entry.asset, e, stack));
+        chunkErrors.add(FailedAsset(entry.asset, e, stack));
       }
     }
     return BuildResult(chunkOutputs, chunkErrors);

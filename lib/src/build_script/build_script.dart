@@ -99,9 +99,6 @@ List<ParsedBuilderEntry> _parseAll(Map<String, File> configFiles) {
       final yaml = loadYaml(file.readAsStringSync()) as Map;
       final builders = yaml['builders'] as Map?;
       final buildersOverride = yaml['builders_override'] as Map?;
-      if (builders == null && buildersOverride == null) {
-        throw BuildConfigError('Expected a `builders` or `builders_override` key in ${file.path}');
-      }
 
       if (builders != null) {
         if (builders.isEmpty) {

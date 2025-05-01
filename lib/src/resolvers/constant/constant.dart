@@ -39,25 +39,25 @@ sealed class Constant {
 
   bool get isInvalid => this is InvalidConst;
 
-  Object? get literalValue {
-    if (this is ConstLiteral) {
-      return (this as ConstLiteral).value;
-    }
-    return null;
-  }
+  bool get isNull => this is ConstNull;
+
+  Object? get literalValue;
 }
 
 class InvalidConst extends Constant {
   const InvalidConst();
 
   @override
-  String toString() => 'INVALID_CONST';
+  String toString() => 'null';
 
   @override
   bool operator ==(Object other) => identical(this, other) || other is InvalidConst && runtimeType == other.runtimeType;
 
   @override
   int get hashCode => 0;
+
+  @override
+  Object? get literalValue => null;
 }
 
 // represents a primitive constant value
@@ -65,13 +65,27 @@ abstract class ConstLiteral<T> extends Constant {
   const ConstLiteral(this.value);
 
   final T value;
+
+  @override
+  Object? get literalValue => value;
+
+  @override
+  String toString() => literalValue.toString();
+}
+
+class ConstNull extends ConstLiteral<String> {
+  const ConstNull() : super('null');
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is ConstNull && runtimeType == other.runtimeType && value == other.value;
+
+  @override
+  int get hashCode => value.hashCode;
 }
 
 class ConstTypeRef extends ConstLiteral<DartType> {
   ConstTypeRef(super.value);
-
-  @override
-  String toString() => value.toString();
 
   @override
   bool operator ==(Object other) =>
@@ -85,21 +99,18 @@ class ConstString extends ConstLiteral<String> {
   ConstString(super.value);
 
   @override
-  String toString() => value;
-
-  @override
   bool operator ==(Object other) =>
       identical(this, other) || other is ConstString && runtimeType == other.runtimeType && value == other.value;
 
   @override
   int get hashCode => value.hashCode;
+
+  @override
+  String toString() => "'$value'";
 }
 
 class ConstNum extends ConstLiteral<num> {
   ConstNum(super.value);
-
-  @override
-  String toString() => value.toString();
 
   @override
   bool operator ==(Object other) =>
@@ -113,9 +124,6 @@ class ConstInt extends ConstLiteral<int> {
   ConstInt(super.value);
 
   @override
-  String toString() => value.toString();
-
-  @override
   bool operator ==(Object other) =>
       identical(this, other) || other is ConstInt && runtimeType == other.runtimeType && value == other.value;
 
@@ -125,9 +133,6 @@ class ConstInt extends ConstLiteral<int> {
 
 class ConstDouble extends ConstLiteral<double> {
   ConstDouble(super.value);
-
-  @override
-  String toString() => value.toString();
 
   @override
   bool operator ==(Object other) =>
@@ -141,9 +146,6 @@ class ConstSymbol extends ConstLiteral<String> {
   ConstSymbol(super.value);
 
   @override
-  String toString() => value;
-
-  @override
   bool operator ==(Object other) =>
       identical(this, other) || other is ConstSymbol && runtimeType == other.runtimeType && value == other.value;
 
@@ -155,9 +157,6 @@ class ConstBool extends ConstLiteral<bool> {
   ConstBool(super.value);
 
   @override
-  String toString() => value.toString();
-
-  @override
   bool operator ==(Object other) =>
       identical(this, other) || other is ConstBool && runtimeType == other.runtimeType && value == other.value;
 
@@ -166,22 +165,21 @@ class ConstBool extends ConstLiteral<bool> {
 }
 
 class ConstEnumValue extends ConstLiteral<String> {
-  final String enumName;
   final int index;
   final InterfaceType type;
 
-  ConstEnumValue(this.enumName, super.value, this.index, this.type);
+  ConstEnumValue(super.value, this.index, this.type);
 
   @override
-  String toString() => '$enumName.$value';
+  Object get literalValue => '${type.name}.$value';
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is ConstEnumValue && runtimeType == other.runtimeType && value == other.value && enumName == other.enumName;
+      other is ConstEnumValue && runtimeType == other.runtimeType && value == other.value && type == other.type;
 
   @override
-  int get hashCode => value.hashCode ^ enumName.hashCode;
+  int get hashCode => value.hashCode ^ type.hashCode;
 }
 
 abstract class ConstFunctionReference extends Constant {
@@ -235,6 +233,9 @@ class ConstFunctionReferenceImpl extends ConstFunctionReference {
 
   @override
   int get hashCode => type.hashCode ^ name.hashCode ^ declaration.hashCode ^ const ListEquality().hash(_typeArguments);
+
+  @override
+  Object? get literalValue => null;
 }
 
 class ConstList extends ConstLiteral<List<Constant>> {
@@ -423,4 +424,7 @@ class ConstObjectImpl extends ConstObject {
 
   @override
   final String? constructorName;
+
+  @override
+  Object? get literalValue => null;
 }

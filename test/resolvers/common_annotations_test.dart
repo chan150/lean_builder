@@ -1,6 +1,6 @@
 import 'package:lean_builder/src/asset/package_file_resolver.dart' show PackageFileResolver;
 import 'package:lean_builder/src/graph/assets_graph.dart' show AssetsGraph;
-import 'package:lean_builder/src/graph/symbols_scanner.dart' show AssetsScanner;
+import 'package:lean_builder/src/graph/assets_scanner.dart' show AssetsScanner;
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
 import 'package:test/expect.dart';

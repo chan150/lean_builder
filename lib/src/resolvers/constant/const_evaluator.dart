@@ -332,7 +332,9 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
     });
 
     if (constant is ConstObjectImpl) {
-      return constant.construct(node.argumentList, constructorNode.name?.lexeme, this);
+      return visitElementScoped(_library, () {
+        return constant.construct(node.argumentList, constructorNode.name?.lexeme, this);
+      });
     }
     return Constant.invalid;
   }
@@ -529,7 +531,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
       final enumDeclaration = node.parent as EnumDeclaration;
       final index = enumDeclaration.constants.indexWhere((e) => e.name.lexeme == name);
       final enumType = InterfaceTypeImpl(enumDeclaration.name.lexeme, loc, _resolver);
-      return ConstEnumValue(enumDeclaration.name.lexeme, node.name.lexeme, index, enumType);
+      return ConstEnumValue(node.name.lexeme, index, enumType);
     } else if (node is FieldDeclaration) {
       assert(node.isStatic, 'Fields reference in constant context should be static');
       final variable = node.fields.variables.firstWhere(
