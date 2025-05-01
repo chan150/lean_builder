@@ -16,7 +16,6 @@ main() {
 
   setUp(() {
     final fileResolver = PackageFileResolverImpl({'root': 'file:///root'}, packagesHash: '', rootPackage: 'root');
-
     assetsGraph = AssetsGraph(fileResolver.packagesHash);
     scanner = AssetsScanner(assetsGraph, fileResolver);
   });

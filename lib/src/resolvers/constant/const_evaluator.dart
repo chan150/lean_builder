@@ -399,12 +399,30 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
 
   @override
   Constant? visitSetOrMapLiteral(SetOrMapLiteral node) {
+    final elements = node.elements;
+    if (elements.isEmpty) return ConstSet(const {});
+
+    final isMap = elements.first is MapLiteralEntry;
+
+    if (!isMap) {
+      final elements = <Constant>{};
+      for (CollectionElement element in node.elements) {
+        final constant = element.accept(this);
+        if (constant != null && constant != Constant.invalid) {
+          elements.add(constant);
+        } else {
+          return Constant.invalid;
+        }
+      }
+      return ConstSet(elements);
+    }
+
     Map<Constant, Constant> map = HashMap<Constant, Constant>();
     for (CollectionElement element in node.elements) {
       if (element is MapLiteralEntry) {
-        var key = element.key.accept(this) ?? Constant.invalid;
+        var key = element.key.accept(this);
         var value = element.value.accept(this);
-        if (key is String && value != null && !identical(value, Constant.invalid)) {
+        if (key != null && value != null && !identical(value, Constant.invalid)) {
           map[key] = value;
         } else {
           return Constant.invalid;
@@ -505,7 +523,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
       }
     } else if (node is NamedCompilationUnitMember) {
       final type = InterfaceTypeImpl(node.name.lexeme, loc, _resolver);
-      return ConstTypeRef(type);
+      return ConstType(type);
     } else if (node is MethodDeclaration) {
       assert(node.isStatic, 'Methods reference in constant context should be static');
 

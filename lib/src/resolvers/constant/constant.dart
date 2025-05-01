@@ -23,7 +23,7 @@ sealed class Constant {
 
   bool get isSymbol => this is ConstSymbol;
 
-  bool get isTypeRef => this is ConstTypeRef;
+  bool get isTypeRef => this is ConstType;
 
   bool get isEnumValue => this is ConstEnumValue;
 
@@ -84,12 +84,12 @@ class ConstNull extends ConstLiteral<String> {
   int get hashCode => value.hashCode;
 }
 
-class ConstTypeRef extends ConstLiteral<DartType> {
-  ConstTypeRef(super.value);
+class ConstType extends ConstLiteral<DartType> {
+  ConstType(super.value);
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || other is ConstTypeRef && runtimeType == other.runtimeType && value == other.value;
+      identical(this, other) || other is ConstType && runtimeType == other.runtimeType && value == other.value;
 
   @override
   int get hashCode => value.hashCode;
@@ -296,7 +296,7 @@ abstract class ConstObject extends Constant {
 
   Constant? get(String key) => props[key];
 
-  ConstTypeRef? getTypeRef(String key) => props[key] as ConstTypeRef?;
+  ConstType? getTypeRef(String key) => props[key] as ConstType?;
 
   ConstString? getString(String key);
 
