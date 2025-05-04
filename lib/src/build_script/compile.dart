@@ -5,7 +5,7 @@ import 'files.dart';
 
 void compileScript(String scriptPath) {
   final execPath = getExecutablePath();
-  final result = Process.runSync('dart', ['compile', 'aot-snapshot', scriptPath, '-o', execPath]);
+  final result = Process.runSync('dart', ['compile', 'aot-snapshot', scriptPath]);
   if (!Platform.isWindows) {
     Process.runSync('chmod', ['+x', execPath]);
   }
@@ -16,9 +16,9 @@ void compileScript(String scriptPath) {
 
 String getExecutablePath() {
   if (Platform.isWindows) {
-    return '$scriptExecutable.exe';
+    return '$scriptExecutable.aot';
   } else {
-    return scriptExecutable;
+    return '$scriptExecutable.aot';
   }
 }
 

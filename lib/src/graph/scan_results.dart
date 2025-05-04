@@ -15,8 +15,13 @@ class GraphIndex {
   // asset
   static const assetUri = 0;
   static const assetDigest = 1;
-  static const assetAnnotationFlag = 2;
-  static const assetLibraryName = 3;
+  // 0 no annotation, 1 has regular annotation, 2 has builder annotation, 3 has both
+  /// represents the values of [TLMFlag]
+  static const assetTLMFlag = 2;
+
+  /// represents the values of [AssetState]
+  static const assetState = 3;
+  static const assetLibraryName = 4;
 
   // identifier
   static const identifierName = 0;
@@ -34,7 +39,7 @@ class GraphIndex {
 }
 
 abstract class ScanResults {
-  HashMap<String, List<dynamic> /*uri, digest, hasTLAnnotation,library-name?*/> get assets;
+  HashMap<String, List<dynamic> /*uri, digest, annotation-flag,library-name?*/> get assets;
 
   List<List<dynamic> /*name, src, type*/> get identifiers;
 
@@ -68,7 +73,9 @@ abstract class ScanResults {
 
   void removeAsset(String id);
 
-  void updateAssetInfo(Asset asset, {required Uint8List content, bool hasAnnotation = false, String? libraryName});
+  void updateAssetInfo(Asset asset, {required Uint8List content, int annotationFlag = 0, String? libraryName});
+
+  void updateAssetState(String id, AssetState state);
 
   bool isPart(String id);
 
@@ -191,7 +198,7 @@ class AssetsScanResults extends ScanResults {
   @override
   String addAsset(Asset asset) {
     if (!assets.containsKey(asset.id)) {
-      assets[asset.id] = [asset.shortUri.toString(), null, 0];
+      assets[asset.id] = [asset.shortUri.toString(), null, 0, 0];
     }
     return asset.id;
   }
@@ -257,13 +264,14 @@ class AssetsScanResults extends ScanResults {
   }
 
   @override
-  void updateAssetInfo(Asset asset, {required Uint8List content, bool hasAnnotation = false, String? libraryName}) {
+  void updateAssetInfo(Asset asset, {required Uint8List content, int annotationFlag = 0, String? libraryName}) {
     assert(assets.containsKey(asset.id), 'Asset not found: $asset');
     final assetArr = assets[asset.id]!;
     assetArr[GraphIndex.assetDigest] = xxh3String(content);
-    assetArr[GraphIndex.assetAnnotationFlag] = hasAnnotation ? 1 : 0;
+    assetArr[GraphIndex.assetTLMFlag] = annotationFlag;
+    assetArr[GraphIndex.assetState] = AssetState.unProcessed.index;
     if (libraryName != null) {
-      if (assetArr.length < 4) {
+      if (assetArr.length < GraphIndex.assetLibraryName + 1) {
         assetArr.add(libraryName);
       } else {
         assetArr[GraphIndex.assetLibraryName] = libraryName;
@@ -382,7 +390,7 @@ class AssetsScanResults extends ScanResults {
       return partOf[GraphIndex.directiveSrc];
     } else if (type == DirectiveStatement.partOfLibrary) {
       for (final asset in assets.entries) {
-        if (asset.value.length > 3 &&
+        if (asset.value.length > GraphIndex.assetLibraryName &&
             asset.value[GraphIndex.assetLibraryName] == partOf[GraphIndex.directiveStringUri]) {
           return asset.key;
         }
@@ -390,6 +398,15 @@ class AssetsScanResults extends ScanResults {
       return fileId;
     }
     return fileId;
+  }
+
+  @override
+  void updateAssetState(String id, AssetState state) {
+    if (assets.containsKey(id)) {
+      assets[id]![GraphIndex.assetState] = state.index;
+    } else {
+      throw Exception('Asset not found: $id');
+    }
   }
 }
 
@@ -468,4 +485,14 @@ enum TopLevelIdentifierType {
   }
 
   bool get isInterface => this == $class || this == $mixin || this == $extension || this == $enum || this == $typeAlias;
+}
+
+enum AssetState {
+  processed,
+  unProcessed,
+  deleted;
+
+  static AssetState fromIndex(int index) {
+    return AssetState.values[index];
+  }
 }

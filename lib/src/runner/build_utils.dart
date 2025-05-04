@@ -8,8 +8,8 @@ List<List<ProcessableAsset>> calculateChunks(List<ProcessableAsset> assets) {
   final isolateCount = max(1, Platform.numberOfProcessors - 1);
   final actualIsolateCount = min(isolateCount, assets.length);
 
-  final assetsWithTLM = assets.where((a) => a.hasTopLevelMetadata).toList();
-  final assetsWithoutTLM = assets.where((a) => !a.hasTopLevelMetadata).toList();
+  final assetsWithTLM = assets.where((a) => a.tlmFlag.hasNormal).toList();
+  final assetsWithoutTLM = assets.where((a) => !a.tlmFlag.hasNormal).toList();
 
   final chunks = List.generate(actualIsolateCount, (_) => <ProcessableAsset>[]);
 

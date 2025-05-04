@@ -32,7 +32,7 @@ class FailedAsset {
 }
 
 class PhaseResult {
-  final List<ProcessableAsset> outputs;
+  final List<Uri> outputs;
 
   final List<FailedAsset> failedAssets;
 

@@ -6,6 +6,7 @@ import 'package:lean_builder/runner.dart' show BuilderEntry;
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
 import 'package:lean_builder/src/graph/asset_scan_manager.dart';
 import 'package:lean_builder/src/graph/assets_graph.dart';
+import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/logger.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
 import 'package:lean_builder/src/runner/build_phase.dart' show BuildPhase;
@@ -13,7 +14,6 @@ import 'package:lean_builder/src/runner/build_result.dart';
 import 'package:lean_builder/src/runner/build_utils.dart';
 import 'package:lean_builder/src/runner/command/base_command.dart';
 import 'package:lean_builder/src/runner/command/utils.dart';
-import 'package:lean_builder/src/utils.dart';
 import 'package:watcher/watcher.dart';
 import 'package:path/path.dart' as p;
 
@@ -34,10 +34,9 @@ class BuildCommand extends BaseCommand<int> {
   @override
   Future<int>? run() async {
     prepare();
-    final stopWatch = Stopwatch()..start();
 
     final fileResolver = PackageFileResolver.forRoot();
-    var assetsGraph = AssetsGraph.init('${fileResolver.packagesHash}-${buildRunner.buildScriptHash}');
+    var assetsGraph = AssetsGraph.init(fileResolver.packagesHash);
 
     if (assetsGraph.shouldInvalidate) {
       Logger.info('Cache is invalidated, deleting old outputs...');
@@ -48,28 +47,22 @@ class BuildCommand extends BaseCommand<int> {
       _deleteExistingOutputs(assetsGraph, fileResolver);
     }
 
-    final scanManager = AssetScanManager(
-      assetsGraph: assetsGraph,
-      fileResolver: fileResolver,
-      rootPackage: rootPackageName,
-    );
-
-    Logger.info('Syncing assets graph...');
-    final assets = await scanManager.scanAssets(scanOnlyRoot: assetsGraph.loadedFromCache);
-    Logger.info("Assets graph synced in ${stopWatch.elapsed.formattedMS}.");
-
     final sourceParser = SourceParser();
     final resolver = Resolver(assetsGraph, fileResolver, sourceParser);
-
-    return processAssets(assets, resolver, scanManager);
+    final assets = assetsGraph.getProcessableAssets(fileResolver);
+    return processAssets(assets, resolver);
   }
 
-  Future<int> processAssets(Set<ProcessableAsset> assets, Resolver resolver, AssetScanManager scanManager) async {
+  Future<int> processAssets(Set<ProcessableAsset> assets, Resolver resolver) async {
     return _processAssets(assets, resolver);
   }
 
   Future<int> _processAssets(Set<ProcessableAsset> processableAssets, Resolver resolver) async {
     final stopWatch = Stopwatch()..start();
+
+    for (final entry in processableAssets) {
+      resolver.graph.updateAssetState(entry.asset.id, AssetState.processed);
+    }
 
     final assets = List.of(
       processableAssets.where((e) {
@@ -148,17 +141,20 @@ class BuildCommand extends BaseCommand<int> {
       final buildPhase = BuildPhase(resolver, phase);
       final result = await buildPhase.build(assetsToProcess);
       if (result.hasErrors) {
-        for (final asset in result.failedAssets) {
-          graph.invalidateDigest(asset.asset.id);
+        for (final entry in result.failedAssets) {
+          graph.updateAssetState(entry.asset.id, AssetState.unProcessed);
         }
+        // todo: decide if we should throw here, all or first
         throw MultiFieldAssetsException(result.failedAssets.take(1).toList());
       }
-      final outputUris = result.outputs.map((e) => e.asset.shortUri);
+
+      final outputUris = result.outputs;
       for (final output in existingOutputs) {
-        final outputUri = graph.uriForAssetOrNull(output);
-        if (outputUri == null) continue;
-        if (!outputUris.contains(outputUri)) {
-          final file = File.fromUri(fileResolver.resolveFileUri(outputUri));
+        final existingOutputUri = graph.uriForAssetOrNull(output);
+        if (existingOutputUri == null) continue;
+        final fileOutputUri = fileResolver.resolveFileUri(existingOutputUri);
+        if (!outputUris.contains(fileOutputUri)) {
+          final file = File.fromUri(fileOutputUri);
           if (file.existsSync()) {
             file.deleteSync();
           }
@@ -169,7 +165,7 @@ class BuildCommand extends BaseCommand<int> {
       outputCount += result.outputs.length;
 
       /// add new outputs to the assets to process
-      assetsToProcess.addAll(result.outputs);
+      assetsToProcess.addAll(graph.getProcessableAssets(fileResolver));
     }
     return outputCount;
   }
@@ -186,16 +182,22 @@ class WatchCommand extends BuildCommand {
   String get invocation => 'lean_builder watch [options]';
 
   @override
-  Future<int> processAssets(Set<ProcessableAsset> assets, Resolver resolver, AssetScanManager scanManager) async {
+  Future<int> processAssets(Set<ProcessableAsset> assets, Resolver resolver) async {
     await _processAssets(assets, resolver);
 
     final fileResolver = resolver.fileResolver;
     final assetsGraph = resolver.graph;
+
+    final scanManager = AssetScanManager(
+      assetsGraph: assetsGraph,
+      fileResolver: fileResolver,
+      rootPackage: fileResolver.rootPackage,
+    );
+
     final rootDir = fileResolver.pathFor(fileResolver.rootPackage);
     final rootUri = Uri.parse(rootDir);
 
     final watchStream = DirectoryWatcher(rootUri.path).events;
-    final pendingAssets = <ProcessableAsset>{};
     final debouncer = Debouncer(const Duration(milliseconds: 150));
     watchStream.listen((event) async {
       final relative = p.relative(event.path, from: rootUri.path);
@@ -211,18 +213,17 @@ class WatchCommand extends BuildCommand {
       resolver.invalidateAssetCache(asset);
       switch (event.type) {
         case ChangeType.ADD:
-          pendingAssets.add(scanManager.handleInsertedAsset(asset));
-
+          scanManager.handleInsertedAsset(asset);
           break;
         case ChangeType.REMOVE:
-          pendingAssets.addAll(scanManager.handleDeletedAsset(asset));
+          scanManager.handleDeletedAsset(asset);
           break;
         case ChangeType.MODIFY:
-          pendingAssets.addAll(scanManager.handleUpdatedAsset(asset));
-
+          scanManager.handleUpdatedAsset(asset);
           break;
       }
 
+      final pendingAssets = assetsGraph.getProcessableAssets(fileResolver);
       debouncer.run(() async {
         if (pendingAssets.isEmpty) return;
         final assetsToProcess = Set.of(pendingAssets);

@@ -22,7 +22,7 @@ class BuildPhase {
 
     if (assets.length < 15) {
       final result = await _buildChunk(assets);
-      return PhaseResult(await _finalizeBuild(result.outputs), result.fieldAssets);
+      return PhaseResult(await _finalizePhase(result.outputs), result.fieldAssets);
     }
 
     final chunks = calculateChunks(assets);
@@ -40,7 +40,7 @@ class BuildPhase {
       phaseOutputs.addAll(result.outputs);
       failedAssets.addAll(result.fieldAssets);
     }
-    return PhaseResult(await _finalizeBuild(phaseOutputs), failedAssets);
+    return PhaseResult(await _finalizePhase(phaseOutputs), failedAssets);
   }
 
   Future<BuildResult> _buildChunk(List<ProcessableAsset> chunk) async {
@@ -50,7 +50,7 @@ class BuildPhase {
       try {
         final candidate = BuildCandidate(
           entry.asset,
-          entry.hasTopLevelMetadata,
+          entry.tlmFlag.hasNormal,
           resolver.graph.exportedSymbolsOf(entry.asset.id),
         );
         for (final builderEntry in builders) {
@@ -65,18 +65,15 @@ class BuildPhase {
     return BuildResult(chunkOutputs, chunkErrors);
   }
 
-  Future<List<ProcessableAsset>> _finalizeBuild(Map<Asset, Set<Uri>> outputs) async {
+  Future<List<Uri>> _finalizePhase(Map<Asset, Set<Uri>> outputs) async {
     final scanner = AssetsScanner(resolver.graph, resolver.fileResolver);
-    final outputAssets = <ProcessableAsset>[];
+    final outputAssets = <Uri>[];
     for (final entry in outputs.entries) {
       for (final uri in entry.value) {
         final output = resolver.fileResolver.assetForUri(uri);
-        resolver.graph.invalidateDigest(output.id);
-        final (didScan, hasTLM) = scanner.scan(output);
-        if (didScan) {
-          outputAssets.add(ProcessableAsset(output, AssetState.inserted, hasTLM));
-        }
+        scanner.scan(output, forceOverride: true);
         resolver.graph.addOutput(entry.key, output);
+        outputAssets.add(uri);
       }
     }
     return outputAssets;

@@ -28,18 +28,11 @@ Future<void> scannerWorker(SendPort sendPort) async {
       final fileResolver = PackageFileResolver.fromJson(message.packageResolverData);
       final resultsCollector = AssetsScanResults();
       final scanner = AssetsScanner(resultsCollector, fileResolver);
-      final processableAssets = <ProcessableAsset>[];
       for (final asset in message.assets) {
-        final (didScane, hasAnnotation) = scanner.scan(asset);
-        if (didScane) {
-          processableAssets.add(ProcessableAsset(asset, AssetState.inserted, hasAnnotation));
-        }
+        scanner.scan(asset);
       }
       // Send results back to main isolate
-      sendPort.send({
-        'results': resultsCollector.toJson(),
-        'assets': processableAssets.map((e) => e.toJson()).toList(),
-      });
+      sendPort.send({'results': resultsCollector.toJson()});
     } else if (message == 'exit') {
       break;
     }
@@ -55,30 +48,23 @@ class AssetScanManager {
 
   AssetScanManager({required this.assetsGraph, required this.fileResolver, required this.rootPackage});
 
-  Future<Set<ProcessableAsset>> scanAssets({bool scanOnlyRoot = false}) async {
+  Future<void> scanAssets({bool scanOnlyRoot = false}) async {
     final assetsReader = FileAssetReader(fileResolver);
     final packagesToScan = scanOnlyRoot ? {rootPackage} : fileResolver.packages;
 
     final assets = assetsReader.listAssetsFor(packagesToScan);
     final assetsList = assets.values.expand((e) => e).toList();
-    final Set<ProcessableAsset> results;
     // Only distribute work if building from scratch
     if (!assetsGraph.loadedFromCache) {
-      results = await scanWithIsolates(assetsList, fileResolver.toJson());
+      await scanWithIsolates(assetsList, fileResolver.toJson());
     } else {
-      final processableAssets = <ProcessableAsset>[];
       // Use single-threaded approach for incremental updates
       final scanner = AssetsScanner(assetsGraph, fileResolver);
       for (final asset in assetsList) {
-        final (didScan, hasAnnotation) = scanner.scan(asset);
-        if (didScan) {
-          processableAssets.add(ProcessableAsset(asset, AssetState.inserted, hasAnnotation));
-        }
+        scanner.scan(asset);
       }
-      results = {...processableAssets, ...getIncrementallyUpdatedAssets(assetsGraph.getAssetsForPackage(rootPackage))};
     }
-
-    return results;
+    handleIncrementallyUpdatedAssets(assetsGraph.getAssetsForPackage(rootPackage));
   }
 
   Future<Set<ProcessableAsset>> scanWithIsolates(List<Asset> assets, Map<String, dynamic> packageResolverData) async {
@@ -131,9 +117,6 @@ class AssetScanManager {
       } else if (message is Map<String, dynamic>) {
         // Process results
         final results = AssetsScanResults.fromJson(message['results']);
-        for (final assetJson in message['assets'] as List<dynamic>) {
-          processableAssets.add(ProcessableAsset.fromJson(assetJson));
-        }
         assetsGraph.merge(results);
         completer.complete();
       }
@@ -154,89 +137,67 @@ class AssetScanManager {
     return List.of(processableAssets);
   }
 
-  Set<ProcessableAsset> getIncrementallyUpdatedAssets(List<ScannedAsset> entries) {
-    final processableAssets = <ProcessableAsset>{};
+  void handleIncrementallyUpdatedAssets(List<ScannedAsset> entries) {
     for (final entry in entries) {
       final asset = fileResolver.assetForUri(entry.uri);
       if (!asset.existsSync()) {
-        processableAssets.addAll(handleDeletedAsset(asset));
+        handleDeletedAsset(asset);
         continue;
       }
       final content = asset.readAsBytesSync();
-      final currentDigest = xxh3String(content);
-
-      if (currentDigest != entry.digest) {
-        processableAssets.addAll(handleUpdatedAsset(asset));
+      if (xxh3String(content) != entry.digest) {
+        handleUpdatedAsset(asset);
       }
     }
-    return processableAssets;
   }
 
-  Set<ProcessableAsset> handleUpdatedAsset(Asset asset) {
+  void handleUpdatedAsset(Asset asset) {
     final scanner = AssetsScanner(assetsGraph, fileResolver);
-    final processableAssets = <ProcessableAsset>{};
-    assetsGraph.invalidateDigest(asset.id);
     final dependents = assetsGraph.dependentsOf(asset.id);
-    final (didScane, hasAnnotation) = scanner.scan(asset);
-    if (didScane) {
-      processableAssets.add(ProcessableAsset(asset, AssetState.updated, hasAnnotation));
+    scanner.scan(asset, forceOverride: true);
+    for (final dep in dependents.entries) {
+      if (assetsGraph.outputs[asset.id]?.contains(dep.key) == true) {
+        // if the dependent is an output of the asset, we don't need to mark it as unprocessed
+        continue;
+      }
+      assetsGraph.updateAssetState(dep.key, AssetState.unProcessed);
     }
-    for (final dep in dependents) {
-      final asset = fileResolver.assetForUri(Uri.parse(dep[GraphIndex.assetUri]));
-      processableAssets.add(ProcessableAsset(asset, AssetState.needsUpdate, dep[GraphIndex.assetAnnotationFlag] == 1));
-    }
-    return processableAssets;
   }
 
-  Set<ProcessableAsset> handleDeletedAsset(Asset asset) {
-    final processableAssets = <ProcessableAsset>{};
-    final generatingAssetArr = assetsGraph.getGeneratedSourceOf(asset.id);
-    if (generatingAssetArr != null) {
-      final uri = Uri.parse(generatingAssetArr[GraphIndex.assetUri]);
-      final generatedAsset = fileResolver.assetForUri(uri);
-      processableAssets.add(
-        ProcessableAsset(
-          generatedAsset,
-          AssetState.needsUpdate,
-          generatingAssetArr[GraphIndex.assetAnnotationFlag] == 1,
-        ),
-      );
+  void handleDeletedAsset(Asset asset) {
+    final generatorSrc = assetsGraph.getGeneratorOfSource(asset.id);
+    if (generatorSrc != null) {
+      assetsGraph.updateAssetState(generatorSrc, AssetState.unProcessed);
     }
-    assetsGraph.removeAsset(asset.id);
-    processableAssets.add(ProcessableAsset(asset, AssetState.deleted, false));
-    return processableAssets;
+    assetsGraph.updateAssetState(asset.id, AssetState.deleted);
   }
 
-  ProcessableAsset handleInsertedAsset(Asset asset) {
+  void handleInsertedAsset(Asset asset) {
     final scanner = AssetsScanner(assetsGraph, fileResolver);
-    final (didScane, hasAnnotation) = scanner.scan(asset);
-    if (didScane) {
-      return ProcessableAsset(asset, AssetState.inserted, hasAnnotation);
-    }
-    return ProcessableAsset(asset, AssetState.inserted, false);
+    scanner.scan(asset);
   }
 }
 
 class ProcessableAsset {
   final Asset asset;
-  final bool hasTopLevelMetadata;
+  final TLMFlag tlmFlag;
 
   final AssetState state;
 
-  ProcessableAsset(this.asset, this.state, this.hasTopLevelMetadata);
+  ProcessableAsset(this.asset, this.state, this.tlmFlag);
 
   ProcessableAsset.fromJson(Map<String, dynamic> json)
     : asset = FileAsset.fromJson(json['asset'] as Map<String, dynamic>),
-      state = AssetState.values[json['state'] as int],
-      hasTopLevelMetadata = json['hasTopLevelMetadata'] as bool;
+      state = AssetState.fromIndex(json['state'] as int),
+      tlmFlag = TLMFlag.fromIndex(json['tlmFlag'] as int);
 
   Map<String, dynamic> toJson() {
-    return {'asset': asset.toJson(), 'state': state.index, 'hasTopLevelMetadata': hasTopLevelMetadata};
+    return {'asset': asset.toJson(), 'state': state.index, 'tlmFlag': tlmFlag.index};
   }
 
   @override
   String toString() {
-    return 'Asset{uri: ${asset.uri}, state: ${state.name}, hasTopLevelMetadata: $hasTopLevelMetadata}';
+    return 'Asset{uri: ${asset.uri}, state: ${state.name}, tlmFlag: ${tlmFlag.index}}';
   }
 
   @override
@@ -252,4 +213,15 @@ class ProcessableAsset {
   }
 }
 
-enum AssetState { inserted, updated, deleted, needsUpdate }
+enum TLMFlag {
+  none,
+  normal,
+  builder,
+  both;
+
+  bool get hasNormal => this == TLMFlag.normal || this == TLMFlag.both;
+
+  static TLMFlag fromIndex(int index) {
+    return TLMFlag.values[index];
+  }
+}

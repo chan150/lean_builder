@@ -8,6 +8,7 @@ Builder serializationBuilder(BuilderOptions options) {
   return SharedPartBuilder([SerializationGenerator()]);
 }
 
+// hello
 class SerializationGenerator extends GeneratorForAnnotation {
   @override
   TypeChecker buildTypeChecker(Resolver resolver) {

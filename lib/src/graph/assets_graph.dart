@@ -3,8 +3,10 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:lean_builder/src/asset/asset.dart';
+import 'package:lean_builder/src/asset/package_file_resolver.dart';
 import 'package:lean_builder/src/builder/builder.dart';
 import 'package:lean_builder/src/errors/resolver_error.dart';
+import 'package:lean_builder/src/graph/asset_scan_manager.dart';
 import 'package:lean_builder/src/graph/directive_statement.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/logger.dart';
@@ -44,6 +46,7 @@ class AssetsGraph extends AssetsScanResults {
         final cachedGraph = jsonDecode(cacheFile.readAsStringSync());
         final instance = AssetsGraph.fromCache(cachedGraph, hash);
         if (!instance.loadedFromCache || instance.shouldInvalidate) {
+          Logger.info('Cache is invalid, rebuilding...');
           cacheFile.deleteSync(recursive: true);
         }
         return instance;
@@ -81,7 +84,7 @@ class AssetsGraph extends AssetsScanResults {
             entry.key,
             uri,
             entry.value[GraphIndex.assetDigest] as String?,
-            (entry.value[GraphIndex.assetAnnotationFlag] as int) == 1,
+            (entry.value[GraphIndex.assetTLMFlag] as int) == 1,
           ),
         );
       }
@@ -266,15 +269,15 @@ class AssetsGraph extends AssetsScanResults {
 
   // get any asset that depends on this asset,
   // either via direct import, part-of or via re-exports
-  List<List<dynamic>> dependentsOf(String id) {
+  Map<String, List<dynamic>> dependentsOf(String id) {
     final visited = <String>{};
     final dependents = _dependentsOf(id, visited);
-    final assets = <List<dynamic>>[];
+    final assets = <String, List<dynamic>>{};
     for (final dep in dependents) {
       if (dep == id) continue;
       final arr = this.assets[dep];
       if (arr != null) {
-        assets.add(arr);
+        assets[dep] = arr;
       }
     }
     return assets;
@@ -302,10 +305,10 @@ class AssetsGraph extends AssetsScanResults {
     return dependents;
   }
 
-  List<dynamic>? getGeneratedSourceOf(String id) {
+  String? getGeneratorOfSource(String id) {
     for (final entry in outputs.entries) {
       if (entry.value.contains(id)) {
-        return assets[entry.key];
+        return entry.key;
       }
     }
     return null;
@@ -351,6 +354,28 @@ class AssetsGraph extends AssetsScanResults {
         break;
       }
     }
+  }
+
+  Set<ProcessableAsset> getProcessableAssets(PackageFileResolver fileResolver) {
+    final processableAssets = <ProcessableAsset>{};
+    for (final entry in assets.entries) {
+      if (entry.value[GraphIndex.assetState] != AssetState.processed.index) {
+        final asset = fileResolver.assetForUri(Uri.parse(entry.value[GraphIndex.assetUri]));
+        final tlmFlag = TLMFlag.fromIndex(entry.value[GraphIndex.assetTLMFlag] as int);
+        final state = AssetState.fromIndex(entry.value[GraphIndex.assetState]);
+        processableAssets.add(ProcessableAsset(asset, state, tlmFlag));
+      }
+    }
+    return processableAssets;
+  }
+
+  bool hasProcessableAssets() {
+    for (final asset in assets.values) {
+      if (asset[GraphIndex.assetState] != AssetState.processed.index) {
+        return true;
+      }
+    }
+    return false;
   }
 }
 

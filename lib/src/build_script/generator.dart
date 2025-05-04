@@ -7,6 +7,7 @@ String generateBuildScript(List<BuilderDefinitionEntry> entries, String scriptHa
   final buffer = StringBuffer();
   buffer.writeln('// This is an auto-generated build script.');
   buffer.writeln('// Do not modify this file directly.');
+  buffer.writeln('import \'dart:isolate\' as i0;');
   buffer.writeln('import \'package:lean_builder/runner.dart\' as i1;');
   for (final entry in entries) {
     final prefix = importPrefixes[entry.import] ??= 'i${importPrefixes.length + 2}';
@@ -31,8 +32,9 @@ String generateBuildScript(List<BuilderDefinitionEntry> entries, String scriptHa
   buffer.writeln('];');
 
   buffer.write('''
-  void main(List<String> args) async {
-   await i1.runBuilders(_builders, args, '$scriptHash');
+  void main(List<String> args, i0.SendPort? sendPort)  async{
+    final result =  await i1.runBuilders(_builders, args, '$scriptHash');
+    sendPort?.send(result);
   }
   ''');
   return buffer.toString();

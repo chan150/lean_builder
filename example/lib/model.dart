@@ -2,6 +2,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'model.g.dart';
 
+// hello fsd234444
 @JsonSerializable()
 class Model {
   final String name;

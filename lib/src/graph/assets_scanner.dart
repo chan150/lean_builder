@@ -2,12 +2,13 @@ import 'dart:math';
 
 // ignore: implementation_imports
 import 'package:_fe_analyzer_shared/src/scanner/scanner.dart' as fasta;
-import 'package:analyzer/dart/ast/token.dart';
+import 'package:analyzer/dart/ast/token.dart' show TokenType, Keyword, Token;
 import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/logger.dart';
 
+import '../build_script/annotation.dart';
 import 'directive_statement.dart';
 
 class AssetsScanner {
@@ -16,9 +17,9 @@ class AssetsScanner {
 
   AssetsScanner(this.results, this.fileResolver);
 
-  (bool didScane, bool hasTopLevelAnnotation) scan(Asset asset) {
+  void scan(Asset asset, {bool forceOverride = false}) {
     try {
-      if (results.isVisited(asset.id)) return (false, false);
+      if (results.isVisited(asset.id) && !forceOverride) return;
 
       final bytes = asset.readAsBytesSync();
 
@@ -26,14 +27,18 @@ class AssetsScanner {
 
       Token? token = fasta.scan(bytes).tokens;
       String? libraryName;
-      bool hasTopLevelAnnotation = false;
+      int annotationFlag = 0;
 
       while (token != null && !token.isEof && token.next != null) {
         token = _skipCurlyBrackets(token);
         if (token.isEof) break;
         Token nextToken = token.next!;
         if (token.type == TokenType.AT) {
-          hasTopLevelAnnotation = true;
+          if (nextToken.lexeme == LeanBuilder.name) {
+            annotationFlag |= 2;
+          } else {
+            annotationFlag |= 1;
+          }
           token = nextToken;
           // could be import-prefixed or has a named constructor
           while (token?.next?.type == TokenType.PERIOD) {
@@ -110,11 +115,9 @@ class AssetsScanner {
         token = nextToken;
       }
 
-      results.updateAssetInfo(asset, content: bytes, hasAnnotation: hasTopLevelAnnotation, libraryName: libraryName);
-      return (true, hasTopLevelAnnotation);
+      results.updateAssetInfo(asset, content: bytes, annotationFlag: annotationFlag, libraryName: libraryName);
     } catch (e, stack) {
       Logger.error('Error scanning asset ${asset.uri} ${e.toString()}', stackTrace: stack);
-      return (false, false);
     }
   }
 
