@@ -9,17 +9,11 @@ import 'package:lean_builder/src/runner/command/utils.dart';
 import 'package:lean_builder/src/utils.dart';
 
 Future<void> main(List<String> args) async {
-  void done(int code) {
-    if (!args.contains('--dev')) {
-      exit(code);
-    }
-  }
-
   try {
     final scriptPath = prepareBuildScript();
     if (scriptPath == null) {
       Logger.info('No valid build script found. Exiting.');
-      done(2);
+      exit(2);
     }
     final stopWatch = Stopwatch()..start();
     final fileResolver = PackageFileResolver.forRoot();
@@ -30,9 +24,9 @@ Future<void> main(List<String> args) async {
     await scanManager.scanAssets();
     await graph.save();
     Logger.info("Assets graph synced in ${stopWatch.elapsed.formattedMS}.");
-    done(graph.hasProcessableAssets() ? 0 : 2);
-  } catch (e) {
-    print('Error: $e');
+    exit(graph.hasProcessableAssets() ? 0 : 2);
+  } catch (e, stack) {
+    Logger.error('Error: $e', stackTrace: stack);
     exit(1);
   }
 }

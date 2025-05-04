@@ -16,6 +16,7 @@ import 'package:lean_builder/src/runner/command/base_command.dart';
 import 'package:lean_builder/src/runner/command/utils.dart';
 import 'package:watcher/watcher.dart';
 import 'package:path/path.dart' as p;
+import 'package:hotreloader/hotreloader.dart';
 
 import 'lean_command_runner.dart';
 
@@ -31,8 +32,11 @@ class BuildCommand extends BaseCommand<int> {
 
   LeanCommandRunner get buildRunner => runner as LeanCommandRunner;
 
+  bool get isDevMode => argResults?['dev'] == true;
+
   @override
   Future<int>? run() async {
+    print('Running build command');
     prepare();
 
     final fileResolver = PackageFileResolver.forRoot();
@@ -43,7 +47,8 @@ class BuildCommand extends BaseCommand<int> {
       _deleteExistingOutputs(assetsGraph, fileResolver);
       assetsGraph = AssetsGraph(assetsGraph.hash);
     }
-    if (argResults?['dev'] == true) {
+    if (isDevMode) {
+      print('Deleting existing outputs');
       _deleteExistingOutputs(assetsGraph, fileResolver);
     }
 
@@ -96,10 +101,11 @@ class BuildCommand extends BaseCommand<int> {
 
   void _deleteExistingOutputs(AssetsGraph assetsGraph, PackageFileResolver fileResolver) {
     for (final entry in List.of(assetsGraph.outputs.entries)) {
+      assetsGraph.updateAssetState(entry.key, AssetState.unProcessed);
       for (final output in entry.value) {
-        assetsGraph.removeAsset(entry.key);
         final outputUri = assetsGraph.uriForAssetOrNull(output);
         if (outputUri == null) continue;
+        assetsGraph.removeAsset(output);
         final outputAsset = fileResolver.assetForUri(outputUri);
         outputAsset.safeDelete();
       }
@@ -183,7 +189,19 @@ class WatchCommand extends BuildCommand {
 
   @override
   Future<int> processAssets(Set<ProcessableAsset> assets, Resolver resolver) async {
+    HotReloader? hotReloader;
     await _processAssets(assets, resolver);
+
+    if (isDevMode) {
+      hotReloader = await HotReloader.create(
+        automaticReload: false,
+        debounceInterval: Duration.zero,
+        onAfterReload: (ctx) async {
+          Logger.info('Hot reload triggered');
+          await _processAssets(assets, resolver);
+        },
+      );
+    }
 
     final fileResolver = resolver.fileResolver;
     final assetsGraph = resolver.graph;
@@ -223,13 +241,15 @@ class WatchCommand extends BuildCommand {
           break;
       }
 
-      final pendingAssets = assetsGraph.getProcessableAssets(fileResolver);
       debouncer.run(() async {
-        if (pendingAssets.isEmpty) return;
-        final assetsToProcess = Set.of(pendingAssets);
-        pendingAssets.clear();
-        Logger.info('Starting build for ${assetsToProcess.length} effected assets');
-        await _processAssets(assetsToProcess, resolver);
+        if (hotReloader != null) {
+          hotReloader.reloadCode();
+        } else {
+          final assetsToProcess = Set.of(assetsGraph.getProcessableAssets(fileResolver));
+          if (assetsToProcess.isEmpty) return;
+          Logger.info('Starting build for ${assetsToProcess.length} effected assets');
+          await _processAssets(assetsToProcess, resolver);
+        }
       });
     });
     return 0;

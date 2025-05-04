@@ -8,12 +8,12 @@ Builder serializationBuilder(BuilderOptions options) {
   return SharedPartBuilder([SerializationGenerator()]);
 }
 
-// hello
+// hello23
 class SerializationGenerator extends GeneratorForAnnotation {
   @override
   TypeChecker buildTypeChecker(Resolver resolver) {
-    // return resolver.typeCheckerFor('Serializable', 'package:example/src/annotations.dart');
-    return resolver.typeCheckerFor('JsonSerializable', 'package:json_annotation/json_annotation.dart');
+    return resolver.typeCheckerFor('Serializable', 'package:example/src/annotations.dart');
+    // return resolver.typeCheckerFor('JsonSerializable', 'package:json_annotation/json_annotation.dart');
   }
 
   @override
@@ -33,7 +33,7 @@ class SerializationGenerator extends GeneratorForAnnotation {
     }
     buffer.writeln('});');
     buffer.writeln('}');
-
+    buffer.writeln('// hello world');
     return buffer.toString();
   }
 }

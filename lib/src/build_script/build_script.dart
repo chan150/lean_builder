@@ -41,7 +41,7 @@ String? prepareBuildScript() {
   }
 
   Logger.info('Generating a new build script...');
-  var script = generateBuildScript(withOverrides, scriptHash);
+  var script = generateBuildScript(withOverrides);
   final formatter = DartFormatter(languageVersion: DartFormatter.latestShortStyleLanguageVersion);
   script = formatter.format(script);
 
