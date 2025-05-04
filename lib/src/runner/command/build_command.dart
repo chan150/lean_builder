@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
 
@@ -36,7 +37,6 @@ class BuildCommand extends BaseCommand<int> {
 
   @override
   Future<int>? run() async {
-    print('Running build command');
     prepare();
 
     final fileResolver = PackageFileResolver.forRoot();
@@ -48,7 +48,6 @@ class BuildCommand extends BaseCommand<int> {
       assetsGraph = AssetsGraph(assetsGraph.hash);
     }
     if (isDevMode) {
-      print('Deleting existing outputs');
       _deleteExistingOutputs(assetsGraph, fileResolver);
     }
 
@@ -217,7 +216,7 @@ class WatchCommand extends BuildCommand {
 
     final watchStream = DirectoryWatcher(rootUri.path).events;
     final debouncer = Debouncer(const Duration(milliseconds: 150));
-    watchStream.listen((event) async {
+    final watchSub = watchStream.listen((event) async {
       final relative = p.relative(event.path, from: rootUri.path);
       final subDir = relative.split('/').firstOrNull;
       if (!PackageFileResolver.isDirSupported(subDir)) return;
@@ -243,14 +242,24 @@ class WatchCommand extends BuildCommand {
 
       debouncer.run(() async {
         if (hotReloader != null) {
+          // triggering a hot reload will process pending assets
           hotReloader.reloadCode();
         } else {
-          final assetsToProcess = Set.of(assetsGraph.getProcessableAssets(fileResolver));
+          final assetsToProcess = assetsGraph.getProcessableAssets(fileResolver);
           if (assetsToProcess.isEmpty) return;
           Logger.info('Starting build for ${assetsToProcess.length} effected assets');
           await _processAssets(assetsToProcess, resolver);
         }
       });
+    });
+
+    StreamSubscription? sigIntSub;
+    sigIntSub = ProcessSignal.sigint.watch().listen((signal) async {
+      debouncer.cancel();
+      await watchSub.cancel();
+      await hotReloader?.stop();
+      sigIntSub?.cancel();
+      exit(0);
     });
     return 0;
   }

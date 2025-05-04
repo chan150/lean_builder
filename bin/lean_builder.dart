@@ -19,9 +19,11 @@ void main(List<String> args) async {
   final runtimePath = _getRuntimePath();
   final process = await Process.start(runtimePath, [runnerExePath.path, ...args], mode: ProcessStartMode.inheritStdio);
   final exitCode = await process.exitCode;
-  if (exitCode == 2 && !isWatchMode) {
-    Logger.info('No Assets to process. Exiting.');
-    exit(0);
+  if (exitCode == 2) {
+    if (!isWatchMode) {
+      Logger.info('No Assets to process. Exiting.');
+      exit(0);
+    }
   } else if (exitCode != 0) {
     Logger.error('Process exited with code $exitCode');
     exit(exitCode);
@@ -31,7 +33,6 @@ void main(List<String> args) async {
 
   if (isDevMode) {
     invalidateExecutable();
-    Logger.warning('Running in development mode');
     await _runJit(scriptPath, args, enableVmService: isWatchMode && isDevMode);
   } else {
     await _runAot(scriptPath, args);
