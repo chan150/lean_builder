@@ -220,6 +220,7 @@ enum TLMFlag {
   both;
 
   bool get hasNormal => this == TLMFlag.normal || this == TLMFlag.both;
+  bool get hasBuilder => this == TLMFlag.builder || this == TLMFlag.both;
 
   static TLMFlag fromIndex(int index) {
     return TLMFlag.values[index];

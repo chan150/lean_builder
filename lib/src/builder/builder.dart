@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
+import 'package:path/path.dart' as p;
 
 import 'build_step.dart';
 
@@ -11,25 +12,13 @@ import 'build_step.dart';
 abstract class Builder {
   /// This is used to determine if the builder should be run for a given
   /// [BuildCandidate].
-  bool shouldBuild(BuildCandidate candidate);
+  bool shouldBuildFor(BuildCandidate candidate);
 
   /// Generates the outputs for a given [BuildStep].
   FutureOr<void> build(BuildStep buildStep);
 
-  /// Mapping from input file extension to output file extensions.
-  ///
-  /// All input sources matching any key in this map will be passed as build
-  /// step to this builder. Only files with the same basename and an extension
-  /// from the values in this map are expected as outputs.
-  ///
-  /// - If an empty key exists, all inputs are considered matching.
-  /// - An instance of a builder must always return the same configuration.
-  ///   Typically, a builder will return a `const` map.
-  /// - Most builders will use a single input extension and one or more output
-  ///   extensions.
-  Map<String, Set<String>> get buildExtensions;
-
-  Set<String> get allowedExtensions;
+  /// The allowed output extensions for this builder.
+  Set<String> get outputExtensions;
 }
 
 class BuilderOptions {
@@ -68,13 +57,22 @@ typedef BuilderFactory = Builder Function(BuilderOptions options);
 
 class BuildCandidate {
   final Asset asset;
+
+  /// this is always false if the asset is not a library (.dart)
   final bool hasTopLevelMetadata;
+
+  /// this is always empty if the asset is not a library (.dart)
   final List<ExportedSymbol> exportedSymbols;
 
   BuildCandidate(this.asset, this.hasTopLevelMetadata, this.exportedSymbols);
 
   Uri get uri => asset.uri;
+
   String get path => uri.path;
+
+  bool get isDartSource => extension == '.dart';
+
+  String get extension => p.extension(path);
 }
 
 class ExportedSymbol {

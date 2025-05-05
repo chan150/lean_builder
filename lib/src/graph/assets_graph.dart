@@ -360,10 +360,23 @@ class AssetsGraph extends AssetsScanResults {
     final processableAssets = <ProcessableAsset>{};
     for (final entry in assets.entries) {
       if (entry.value[GraphIndex.assetState] != AssetState.processed.index) {
-        final asset = fileResolver.assetForUri(Uri.parse(entry.value[GraphIndex.assetUri]));
         final tlmFlag = TLMFlag.fromIndex(entry.value[GraphIndex.assetTLMFlag] as int);
+        final asset = fileResolver.assetForUri(Uri.parse(entry.value[GraphIndex.assetUri]));
         final state = AssetState.fromIndex(entry.value[GraphIndex.assetState]);
         processableAssets.add(ProcessableAsset(asset, state, tlmFlag));
+      }
+    }
+    return processableAssets;
+  }
+
+  Set<ProcessableAsset> getBuilderProcessableAssets(PackageFileResolver fileResolver) {
+    final processableAssets = <ProcessableAsset>{};
+    for (final entry in assets.entries) {
+      final tlmFlag = entry.value[GraphIndex.assetTLMFlag] as int;
+      if (tlmFlag == TLMFlag.builder.index || tlmFlag == TLMFlag.both.index) {
+        final asset = fileResolver.assetForUri(Uri.parse(entry.value[GraphIndex.assetUri]));
+        final state = AssetState.fromIndex(entry.value[GraphIndex.assetState]);
+        processableAssets.add(ProcessableAsset(asset, state, TLMFlag.fromIndex(tlmFlag)));
       }
     }
     return processableAssets;

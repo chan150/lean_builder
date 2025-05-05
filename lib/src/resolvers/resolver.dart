@@ -1,5 +1,4 @@
 import 'dart:collection';
-import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:analyzer/dart/ast/ast.dart';
@@ -29,7 +28,7 @@ class Resolver {
   final SourceParser parser;
   final PackageFileResolver fileResolver;
   late final typeUtils = TypeUtils(this);
-
+  final _registeredTypesMap = HashMap<Type, String>();
   final _libraryCache = HashMap<String, LibraryElementImpl>();
   final _typeCheckersCache = HashMap<String, TypeChecker>();
   final _resolvedUnitsCache = SourceBasedCache<(LibraryElementImpl, AstNode, DeclarationRef)>();
@@ -48,6 +47,14 @@ class Resolver {
     evaluatedConstantsCache.invalidateForSource(src.id);
   }
 
+  void registerTypeMap(Type type, String srcId) {
+    _registeredTypesMap[type] = srcId;
+  }
+
+  void registerTypesMap(Map<Type, String> typeMaps) {
+    _registeredTypesMap.addAll(typeMaps);
+  }
+
   LibraryElement resolveLibrary(Asset src, {bool preResolveTopLevelMetadata = false, bool allowSyntaxErrors = false}) {
     final library = libraryFor(src, allowSyntaxErrors: allowSyntaxErrors);
     final visitor = ElementBuilder(this, library, preResolveTopLevelMetadata: preResolveTopLevelMetadata);
@@ -57,6 +64,22 @@ class Resolver {
       }
     }
     return library;
+  }
+
+  TypeChecker typeCheckerOf<T>() {
+    assert(T != dynamic, 'T cannot be dynamic');
+    final type = T;
+    if (_registeredTypesMap.containsKey(type)) {
+      final srcId = _registeredTypesMap[type]!;
+      final declarationRef = graph.lookupIdentifierByProvider(type.toString(), srcId);
+      if (declarationRef == null) {
+        throw Exception('Identifier ${type.toString()} not found in $srcId');
+      }
+      assert(declarationRef.type.representsInterfaceType, '$type does not refer to a named type');
+      final typeRef = InterfaceTypeImpl(declarationRef.identifier, declarationRef, this);
+      return TypeChecker.fromTypeRef(typeRef);
+    }
+    throw Exception('Type $type not registered');
   }
 
   TypeChecker typeCheckerFor(String name, String packageImport) {
@@ -158,6 +181,7 @@ class Resolver {
   }
 
   LibraryElementImpl libraryFor(Asset src, {bool allowSyntaxErrors = false}) {
+    assert(src.uri.path.endsWith('.dart'), 'Asset $src is not a dart file');
     return _libraryCache.putIfAbsent(src.id, () {
       final unit = parser.parse(src, allowSyntaxErrors: allowSyntaxErrors);
       return LibraryElementImpl(this, unit, src: src);

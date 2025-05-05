@@ -23,7 +23,7 @@ sealed class Constant {
 
   bool get isSymbol => this is ConstSymbol;
 
-  bool get isTypeRef => this is ConstType;
+  bool get isType => this is ConstType;
 
   bool get isEnumValue => this is ConstEnumValue;
 
@@ -251,6 +251,9 @@ class ConstList extends ConstLiteral<List<Constant>> {
 
   @override
   int get hashCode => const ListEquality().hash(value);
+
+  @override
+  List<dynamic> get literalValue => value.map((e) => e.literalValue).toList();
 }
 
 class ConstMap extends ConstLiteral<Map<Constant, Constant>> {
@@ -266,6 +269,9 @@ class ConstMap extends ConstLiteral<Map<Constant, Constant>> {
 
   @override
   int get hashCode => const MapEquality().hash(value);
+
+  @override
+  Map<dynamic, dynamic> get literalValue => value.map((k, v) => MapEntry(k.literalValue, v.literalValue));
 }
 
 class ConstSet extends ConstLiteral<Set<Constant>> {
@@ -281,6 +287,9 @@ class ConstSet extends ConstLiteral<Set<Constant>> {
 
   @override
   int get hashCode => const SetEquality().hash(value);
+
+  @override
+  Set<dynamic> get literalValue => value.map((e) => e.literalValue).toSet();
 }
 
 abstract class ConstObject extends Constant {

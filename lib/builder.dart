@@ -5,3 +5,4 @@ export 'package:lean_builder/src/builder/generator/generator.dart';
 export 'package:lean_builder/src/builder/generator/generated_output.dart';
 export 'package:lean_builder/src/resolvers/resolver.dart';
 export 'package:lean_builder/src/builder/errors.dart';
+export 'package:lean_builder/src/build_script/annotations.dart';

@@ -14,7 +14,7 @@ const _skyEnginePackage = 'sky_engine';
 
 /// Abstract interface for resolving package file paths
 abstract class PackageFileResolver {
-  static const dirsScheme = {'lib': 'package', 'test': 'asset', 'bin': 'asset'};
+  static const dirsScheme = {'lib': 'package', 'test': 'asset', 'bin': 'asset', 'codegen': 'asset'};
   static const dartSdk = r'$sdk';
   static final dartSdkPath = Uri.file(p.dirname(p.dirname(Platform.resolvedExecutable)));
 

@@ -139,6 +139,11 @@ class BuildCommand extends BaseCommand<int> {
       return 0;
     }
 
+    /// some builder entries might need to do some setup before the build
+    for (final builder in builders) {
+      builder.onPrepare(resolver);
+    }
+
     int outputCount = 0;
     final phases = calculateBuilderPhases(builders);
     final assetsToProcess = List.of(assets);

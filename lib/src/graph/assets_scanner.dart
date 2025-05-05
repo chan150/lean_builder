@@ -5,10 +5,10 @@ import 'package:_fe_analyzer_shared/src/scanner/scanner.dart' as fasta;
 import 'package:analyzer/dart/ast/token.dart' show TokenType, Keyword, Token;
 import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
+import 'package:lean_builder/src/build_script/annotations.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/logger.dart';
 
-import '../build_script/annotation.dart';
 import 'directive_statement.dart';
 
 class AssetsScanner {
@@ -34,7 +34,7 @@ class AssetsScanner {
         if (token.isEof) break;
         Token nextToken = token.next!;
         if (token.type == TokenType.AT) {
-          if (nextToken.lexeme == LeanBuilder.name) {
+          if (nextToken.lexeme.startsWith(kBuilderAnnotationsPrefix)) {
             annotationFlag |= 2;
           } else {
             annotationFlag |= 1;

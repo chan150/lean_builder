@@ -4,6 +4,8 @@ import 'package:lean_builder/builder.dart';
 import 'package:glob/glob.dart';
 import 'package:lean_builder/src/asset/asset.dart';
 
+typedef GeneratorFactory = Generator Function(BuilderOptions options);
+
 abstract class BuilderEntry {
   String get key;
 
@@ -15,23 +17,49 @@ abstract class BuilderEntry {
 
   bool shouldGenerateFor(BuildCandidate candidate);
 
+  void onPrepare(Resolver resolver);
+
   FutureOr<Set<Uri>> build(Resolver resolver, Asset asset);
 
   factory BuilderEntry(
     String key,
-    BuilderFactory builderFactory, {
+    BuilderFactory builder, {
     bool generateToCache,
     Set<String> generateFor,
     Set<String> runsBefore,
     Map<String, dynamic> options,
+    Map<Type, String> annotationsTypeMap,
   }) = BuilderEntryImpl;
+
+  factory BuilderEntry.sharedPart(
+    String key,
+    GeneratorFactory generator, {
+    bool generateToCache,
+    Set<String> generateFor,
+    Set<String> runsBefore,
+    Map<String, dynamic> options,
+    Map<Type, String> annotationsTypeMap,
+    bool allowSyntaxErrors,
+  }) = BuilderEntryImpl.sharedPart;
+
+  factory BuilderEntry.library(
+    String key,
+    GeneratorFactory generator, {
+    bool generateToCache,
+    Set<String> generateFor,
+    Set<String> runsBefore,
+    Map<String, dynamic> options,
+    Map<Type, String> annotationsTypeMap,
+    bool allowSyntaxErrors,
+    required Set<String> outputExtensions,
+  }) = BuilderEntryImpl.library;
 }
 
 class BuilderEntryImpl implements BuilderEntry {
   @override
   final String key;
 
-  final BuilderFactory builderFactory;
+  final Builder builder;
 
   @override
   final bool generateToCache;
@@ -39,24 +67,67 @@ class BuilderEntryImpl implements BuilderEntry {
   @override
   final Set<String> generateFor;
 
-  final BuilderOptions options;
-
   @override
   final Set<String> runsBefore;
 
+  final Map<Type, String> annotationsTypeMap;
+
   BuilderEntryImpl(
     this.key,
-    this.builderFactory, {
+    BuilderFactory builder, {
     this.generateToCache = false,
     this.generateFor = const {},
     this.runsBefore = const {},
+    this.annotationsTypeMap = const {},
     Map<String, dynamic> options = const {},
-  }) : options = BuilderOptions(options);
+  }) : builder = builder(BuilderOptions(options));
 
-  Builder? _builder;
+  factory BuilderEntryImpl.sharedPart(
+    String key,
+    GeneratorFactory generator, {
+    bool generateToCache = false,
+    Set<String> generateFor = const {},
+    Set<String> runsBefore = const {},
+    Map<String, dynamic> options = const {},
+    Map<Type, String> annotationsTypeMap = const {},
+    bool allowSyntaxErrors = false,
+  }) {
+    return BuilderEntryImpl(
+      key,
+      (ops) => SharedPartBuilder([generator(ops)], allowSyntaxErrors: allowSyntaxErrors, options: ops),
+      generateToCache: generateToCache,
+      generateFor: generateFor,
+      runsBefore: runsBefore,
+      options: options,
+      annotationsTypeMap: annotationsTypeMap,
+    );
+  }
 
-  Builder get builder {
-    return _builder ??= builderFactory(options);
+  factory BuilderEntryImpl.library(
+    String key,
+    GeneratorFactory generator, {
+    bool generateToCache = false,
+    Set<String> generateFor = const {},
+    Set<String> runsBefore = const {},
+    Map<String, dynamic> options = const {},
+    Map<Type, String> annotationsTypeMap = const {},
+    bool allowSyntaxErrors = false,
+    required Set<String> outputExtensions,
+  }) {
+    return BuilderEntryImpl(
+      key,
+      (ops) => LibraryBuilder(
+        generator(ops),
+        allowSyntaxErrors: allowSyntaxErrors,
+        outputExtensions: outputExtensions,
+        options: ops,
+      ),
+      generateToCache: generateToCache,
+      generateFor: generateFor,
+      runsBefore: runsBefore,
+      options: options,
+      annotationsTypeMap: annotationsTypeMap,
+    );
   }
 
   @override
@@ -65,17 +136,22 @@ class BuilderEntryImpl implements BuilderEntry {
       for (final pattern in generateFor) {
         final glob = Glob(pattern);
         if (glob.matches(candidate.asset.uri.path)) {
-          return builder.shouldBuild(candidate);
+          return builder.shouldBuildFor(candidate);
         }
       }
       return false;
     }
-    return builder.shouldBuild(candidate);
+    return builder.shouldBuildFor(candidate);
+  }
+
+  @override
+  void onPrepare(Resolver resolver) {
+    resolver.registerTypesMap(annotationsTypeMap);
   }
 
   @override
   FutureOr<Set<Uri>> build(Resolver resolver, Asset asset) async {
-    final buildStep = BuildStepImpl(asset, resolver, allowedExtensions: builder.allowedExtensions);
+    final buildStep = BuildStepImpl(asset, resolver, allowedExtensions: builder.outputExtensions);
     await builder.build(buildStep);
     return buildStep.outputs;
   }
@@ -90,11 +166,14 @@ class CombiningBuilderEntry implements BuilderEntry {
   @override
   final String key;
 
+  final Map<Type, String> annotationsTypeMap;
+
   CombiningBuilderEntry({
     required this.builders,
     required this.key,
     required this.generateFor,
     required this.runsBefore,
+    this.annotationsTypeMap = const {},
   });
 
   @override
@@ -113,7 +192,7 @@ class CombiningBuilderEntry implements BuilderEntry {
         final glob = Glob(pattern);
         if (glob.matches(candidate.asset.uri.path)) {
           for (final builder in builders) {
-            if (builder.shouldBuild(candidate)) {
+            if (builder.shouldBuildFor(candidate)) {
               return true;
             }
           }
@@ -122,11 +201,16 @@ class CombiningBuilderEntry implements BuilderEntry {
       }
     }
     for (final builder in builders) {
-      if (builder.shouldBuild(candidate)) {
+      if (builder.shouldBuildFor(candidate)) {
         return true;
       }
     }
     return false;
+  }
+
+  @override
+  void onPrepare(Resolver resolver) {
+    resolver.registerTypesMap(annotationsTypeMap);
   }
 
   @override
@@ -143,11 +227,14 @@ class CombiningBuilderEntry implements BuilderEntry {
   static CombiningBuilderEntry fromEntries(List<BuilderEntryImpl> entries) {
     final key = entries.map((e) => e.key).join('|');
     final builders = entries.map((e) => e.builder).toList();
+    final annotationsTypeMap = <Type, String>{for (final entry in entries) ...entry.annotationsTypeMap};
+
     return CombiningBuilderEntry(
       builders: builders,
       key: key,
       generateFor: entries.expand((e) => e.generateFor).toSet(),
       runsBefore: entries.expand((e) => e.runsBefore).toSet(),
+      annotationsTypeMap: annotationsTypeMap,
     );
   }
 

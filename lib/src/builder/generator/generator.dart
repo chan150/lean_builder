@@ -23,18 +23,18 @@ abstract class Generator {
   String toString() => runtimeType.toString();
 }
 
-abstract class GeneratorForAnnotation extends Generator {
+abstract class GeneratorForAnnotationBase extends Generator {
   final bool throwOnUnresolved;
 
   /// By default, this generator will throw if it encounters unresolved
   /// annotations. You can override this by setting [throwOnUnresolved] to
   /// `false`.
-  GeneratorForAnnotation({this.throwOnUnresolved = false});
+  const GeneratorForAnnotationBase({this.throwOnUnresolved = false});
 
-  TypeChecker? _typeChecker;
+  static final _typeChecker = Expando<TypeChecker>();
 
   TypeChecker getTypeChecker(BuildStep buildStep) {
-    return _typeChecker ??= buildTypeChecker(buildStep.resolver);
+    return _typeChecker[this] ??= buildTypeChecker(buildStep.resolver);
   }
 
   @override
@@ -49,7 +49,7 @@ abstract class GeneratorForAnnotation extends Generator {
       );
     }
     for (var annotatedElement in annotatedElements) {
-      final rawValue = generateForAnnotatedElement(buildStep, annotatedElement);
+      final rawValue = generateForAnnotatedElement(buildStep, annotatedElement.element, annotatedElement.annotation);
       final normalized = await normalizeGeneratorOutput(rawValue);
       for (final value in normalized) {
         if (value.trim().isNotEmpty) {
@@ -62,7 +62,56 @@ abstract class GeneratorForAnnotation extends Generator {
 
   TypeChecker buildTypeChecker(Resolver resolver);
 
-  dynamic generateForAnnotatedElement(BuildStep buildStep, AnnotatedElement annotatedElement);
+  dynamic generateForAnnotatedElement(BuildStep buildStep, Element element, ElementAnnotation annotation);
+}
+
+abstract class GeneratorForAnnotation<T> extends GeneratorForAnnotationBase {
+  const GeneratorForAnnotation({super.throwOnUnresolved});
+
+  @override
+  TypeChecker buildTypeChecker(Resolver resolver) {
+    return resolver.typeCheckerOf<T>();
+  }
+}
+
+abstract class GeneratorForAnnotatedClass<T> extends GeneratorForAnnotation<T> {
+  const GeneratorForAnnotatedClass({super.throwOnUnresolved});
+
+  @override
+  TypeChecker buildTypeChecker(Resolver resolver) {
+    return resolver.typeCheckerOf<T>();
+  }
+
+  @override
+  dynamic generateForAnnotatedElement(BuildStep buildStep, Element element, ElementAnnotation annotation) {
+    if (element is! ClassElement) {
+      throw ArgumentError('Expected a class element but found ${element.runtimeType}.');
+    }
+    return generateForClass(buildStep, element, annotation);
+  }
+
+  /// Generates code for the annotated class.
+  dynamic generateForClass(BuildStep buildStep, ClassElement element, ElementAnnotation annotation);
+}
+
+abstract class GeneratorForAnnotatedFunction<T> extends GeneratorForAnnotation<T> {
+  const GeneratorForAnnotatedFunction({super.throwOnUnresolved});
+
+  @override
+  TypeChecker buildTypeChecker(Resolver resolver) {
+    return resolver.typeCheckerOf<T>();
+  }
+
+  @override
+  dynamic generateForAnnotatedElement(BuildStep buildStep, Element element, ElementAnnotation annotation) {
+    if (element is! FunctionElement) {
+      throw ArgumentError('Expected a function element but found ${element.runtimeType}.');
+    }
+    return generateForFunction(buildStep, element, annotation);
+  }
+
+  /// Generates code for the annotated function.
+  dynamic generateForFunction(BuildStep buildStep, FunctionElement element, ElementAnnotation annotation);
 }
 
 /// Converts [Future], [Iterable], or [String] to a normalized output.

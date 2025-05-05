@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:lean_builder/src/build_script/compile.dart';
+import 'package:lean_builder/src/build_script/files.dart';
 import 'package:lean_builder/src/logger.dart';
 import 'package:lean_builder/src/runner/command/utils.dart';
 import 'package:path/path.dart' as p;
@@ -29,13 +30,13 @@ void main(List<String> args) async {
     exit(exitCode);
   }
 
-  final scriptPath = p.join(p.current, '.dart_tool/lean_build/script/build.dart');
+  final scriptAbsPath = p.join(p.current, scriptOutput);
 
   if (isDevMode) {
     invalidateExecutable();
-    await _runJit(scriptPath, args, enableVmService: isWatchMode && isDevMode);
+    await _runJit(scriptAbsPath, args, enableVmService: isWatchMode && isDevMode);
   } else {
-    await _runAot(scriptPath, args);
+    await _runAot(scriptAbsPath, args);
   }
 }
 

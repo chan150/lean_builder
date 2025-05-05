@@ -6,8 +6,7 @@ import 'package:test/scaffolding.dart';
 
 class _Generator extends Generator {}
 
-BuilderFactory libBuilderFactory([String ext = '.lib.dart']) =>
-    (_) => LibraryBuilder(_Generator(), outputExtensions: {ext});
+Builder libBuilderFactory([String ext = '.lib.dart']) => LibraryBuilder(_Generator(), outputExtensions: {ext});
 
 void main() {
   test('Builder Entries should be sorted based on runsBefore', () {

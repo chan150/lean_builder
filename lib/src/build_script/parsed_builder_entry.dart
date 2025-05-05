@@ -2,28 +2,42 @@ import 'package:collection/collection.dart';
 
 abstract class ParsedBuilderEntry {
   final String key;
-  final String package;
 
-  const ParsedBuilderEntry({required this.key, required this.package});
+  const ParsedBuilderEntry({required this.key});
+}
+
+class AnnotationReg {
+  final String name;
+  final String? import;
+  final String srcId;
+
+  AnnotationReg(this.name, this.import, this.srcId);
 }
 
 class BuilderDefinitionEntry extends ParsedBuilderEntry {
   final String import;
-  final String builderFactory;
-  final bool generateToCache;
+  final String generatorName;
+  final bool? generateToCache;
   final Set<String>? runsBefore;
   final Set<String>? generateFor;
   final Map<String, dynamic>? options;
+  final BuilderType builderType;
+  final bool? allowSyntaxErrors;
+  final List<AnnotationReg>? annotationsTypeMap;
+  final bool expectsOptions;
 
   BuilderDefinitionEntry({
     required super.key,
-    required super.package,
     required this.options,
     required this.import,
-    required this.builderFactory,
+    required this.generatorName,
     required this.generateToCache,
     required this.generateFor,
     required this.runsBefore,
+    required this.builderType,
+    required this.expectsOptions,
+    this.annotationsTypeMap,
+    this.allowSyntaxErrors,
   });
 
   BuilderDefinitionEntry merge(BuilderOverrideEntry override) {
@@ -33,13 +47,14 @@ class BuilderDefinitionEntry extends ParsedBuilderEntry {
     }
     return BuilderDefinitionEntry(
       key: key,
-      package: package,
       import: import,
-      builderFactory: builderFactory,
+      generatorName: generatorName,
       generateToCache: generateToCache,
       options: mergedOptions.isEmpty ? null : mergedOptions,
       generateFor: override.generateFor ?? generateFor,
       runsBefore: override.runsBefore ?? runsBefore,
+      builderType: builderType,
+      expectsOptions: expectsOptions,
     );
   }
 
@@ -49,7 +64,7 @@ class BuilderDefinitionEntry extends ParsedBuilderEntry {
       other is BuilderDefinitionEntry &&
           runtimeType == other.runtimeType &&
           import == other.import &&
-          builderFactory == other.builderFactory &&
+          generatorName == other.generatorName &&
           generateToCache == other.generateToCache &&
           const SetEquality().equals(runsBefore, other.runsBefore) &&
           const SetEquality().equals(generateFor, other.generateFor) &&
@@ -58,7 +73,7 @@ class BuilderDefinitionEntry extends ParsedBuilderEntry {
   @override
   int get hashCode =>
       import.hashCode ^
-      builderFactory.hashCode ^
+      generatorName.hashCode ^
       generateToCache.hashCode ^
       const SetEquality().hash(generateFor) ^
       const SetEquality().hash(runsBefore) ^
@@ -72,7 +87,6 @@ class BuilderOverrideEntry extends ParsedBuilderEntry {
 
   BuilderOverrideEntry({
     required super.key,
-    required super.package,
     required this.options,
     required this.generateFor,
     required this.runsBefore,
@@ -90,4 +104,16 @@ class BuilderOverrideEntry extends ParsedBuilderEntry {
   @override
   int get hashCode =>
       const SetEquality().hash(generateFor) ^ const MapEquality().hash(options) ^ const SetEquality().hash(runsBefore);
+}
+
+enum BuilderType {
+  shared,
+  library,
+  custom;
+
+  bool get isShared => this == BuilderType.shared;
+
+  bool get isLibrary => this == BuilderType.library;
+
+  bool get isCustom => this == BuilderType.custom;
 }
