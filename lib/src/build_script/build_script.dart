@@ -49,13 +49,13 @@ String? prepareBuildScript(Set<ProcessableAsset> assets, Resolver resolver) {
   final rootPackage = resolver.fileResolver.rootPackage;
   resolver.graph.markPackageAssetsUnprocessed(rootPackage);
 
-  final (entries, overrides) = parseBuilderEntries(assets, resolver);
+  final (entries, overrides) = parseBuilderEntries(Set.of(assets.map((e) => e.asset)), resolver);
   if (entries.isEmpty) {
     deleteScriptFile();
     return null;
   }
 
-  final withOverrides = _handleOverrides(entries, overrides);
+  final withOverrides = applyOverrides(entries, overrides);
 
   Logger.info('Generating a new build script...');
   var script = generateBuildScript(withOverrides);
@@ -71,7 +71,7 @@ String? prepareBuildScript(Set<ProcessableAsset> assets, Resolver resolver) {
   return scriptFile.path;
 }
 
-List<BuilderDefinitionEntry> _handleOverrides(List<BuilderDefinitionEntry> entries, List<BuilderOverride> overrides) {
+List<BuilderDefinitionEntry> applyOverrides(List<BuilderDefinitionEntry> entries, List<BuilderOverride> overrides) {
   if (overrides.isEmpty) return entries;
 
   final finalEntries = <BuilderDefinitionEntry>[];
@@ -87,10 +87,7 @@ List<BuilderDefinitionEntry> _handleOverrides(List<BuilderDefinitionEntry> entri
   return finalEntries;
 }
 
-(List<BuilderDefinitionEntry>, List<BuilderOverride>) parseBuilderEntries(
-  Set<ProcessableAsset> assets,
-  Resolver resolver,
-) {
+(List<BuilderDefinitionEntry>, List<BuilderOverride>) parseBuilderEntries(Set<Asset> assets, Resolver resolver) {
   final parsedEntries = <BuilderDefinitionEntry>[];
   final parsedOverrides = <BuilderOverride>[];
   late final leanGenTypeChecker = resolver.typeCheckerFor('LeanGenerator', _leanAnnotations);
@@ -100,8 +97,8 @@ List<BuilderDefinitionEntry> _handleOverrides(List<BuilderDefinitionEntry> entri
   late final builderTypeChecker = resolver.typeCheckerFor('Builder', _leanBuilders);
   late final builderOverrideTypeChecker = resolver.typeCheckerFor('BuilderOverride', _parsedBuilderEntry);
 
-  for (final entry in assets) {
-    final library = resolver.resolveLibrary(entry.asset);
+  for (final asset in assets) {
+    final library = resolver.resolveLibrary(asset);
     for (final annotatedElement in library.annotatedWithExact(leanGenTypeChecker)) {
       final element = annotatedElement.element;
       if (element is! ClassElement) {
@@ -119,7 +116,7 @@ List<BuilderDefinitionEntry> _handleOverrides(List<BuilderDefinitionEntry> entri
 
       final isShared = constObj.constructorName == 'shared';
       final builderType = isShared ? BuilderType.shared : BuilderType.library;
-      final builderEntry = _buildEntry(entry.asset, constObj, resolver, element, builderType);
+      final builderEntry = _buildEntry(asset, constObj, resolver, element, builderType);
       parsedEntries.add(builderEntry);
     }
 
@@ -139,7 +136,7 @@ List<BuilderDefinitionEntry> _handleOverrides(List<BuilderDefinitionEntry> entri
         throw BuildConfigError('Could not read annotation object');
       }
 
-      final builderEntry = _buildEntry(entry.asset, constObj, resolver, element, BuilderType.custom);
+      final builderEntry = _buildEntry(asset, constObj, resolver, element, BuilderType.custom);
       parsedEntries.add(builderEntry);
     }
 
@@ -187,7 +184,6 @@ BuilderDefinitionEntry _buildEntry(
   ClassElement element,
   BuilderType builderType,
 ) {
-  print(constObj.props);
   Set<String>? outputExtensions;
   if (builderType.isLibrary) {
     final extensions = constObj.getSet('outputExtensions')?.literalValue.cast<String>();
@@ -236,7 +232,7 @@ BuilderDefinitionEntry _buildEntry(
     generatorName: element.name,
     expectsOptions: expectsOptions,
     outputExtensions: outputExtensions,
-    annotationsTypeMap: typesToRegister,
+    annotationsTypeMap: typesToRegister.isEmpty ? null : typesToRegister,
     key: constObj.getString('key')?.value ?? element.name,
     generateToCache: constObj.getBool('generateToCache')?.value,
     options: constObj.getMap('options')?.literalValue.cast<String, dynamic>(),
