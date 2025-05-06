@@ -155,4 +155,21 @@ void main() {
     ];
     expect(() => calculateBuilderPhases(builders), throwsStateError);
   });
+
+  test('Should detect output conflicts', () {
+    final builders = [BuilderEntry('a', libBuilderFactory('.a.dart')), BuilderEntry('b', libBuilderFactory('.a.dart'))];
+    expect(() => validateBuilderEntries(builders), throwsException);
+  });
+
+  test('Should detect duplicate builder keys', () {
+    final builders = [BuilderEntry('a', libBuilderFactory()), BuilderEntry('a', libBuilderFactory('.a.dart'))];
+    expect(() => validateBuilderEntries(builders), throwsException);
+  });
+
+  test('Should throw if a SharedPartBuilder is used with generateToCache', () {
+    final builders = [
+      BuilderEntry('a', (_) => SharedPartBuilder([_Generator()]), generateToCache: true),
+    ];
+    expect(() => validateBuilderEntries(builders), throwsException);
+  });
 }

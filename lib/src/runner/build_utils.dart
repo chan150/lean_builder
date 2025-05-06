@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:lean_builder/builder.dart';
 import 'package:lean_builder/runner.dart';
 import 'package:lean_builder/src/graph/asset_scan_manager.dart';
+import 'dart:collection';
 
 List<List<ProcessableAsset>> calculateChunks(List<ProcessableAsset> assets) {
   final isolateCount = max(1, Platform.numberOfProcessors - 1);
@@ -116,4 +117,30 @@ List<BuilderEntry> orderBasedOnRunsBefore(List<BuilderEntry> entries) {
   }
 
   return sorted;
+}
+
+// validate the following:
+// - shared part builders can not generate to cache
+// - duplicate builder keys
+// - detect output conflicts
+void validateBuilderEntries(List<BuilderEntry> builderEntries) {
+  final checked = HashMap<String, Set<String>>();
+  for (final entry in builderEntries.whereType<BuilderEntryImpl>()) {
+    if (entry.builder is SharedPartBuilder && entry.generateToCache) {
+      throw Exception('Shared builders can not generate to cache');
+    }
+    if (checked.containsKey(entry.key)) {
+      throw Exception('Duplicate builder name detected: ${entry.key}');
+    }
+
+    for (final checked in checked.entries) {
+      for (final output in entry.builder.outputExtensions) {
+        if (checked.value.contains(output)) {}
+        throw Exception(
+          'Output conflict detected:\n Both ${entry.key} and ${checked.key} generate to the same output: $output',
+        );
+      }
+    }
+    checked[entry.key] = entry.builder.outputExtensions;
+  }
 }

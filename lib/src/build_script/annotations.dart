@@ -46,12 +46,12 @@ class LeanGenerator {
   const LeanGenerator.shared({
     this.key,
     this.allowSyntaxErrors,
-    this.generateToCache,
     this.annotations,
     this.generateFor,
     this.runsBefore,
     this.options,
-  }) : outputExtensions = const {};
+  }) : outputExtensions = const {},
+       generateToCache = false;
 }
 
 @Target({TargetKind.topLevelVariable})

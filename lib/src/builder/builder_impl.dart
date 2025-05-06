@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:collection/collection.dart';
 import 'package:dart_style/dart_style.dart';
 import 'package:lean_builder/src/element/element.dart';
 import 'package:lean_builder/src/logger.dart';
@@ -188,6 +189,9 @@ class LibraryBuilder extends _Builder {
       if (ext == SharedPartBuilder.extension) {
         throw ArgumentError('The LibraryBuilder cannot be used with the shared part extension');
       }
+      if (!ext.endsWith('.dart')) {
+        throw ArgumentError('LibraryBuilder output extensions must end with .dart');
+      }
     }
   }
 }
@@ -212,6 +216,13 @@ class SharedPartBuilder extends _Builder {
 
   @override
   FutureOr<void> writeOutput(BuildStep buildStep, String content, String extension) {
+    if (outputExtensions.length != 1 || outputExtensions.first != SharedPartBuilder.extension) {
+      throw ArgumentError(
+        'The output extension must be ${SharedPartBuilder.extension} '
+        'but was ${outputExtensions.join(', ')}',
+      );
+    }
+
     if (extension != SharedPartBuilder.extension) {
       throw ArgumentError('The Shared extension must be $extension');
     }
@@ -220,7 +231,7 @@ class SharedPartBuilder extends _Builder {
       final part = p.relative(outputUri.path, from: p.dirname(buildStep.asset.uri.path));
       throw ArgumentError(
         'The input library must have a part directive for the generated part\n'
-        'file. Please add a part directive (part \'$part\';) to the input library ${buildStep.inputLibrary.src.shortUri}',
+        'file. Please add a part directive (part \'$part\';) to the input library ${buildStep.asset.shortUri}',
       );
     }
     return super.writeOutput(buildStep, content, extension);

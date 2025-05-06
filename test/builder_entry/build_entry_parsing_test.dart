@@ -100,7 +100,7 @@ void main() {
     final asset = StringAsset('''
       import 'package:lean_builder/builder.dart';
       
-      @LeanGenerator.shared(generateToCache: true, options: {'key': 'value'}, generateFor: {'lib/**.dart'}, runsBefore: {'other'})
+      @LeanGenerator.shared(generateToCache: false, options: {'key': 'value'}, generateFor: {'lib/**.dart'}, runsBefore: {'other'})
       class FooGenerator extends Generator {}
     ''');
 
@@ -115,7 +115,7 @@ void main() {
         builderType: BuilderType.shared,
         generatorName: 'FooGenerator',
         expectsOptions: false,
-        generateToCache: true,
+        generateToCache: false,
         options: {'key': 'value'},
         generateFor: {'lib/**.dart'},
         runsBefore: {'other'},

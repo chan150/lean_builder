@@ -8,6 +8,7 @@ import 'package:lean_builder/src/graph/asset_scan_manager.dart';
 import 'package:lean_builder/src/graph/assets_scanner.dart';
 import 'package:lean_builder/src/logger.dart';
 import 'package:lean_builder/src/runner/build_utils.dart';
+import 'package:path/path.dart' as p;
 
 import 'build_result.dart';
 
@@ -71,7 +72,10 @@ class BuildPhase {
     for (final entry in outputs.entries) {
       for (final uri in entry.value) {
         final output = resolver.fileResolver.assetForUri(uri);
-        scanner.scan(output, forceOverride: true);
+        // if the output is a dart file, we need to scan it before the next phase
+        if (p.extension(output.uri.path) == '.dart') {
+          scanner.scan(output, forceOverride: true);
+        }
         resolver.graph.addOutput(entry.key, output);
         outputAssets.add(uri);
       }

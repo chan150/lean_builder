@@ -57,9 +57,6 @@ class BuilderOptions {
   }
 }
 
-/// Creates a [Builder] honoring the configuration in [options].
-typedef BuilderFactory = Builder Function(BuilderOptions options);
-
 class BuildCandidate {
   final Asset asset;
 

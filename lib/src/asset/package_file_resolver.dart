@@ -179,7 +179,7 @@ class PackageFileResolverImpl implements PackageFileResolver {
         return Uri(scheme: 'dart', pathSegments: segments.skip(1));
       }
 
-      final scheme = PackageFileResolver.dirsScheme[dir];
+      final scheme = PackageFileResolver.dirsScheme[dir] ?? 'asset';
       final dirsToSkip = scheme == 'package' ? 1 : 0;
       return Uri(scheme: scheme, pathSegments: [packageName, ...segments.skip(dirsToSkip)]);
     }

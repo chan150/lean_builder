@@ -4,7 +4,11 @@ import 'package:lean_builder/builder.dart';
 import 'package:glob/glob.dart';
 import 'package:lean_builder/src/asset/asset.dart';
 
+/// Creates a [Generator] with the given [options].
 typedef GeneratorFactory = Generator Function(BuilderOptions options);
+
+/// Creates a [Builder] honoring the configuration in [options].
+typedef BuilderFactory = Builder Function(BuilderOptions options);
 
 abstract class BuilderEntry {
   String get key;
@@ -151,7 +155,12 @@ class BuilderEntryImpl implements BuilderEntry {
 
   @override
   FutureOr<Set<Uri>> build(Resolver resolver, Asset asset) async {
-    final buildStep = BuildStepImpl(asset, resolver, allowedExtensions: builder.outputExtensions);
+    final buildStep = BuildStepImpl(
+      asset,
+      resolver,
+      allowedExtensions: builder.outputExtensions,
+      generateToCache: generateToCache,
+    );
     await builder.build(buildStep);
     return buildStep.outputs;
   }
