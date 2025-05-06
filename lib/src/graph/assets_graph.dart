@@ -92,6 +92,16 @@ class AssetsGraph extends AssetsScanResults {
     return assets;
   }
 
+  void markPackageAssetsUnprocessed(String package) {
+    for (final entry in assets.entries) {
+      final uri = Uri.parse(entry.value[GraphIndex.assetUri]);
+      if (uri.pathSegments.isEmpty) continue;
+      if (uri.pathSegments[0] == package) {
+        entry.value[GraphIndex.assetState] = AssetState.unProcessed.index;
+      }
+    }
+  }
+
   DeclarationRef getDeclarationRef(String identifier, Asset importingSrc, {String? importPrefix}) {
     DeclarationRef buildRef(MapEntry<String, int> srcEntry, {String? providerId}) {
       return DeclarationRef(

@@ -1,24 +1,24 @@
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:dart_style/dart_style.dart';
 import 'package:lean_builder/builder.dart';
 import 'package:lean_builder/element.dart';
-import 'package:lean_builder/src/asset/package_file_resolver.dart';
+import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/build_script/errors.dart';
 import 'package:lean_builder/src/build_script/generator.dart';
-import 'package:lean_builder/src/build_script/parsed_builder_entry.dart';
 import 'package:lean_builder/src/graph/asset_scan_manager.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/logger.dart';
 import 'package:lean_builder/src/type/type.dart';
 import 'package:path/path.dart' as p;
-import 'package:yaml/yaml.dart';
 import 'compile.dart' as compile;
 import 'files.dart';
 
 const String _leanAnnotations = 'package:lean_builder/src/build_script/annotations.dart';
 const String _leanGenerator = 'package:lean_builder/src/builder/generator/generator.dart';
 const String _leanBuilders = 'package:lean_builder/src/builder/builder.dart';
+const String _parsedBuilderEntry = 'package:lean_builder/src/build_script/parsed_builder_entry.dart';
 
 String? prepareBuildScript(Set<ProcessableAsset> assets, Resolver resolver) {
   final scriptFile = File(scriptOutput);
@@ -45,16 +45,20 @@ String? prepareBuildScript(Set<ProcessableAsset> assets, Resolver resolver) {
     return scriptFile.path;
   }
 
-  final entries = _parseAll(assets, resolver);
+  /// invalidate processed assets on new build script generation
+  final rootPackage = resolver.fileResolver.rootPackage;
+  resolver.graph.markPackageAssetsUnprocessed(rootPackage);
+
+  final (entries, overrides) = parseBuilderEntries(assets, resolver);
   if (entries.isEmpty) {
     deleteScriptFile();
     return null;
   }
 
-  // final withOverrides = _handleOverrides(entries, fileResolver);
+  final withOverrides = _handleOverrides(entries, overrides);
 
   Logger.info('Generating a new build script...');
-  var script = generateBuildScript(entries.whereType<BuilderDefinitionEntry>().toList());
+  var script = generateBuildScript(withOverrides);
   final formatter = DartFormatter(languageVersion: DartFormatter.latestShortStyleLanguageVersion);
   script = formatter.format(script);
 
@@ -67,46 +71,34 @@ String? prepareBuildScript(Set<ProcessableAsset> assets, Resolver resolver) {
   return scriptFile.path;
 }
 
-// List<BuilderDefinitionEntry> _handleOverrides(List<ParsedBuilderEntry> entries, PackageFileResolver resolver) {
-//   final definitions = entries.whereType<BuilderDefinitionEntry>();
-//   final checkedKeys = <String>{};
-//   final finalEntries = <BuilderDefinitionEntry>[];
-//   final rootOverrides = entries.whereType<BuilderOverrideEntry>().where((e) => e.package == resolver.rootPackage);
-//   for (final def in definitions) {
-//     if (checkedKeys.contains(def.key)) {
-//       throw BuildConfigError('Duplicate builder key found: ${def.key}');
-//     }
-//     checkedKeys.add(def.key);
-//     final rootOverride = rootOverrides.firstWhereOrNull((e) => e.key == def.key);
-//     if (rootOverride == null) {
-//       finalEntries.add(def);
-//     } else {
-//       finalEntries.add(def.merge(rootOverride));
-//     }
-//   }
-//   return finalEntries;
-// }
+List<BuilderDefinitionEntry> _handleOverrides(List<BuilderDefinitionEntry> entries, List<BuilderOverride> overrides) {
+  if (overrides.isEmpty) return entries;
 
-Map<String, File> _detectConfigFiles(PackageFileResolver resolver) {
-  final packages = resolver.packages;
-  final configFiles = <String, File>{};
-  for (final package in packages) {
-    final path = resolver.pathFor(package);
-    final buildYaml = File.fromUri(Uri.parse(p.join(path, 'lean.yaml')));
-    if (buildYaml.existsSync()) {
-      configFiles[package] = buildYaml;
+  final finalEntries = <BuilderDefinitionEntry>[];
+  for (final entry in entries) {
+    final override = overrides.firstWhereOrNull((e) => e.key == entry.key);
+    if (override != null) {
+      finalEntries.add(entry.merge(override));
+    } else {
+      finalEntries.add(entry);
     }
   }
-  return configFiles;
+
+  return finalEntries;
 }
 
-List<ParsedBuilderEntry> _parseAll(Set<ProcessableAsset> assets, Resolver resolver) {
-  final parsedEntries = <ParsedBuilderEntry>[];
+(List<BuilderDefinitionEntry>, List<BuilderOverride>) parseBuilderEntries(
+  Set<ProcessableAsset> assets,
+  Resolver resolver,
+) {
+  final parsedEntries = <BuilderDefinitionEntry>[];
+  final parsedOverrides = <BuilderOverride>[];
   late final leanGenTypeChecker = resolver.typeCheckerFor('LeanGenerator', _leanAnnotations);
   late final leanBuilderTypeChecker = resolver.typeCheckerFor('LeanBuilder', _leanAnnotations);
+  late final leanBuilderOverrideTypeChecker = resolver.typeCheckerFor('LeanBuilderOverrides', _leanAnnotations);
   late final generatorTypeChecker = resolver.typeCheckerFor('Generator', _leanGenerator);
   late final builderTypeChecker = resolver.typeCheckerFor('Builder', _leanBuilders);
-  late final optionsTypeChecker = resolver.typeCheckerFor('BuilderOptions', _leanBuilders);
+  late final builderOverrideTypeChecker = resolver.typeCheckerFor('BuilderOverride', _parsedBuilderEntry);
 
   for (final entry in assets) {
     final library = resolver.resolveLibrary(entry.asset);
@@ -116,20 +108,8 @@ List<ParsedBuilderEntry> _parseAll(Set<ProcessableAsset> assets, Resolver resolv
         throw BuildConfigError('Expected a class element for generator annotation');
       }
       final superType = element.superType;
-      if (superType == null || !generatorTypeChecker.isSupertypeOf(superType)) {
-        throw BuildConfigError('Expected a class that extends Generator for generator annotation');
-      }
-
-      final constructor = element.unnamedConstructor;
-      if (constructor == null || constructor.parameters.length > 1) {
-        throw BuildConfigError(
-          'Expected a constructor with no parameters or one positional parameter of type (BuilderOptions)',
-        );
-      }
-
-      final options = constructor.parameters.isNotEmpty ? constructor.parameters.first : null;
-      if (options != null && (!options.isPositional || !optionsTypeChecker.isExactlyType(options.type))) {
-        throw BuildConfigError('Expected a parameter of exact type BuilderOptions, but got ${options.type}');
+      if (superType == null || !generatorTypeChecker.isAssignableFromType(superType)) {
+        throw BuildConfigError('Expected a class that extends Generator for LeanGenerator annotation');
       }
 
       final constObj = annotatedElement.annotation.constant;
@@ -138,99 +118,133 @@ List<ParsedBuilderEntry> _parseAll(Set<ProcessableAsset> assets, Resolver resolv
       }
 
       final isShared = constObj.constructorName == 'shared';
-      final import = _resolveImport(entry.asset.shortUri)!;
-      final typesToRegister = <AnnotationReg>[];
-      final annotationRefs = constObj.getSet('annotations')?.value;
-      final types = {...?annotationRefs?.whereType<ConstType>().map((e) => e.value)};
+      final builderType = isShared ? BuilderType.shared : BuilderType.library;
+      final builderEntry = _buildEntry(entry.asset, constObj, resolver, element, builderType);
+      parsedEntries.add(builderEntry);
+    }
 
-      if (superType is InterfaceType && superType.typeArguments.isNotEmpty) {
-        types.addAll(superType.typeArguments);
+    for (final annotatedElement in library.annotatedWithExact(leanBuilderTypeChecker)) {
+      final element = annotatedElement.element;
+      if (element is! ClassElement) {
+        throw BuildConfigError('Expected a class element for builder annotation');
+      }
+      final superType = element.superType;
+
+      if (superType == null || !builderTypeChecker.isAssignableFromType(superType)) {
+        throw BuildConfigError('Expected a class that extends Builder for LeanBuilder annotation');
       }
 
-      for (final type in types) {
-        if (type is! InterfaceType) {
-          throw BuildConfigError('Expected an InterfaceType for annotation reference');
+      final constObj = annotatedElement.annotation.constant;
+      if (constObj is! ConstObject) {
+        throw BuildConfigError('Could not read annotation object');
+      }
+
+      final builderEntry = _buildEntry(entry.asset, constObj, resolver, element, BuilderType.custom);
+      parsedEntries.add(builderEntry);
+    }
+
+    for (final annotatedElement in library.annotatedWithExact(leanBuilderOverrideTypeChecker)) {
+      final element = annotatedElement.element;
+      if (element is! TopLevelVariableElement || !element.isConst) {
+        throw BuildConfigError(
+          'Expected a const top-level variable of type List<BuilderOverride> for LeanBuilderOverrides annotation',
+        );
+      }
+      final constObj = element.constantValue;
+      if (constObj is! ConstList) {
+        throw BuildConfigError('Could not read annotation object');
+      }
+      final list = constObj.value;
+      if (list.isEmpty) continue;
+      for (final obj in list) {
+        if (obj is! ConstObject || !builderOverrideTypeChecker.isExactlyType(obj.type)) {
+          throw BuildConfigError('Expected a const object of type BuilderOverride as list element');
         }
-        final typeImport = resolver.uriForAsset(type.declarationRef.srcId);
-        typesToRegister.add(AnnotationReg(type.name, _resolveImport(typeImport), type.declarationRef.srcId));
+        final builderOverride = BuilderOverride(
+          key: obj.getString('key')!.value,
+          generateFor: obj.getSet('generateFor')?.literalValue.cast<String>(),
+          runsBefore: obj.getSet('runsBefore')?.literalValue.cast<String>(),
+          options: obj.getMap('options')?.literalValue.cast<String, dynamic>(),
+        );
+        if (builderOverride.key.isEmpty) {
+          throw BuildConfigError('Expected a non-empty key for BuilderOverride');
+        }
+        if (parsedOverrides.any((e) => e.key == builderOverride.key)) {
+          throw BuildConfigError('Duplicate key found for BuilderOverride: ${builderOverride.key}');
+        }
+        parsedOverrides.add(builderOverride);
       }
-
-      final builderDef = BuilderDefinitionEntry(
-        expectsOptions: constructor.parameters.isNotEmpty,
-        key: constObj.getString('key')?.value ?? element.name,
-        import: import,
-        generatorName: element.name,
-        generateToCache: constObj.getBool('generateToCache')?.value,
-        options: constObj.getMap('options')?.literalValue.cast<String, dynamic>(),
-        generateFor: constObj.getSet('generateFor')?.literalValue.cast<String>(),
-        runsBefore: constObj.getSet('runsBefore')?.literalValue.cast<String>(),
-        allowSyntaxErrors: constObj.getBool('allowSyntaxErrors')?.value,
-        builderType: isShared ? BuilderType.shared : BuilderType.library,
-        annotationsTypeMap: typesToRegister,
-      );
-      parsedEntries.add(builderDef);
     }
   }
 
-  return parsedEntries;
+  return (parsedEntries, parsedOverrides);
+}
 
-  // for (final config in configFiles.entries) {
-  //   final file = config.value;
-  //   final yaml = loadYaml(file.readAsStringSync()) as Map;
-  //   final builders = yaml['builders'] as Map?;
-  //   final buildersOverride = yaml['builders_override'] as Map?;
-  //
-  //   if (builders != null) {
-  //     if (builders.isEmpty) {
-  //       throw BuildConfigError('Expected a non-empty `builders` key in ${file.path}');
-  //     }
-  //     for (final entry in builders.entries) {
-  //       final builder = entry.value;
-  //       final import = builder['import'] as String?;
-  //       if (import == null) {
-  //         throw BuildConfigError('Expected a valid `import` key in ${file.path}');
-  //       }
-  //       final builderFactory = builder['builder_factory'] as String?;
-  //       if (builderFactory == null) {
-  //         throw BuildConfigError('Expected a valid `builder_factory` key in ${file.path}');
-  //       }
-  //       final generateFor = builder['generate_for'] as YamlList?;
-  //       final builderEntry = BuilderDefinitionEntry(
-  //         key: '${config.key}:${entry.key}',
-  //         package: config.key,
-  //         import: import,
-  //         builderFactory: builderFactory,
-  //         options: (builder['options'] as YamlMap?)?.map((k, v) => MapEntry("'$k'", v)),
-  //         generateToCache: builder['generate_to_cache'] == true,
-  //         generateFor: generateFor?.map((e) => "'$e'").toSet(),
-  //         runsBefore: getRunsBeforeSet(builder['runs_before']),
-  //       );
-  //       parsedEntries.add(builderEntry);
-  //     }
-  //   }
-  //
-  //   if (buildersOverride != null) {
-  //     if (buildersOverride.isEmpty) {
-  //       throw BuildConfigError('Expected a non-empty `builders_override` key in ${file.path}');
-  //     }
-  //     for (final entry in buildersOverride.entries) {
-  //       final builder = entry.value;
-  //       final generateFor = builder['generate_for'] as YamlList?;
-  //
-  //       final key = entry.key.toString();
-  //       if (key.split(':').length != 2) {
-  //         throw BuildConfigError("Expected a valid builder key '<package>:<builder>' in ${file.path}");
-  //       }
-  //       final builderEntry = BuilderOverrideEntry(
-  //         key: key,
-  //         package: config.key,
-  //         options: builder['options'] as Map<String, dynamic>?,
-  //         generateFor: generateFor?.map((e) => "'$e'").toSet(),
-  //         runsBefore: getRunsBeforeSet(builder['runs_before']),
-  //       );
-  //       parsedEntries.add(builderEntry);
-  //     }
-  //   }
+BuilderDefinitionEntry _buildEntry(
+  Asset asset,
+  ConstObject constObj,
+  Resolver resolver,
+  ClassElement element,
+  BuilderType builderType,
+) {
+  print(constObj.props);
+  Set<String>? outputExtensions;
+  if (builderType.isLibrary) {
+    final extensions = constObj.getSet('outputExtensions')?.literalValue.cast<String>();
+    if (extensions != null && extensions.isNotEmpty) {
+      outputExtensions = extensions;
+    } else {
+      throw BuildConfigError('Expected a non-empty `outputExtensions` key in ${asset.shortUri}');
+    }
+  }
+  late final optionsTypeChecker = resolver.typeCheckerFor('BuilderOptions', _leanBuilders);
+  bool expectsOptions = false;
+  final constructor = element.unnamedConstructor;
+  if (constructor != null) {
+    if (constructor.parameters.length > 1) {
+      throw BuildConfigError(
+        'Expected a constructor with no parameters or one positional parameter of type (BuilderOptions)',
+      );
+    }
+    final options = constructor.parameters.isNotEmpty ? constructor.parameters.first : null;
+    if (options != null && (!options.isPositional || !optionsTypeChecker.isExactlyType(options.type))) {
+      throw BuildConfigError('Expected a parameter of exact type BuilderOptions, but got ${options.type}');
+    }
+    expectsOptions = options != null;
+  }
+
+  final typesToRegister = <RuntimeTypeRegisterEntry>[];
+  final import = _resolveImport(asset.shortUri)!;
+  final annotationRefs = constObj.getSet('annotations')?.value;
+  final types = {...?annotationRefs?.whereType<ConstType>().map((e) => e.value)};
+  final superType = element.superType;
+  if (superType is InterfaceType && superType.typeArguments.isNotEmpty) {
+    types.addAll(superType.typeArguments);
+  }
+
+  for (final type in types) {
+    if (type is! InterfaceType) {
+      throw BuildConfigError('Expected an InterfaceType for annotation reference');
+    }
+    final typeImport = resolver.uriForAsset(type.declarationRef.srcId);
+    typesToRegister.add(RuntimeTypeRegisterEntry(type.name, _resolveImport(typeImport), type.declarationRef.srcId));
+  }
+
+  final builderDef = BuilderDefinitionEntry(
+    import: import,
+    builderType: builderType,
+    generatorName: element.name,
+    expectsOptions: expectsOptions,
+    outputExtensions: outputExtensions,
+    annotationsTypeMap: typesToRegister,
+    key: constObj.getString('key')?.value ?? element.name,
+    generateToCache: constObj.getBool('generateToCache')?.value,
+    options: constObj.getMap('options')?.literalValue.cast<String, dynamic>(),
+    generateFor: constObj.getSet('generateFor')?.literalValue.cast<String>(),
+    runsBefore: constObj.getSet('runsBefore')?.literalValue.cast<String>(),
+    allowSyntaxErrors: constObj.getBool('allowSyntaxErrors')?.value,
+  );
+  return builderDef;
 }
 
 String? _resolveImport(Uri uri) {
@@ -243,23 +257,4 @@ String? _resolveImport(Uri uri) {
   } else {
     return uri.toString();
   }
-}
-
-Set<String>? getRunsBeforeSet(YamlList? list) {
-  if (list == null) {
-    return null;
-  }
-  final runsBefore = <String>{};
-  for (final entry in list) {
-    if (entry is String) {
-      final parts = entry.split(':');
-      if (parts.length != 2) {
-        throw BuildConfigError('Expected a valid builder name `<package>:<builder-name>` in `runs_before`');
-      }
-      runsBefore.add("'$entry'");
-    } else {
-      throw BuildConfigError('Expected a string in `runs_before` key');
-    }
-  }
-  return runsBefore;
 }

@@ -31,7 +31,7 @@ abstract class BuilderEntry {
     Map<Type, String> annotationsTypeMap,
   }) = BuilderEntryImpl;
 
-  factory BuilderEntry.sharedPart(
+  factory BuilderEntry.forSharedPart(
     String key,
     GeneratorFactory generator, {
     bool generateToCache,
@@ -40,9 +40,9 @@ abstract class BuilderEntry {
     Map<String, dynamic> options,
     Map<Type, String> annotationsTypeMap,
     bool allowSyntaxErrors,
-  }) = BuilderEntryImpl.sharedPart;
+  }) = BuilderEntryImpl.forSharedPart;
 
-  factory BuilderEntry.library(
+  factory BuilderEntry.forLibrary(
     String key,
     GeneratorFactory generator, {
     bool generateToCache,
@@ -52,7 +52,7 @@ abstract class BuilderEntry {
     Map<Type, String> annotationsTypeMap,
     bool allowSyntaxErrors,
     required Set<String> outputExtensions,
-  }) = BuilderEntryImpl.library;
+  }) = BuilderEntryImpl.forLibrary;
 }
 
 class BuilderEntryImpl implements BuilderEntry {
@@ -82,7 +82,7 @@ class BuilderEntryImpl implements BuilderEntry {
     Map<String, dynamic> options = const {},
   }) : builder = builder(BuilderOptions(options));
 
-  factory BuilderEntryImpl.sharedPart(
+  factory BuilderEntryImpl.forSharedPart(
     String key,
     GeneratorFactory generator, {
     bool generateToCache = false,
@@ -103,7 +103,7 @@ class BuilderEntryImpl implements BuilderEntry {
     );
   }
 
-  factory BuilderEntryImpl.library(
+  factory BuilderEntryImpl.forLibrary(
     String key,
     GeneratorFactory generator, {
     bool generateToCache = false,

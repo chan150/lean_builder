@@ -50,6 +50,11 @@ class BuilderOptions {
         ..addAll(other.config),
     );
   }
+
+  @override
+  String toString() {
+    return 'BuilderOptions(config: $config)';
+  }
 }
 
 /// Creates a [Builder] honoring the configuration in [options].

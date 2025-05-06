@@ -8,8 +8,10 @@ String generateBuildScript(List<BuilderDefinitionEntry> entries) {
   final importPrefixes = <String, String>{};
 
   final buffer = StringBuffer();
-  buffer.writeln('// This is an auto-generated build script.');
-  buffer.writeln('// Do not modify this file directly.');
+  final writeln = buffer.writeln;
+  final write = buffer.write;
+  writeln('// This is an auto-generated build script.');
+  writeln('// Do not modify by hand.');
 
   final imports = <String>{_isolateImport, _leanBuilderImport};
   for (final entry in entries) {
@@ -24,15 +26,15 @@ String generateBuildScript(List<BuilderDefinitionEntry> entries) {
   }
   for (final import in imports) {
     final prefix = importPrefixes[import] ??= 'i${importPrefixes.length + 1}';
-    buffer.writeln('import \'$import\' as $prefix;');
+    writeln('import \'$import\' as $prefix;');
   }
   final builderPrefix = importPrefixes[_leanBuilderImport]!;
   final isolatePrefix = importPrefixes[_isolateImport]!;
 
-  buffer.writeln('final _builders = <$builderPrefix.BuilderEntry>[');
+  writeln('final _builders = <$builderPrefix.BuilderEntry>[');
   for (final entry in entries) {
     final prefix = importPrefixes[entry.import]!;
-    buffer.writeln('$builderPrefix.BuilderEntry');
+    writeln('$builderPrefix.BuilderEntry');
 
     final typeRegMap = <String, String>{};
     for (final reg in {...?entry.annotationsTypeMap}) {
@@ -41,18 +43,19 @@ String generateBuildScript(List<BuilderDefinitionEntry> entries) {
     }
 
     final type = entry.builderType;
-    if (type.isShared) {
-      buffer.write('.sharedPart(');
-    } else if (type.isLibrary) {
-      buffer.write('.library(');
-    } else {
-      buffer.write('(');
-    }
+
+    write(switch (type) {
+      BuilderType.shared => '.forSharedPart(',
+      BuilderType.library => '.forLibrary(',
+      BuilderType.custom => '(',
+    });
 
     final props = [
       '\'${entry.key}\'',
-      if (type.isShared || type.isLibrary)
-        entry.expectsOptions ? '$prefix.${entry.generatorName}.new' : '(_)=> $prefix.${entry.generatorName}()',
+      if (type.isLibrary)
+        'outputExtensions'
+            ' : {${entry.outputExtensions!.map((e) => "'$e'").join(', ')}}',
+      entry.expectsOptions ? '$prefix.${entry.generatorName}.new' : '(_)=> $prefix.${entry.generatorName}()',
       if (entry.generateToCache != null) 'generateToCache: ${entry.generateToCache}',
       if (typeRegMap.isNotEmpty)
         'annotationsTypeMap: {${typeRegMap.entries.map((e) => "${e.key}: '${e.value}' ").join(', ')}}',
@@ -61,13 +64,13 @@ String generateBuildScript(List<BuilderDefinitionEntry> entries) {
       if (entry.runsBefore?.isNotEmpty == true) 'runsBefore: {${entry.runsBefore!.map((e) => "'$e'").join(', ')}}',
       if (entry.options?.isNotEmpty == true) 'options: ${entry.options!.map((k, v) => MapEntry("'$k'", v))}',
     ];
-    buffer.writeln('${props.join(',\n')},');
+    writeln('${props.join(',\n')},');
 
-    buffer.writeln('),');
+    writeln('),');
   }
-  buffer.writeln('];');
+  writeln('];');
 
-  buffer.write('''
+  write('''
   void main(List<String> args, $isolatePrefix.SendPort? sendPort)  async{
     final result =  await $builderPrefix.runBuilders(_builders, args);
     sendPort?.send(result);

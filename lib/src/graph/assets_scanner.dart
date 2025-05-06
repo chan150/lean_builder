@@ -34,7 +34,7 @@ class AssetsScanner {
         if (token.isEof) break;
         Token nextToken = token.next!;
         if (token.type == TokenType.AT) {
-          if (nextToken.lexeme.startsWith(kBuilderAnnotationsPrefix)) {
+          if (kBuilderAnnotationNames.contains(nextToken.lexeme)) {
             annotationFlag |= 2;
           } else {
             annotationFlag |= 1;

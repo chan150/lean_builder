@@ -1,20 +1,15 @@
 import 'package:collection/collection.dart';
 
-abstract class ParsedBuilderEntry {
-  final String key;
-
-  const ParsedBuilderEntry({required this.key});
-}
-
-class AnnotationReg {
+class RuntimeTypeRegisterEntry {
   final String name;
   final String? import;
   final String srcId;
 
-  AnnotationReg(this.name, this.import, this.srcId);
+  RuntimeTypeRegisterEntry(this.name, this.import, this.srcId);
 }
 
-class BuilderDefinitionEntry extends ParsedBuilderEntry {
+class BuilderDefinitionEntry {
+  final String key;
   final String import;
   final String generatorName;
   final bool? generateToCache;
@@ -23,11 +18,12 @@ class BuilderDefinitionEntry extends ParsedBuilderEntry {
   final Map<String, dynamic>? options;
   final BuilderType builderType;
   final bool? allowSyntaxErrors;
-  final List<AnnotationReg>? annotationsTypeMap;
+  final List<RuntimeTypeRegisterEntry>? annotationsTypeMap;
   final bool expectsOptions;
+  final Set<String>? outputExtensions;
 
   BuilderDefinitionEntry({
-    required super.key,
+    required this.key,
     required this.options,
     required this.import,
     required this.generatorName,
@@ -38,9 +34,10 @@ class BuilderDefinitionEntry extends ParsedBuilderEntry {
     required this.expectsOptions,
     this.annotationsTypeMap,
     this.allowSyntaxErrors,
+    this.outputExtensions,
   });
 
-  BuilderDefinitionEntry merge(BuilderOverrideEntry override) {
+  BuilderDefinitionEntry merge(BuilderOverride override) {
     final mergedOptions = options ?? {};
     if (override.options != null) {
       mergedOptions.addAll(override.options!);
@@ -55,6 +52,7 @@ class BuilderDefinitionEntry extends ParsedBuilderEntry {
       runsBefore: override.runsBefore ?? runsBefore,
       builderType: builderType,
       expectsOptions: expectsOptions,
+      annotationsTypeMap: annotationsTypeMap,
     );
   }
 
@@ -80,22 +78,18 @@ class BuilderDefinitionEntry extends ParsedBuilderEntry {
       const MapEquality().hash(options);
 }
 
-class BuilderOverrideEntry extends ParsedBuilderEntry {
+final class BuilderOverride {
+  final String key;
   final Set<String>? generateFor;
   final Map<String, dynamic>? options;
   final Set<String>? runsBefore;
 
-  BuilderOverrideEntry({
-    required super.key,
-    required this.options,
-    required this.generateFor,
-    required this.runsBefore,
-  });
+  const BuilderOverride({required this.key, this.options, this.generateFor, this.runsBefore});
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is BuilderOverrideEntry &&
+      other is BuilderOverride &&
           runtimeType == other.runtimeType &&
           const SetEquality().equals(generateFor, other.generateFor) &&
           const SetEquality().equals(runsBefore, other.runsBefore) &&

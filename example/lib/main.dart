@@ -8,7 +8,7 @@ part 'main.g.dart';
 class SampleX {
   @JsonKey()
   @JsonKey()
-  final String rrrr;
+  final String r;
 
-  const SampleX([this.rrrr = 'Text']);
+  const SampleX([this.r = 'Teeeext']);
 }

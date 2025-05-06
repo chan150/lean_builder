@@ -20,11 +20,11 @@ Future<void> main(List<String> args) async {
     Logger.info('Syncing assets graph...');
     await scanManager.scanAssets();
     Logger.info("Assets graph synced in ${stopWatch.elapsed.formattedMS}.");
-    await graph.save();
     final builderAssets = graph.getBuilderProcessableAssets(fileResolver);
-
     final resolver = Resolver(graph, fileResolver, SourceParser());
     final scriptPath = prepareBuildScript(builderAssets, resolver);
+    await graph.save();
+
     if (scriptPath == null) {
       Logger.error('No build script generated. existing.');
       exit(1);
