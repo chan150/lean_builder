@@ -1,5 +1,4 @@
 import 'package:lean_builder/src/asset/asset.dart';
-import 'package:lean_builder/src/graph/asset_scan_manager.dart';
 
 class BuildResult {
   final Map<Asset, Set<Uri>> outputs;

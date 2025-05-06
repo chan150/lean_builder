@@ -62,6 +62,7 @@ String generateBuildScript(List<BuilderDefinitionEntry> entries) {
       if (entry.allowSyntaxErrors != null) 'allowSyntaxErrors: ${entry.allowSyntaxErrors}',
       if (entry.generateFor?.isNotEmpty == true) 'generateFor: {${entry.generateFor!.map((e) => "'$e'").join(', ')}}',
       if (entry.runsBefore?.isNotEmpty == true) 'runsBefore: {${entry.runsBefore!.map((e) => "'$e'").join(', ')}}',
+      if (entry.applies?.isNotEmpty == true) 'applies: {${entry.applies!.map((e) => "'$e'").join(', ')}}',
       if (entry.options?.isNotEmpty == true) 'options: ${entry.options!.map((k, v) => MapEntry("'$k'", v))}',
     ];
     writeln('${props.join(',\n')},');

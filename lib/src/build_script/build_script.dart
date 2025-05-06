@@ -239,6 +239,7 @@ BuilderDefinitionEntry _buildEntry(
     generateFor: constObj.getSet('generateFor')?.literalValue.cast<String>(),
     runsBefore: constObj.getSet('runsBefore')?.literalValue.cast<String>(),
     allowSyntaxErrors: constObj.getBool('allowSyntaxErrors')?.value,
+    applies: constObj.getSet('applies')?.literalValue.cast<String>(),
   );
   return builderDef;
 }

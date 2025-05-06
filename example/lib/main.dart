@@ -7,8 +7,7 @@ part 'main.g.dart';
 @JsonSerializable()
 class SampleX {
   @JsonKey()
-  @JsonKey()
   final String r;
 
-  const SampleX([this.r = 'Teeeext']);
+  const SampleX([this.r = 'T233t']);
 }

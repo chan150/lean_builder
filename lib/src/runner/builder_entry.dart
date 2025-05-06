@@ -17,7 +17,11 @@ abstract class BuilderEntry {
 
   Set<String> get generateFor;
 
+  Set<String> get applies;
+
   Set<String> get runsBefore;
+
+  Set<String> get outputExtensions;
 
   bool shouldGenerateFor(BuildCandidate candidate);
 
@@ -33,6 +37,7 @@ abstract class BuilderEntry {
     Set<String> runsBefore,
     Map<String, dynamic> options,
     Map<Type, String> annotationsTypeMap,
+    Set<String> applies,
   }) = BuilderEntryImpl;
 
   factory BuilderEntry.forSharedPart(
@@ -44,6 +49,7 @@ abstract class BuilderEntry {
     Map<String, dynamic> options,
     Map<Type, String> annotationsTypeMap,
     bool allowSyntaxErrors,
+    Set<String> applies,
   }) = BuilderEntryImpl.forSharedPart;
 
   factory BuilderEntry.forLibrary(
@@ -55,6 +61,7 @@ abstract class BuilderEntry {
     Map<String, dynamic> options,
     Map<Type, String> annotationsTypeMap,
     bool allowSyntaxErrors,
+    Set<String> applies,
     required Set<String> outputExtensions,
   }) = BuilderEntryImpl.forLibrary;
 }
@@ -74,6 +81,9 @@ class BuilderEntryImpl implements BuilderEntry {
   @override
   final Set<String> runsBefore;
 
+  @override
+  final Set<String> applies;
+
   final Map<Type, String> annotationsTypeMap;
 
   BuilderEntryImpl(
@@ -81,10 +91,13 @@ class BuilderEntryImpl implements BuilderEntry {
     BuilderFactory builder, {
     this.generateToCache = false,
     this.generateFor = const {},
-    this.runsBefore = const {},
+    Set<String> runsBefore = const {},
     this.annotationsTypeMap = const {},
+    this.applies = const {},
     Map<String, dynamic> options = const {},
-  }) : builder = builder(BuilderOptions(options));
+  }) : // must run before a builder to be able to apply it
+       runsBefore = {...runsBefore, ...applies},
+       builder = builder(BuilderOptions(options));
 
   factory BuilderEntryImpl.forSharedPart(
     String key,
@@ -95,15 +108,17 @@ class BuilderEntryImpl implements BuilderEntry {
     Map<String, dynamic> options = const {},
     Map<Type, String> annotationsTypeMap = const {},
     bool allowSyntaxErrors = false,
+    Set<String> applies = const {},
   }) {
     return BuilderEntryImpl(
       key,
       (ops) => SharedPartBuilder([generator(ops)], allowSyntaxErrors: allowSyntaxErrors, options: ops),
       generateToCache: generateToCache,
       generateFor: generateFor,
-      runsBefore: runsBefore,
+      runsBefore: {...runsBefore, ...applies},
       options: options,
       annotationsTypeMap: annotationsTypeMap,
+      applies: applies,
     );
   }
 
@@ -113,6 +128,7 @@ class BuilderEntryImpl implements BuilderEntry {
     bool generateToCache = false,
     Set<String> generateFor = const {},
     Set<String> runsBefore = const {},
+    Set<String> applies = const {},
     Map<String, dynamic> options = const {},
     Map<Type, String> annotationsTypeMap = const {},
     bool allowSyntaxErrors = false,
@@ -128,7 +144,8 @@ class BuilderEntryImpl implements BuilderEntry {
       ),
       generateToCache: generateToCache,
       generateFor: generateFor,
-      runsBefore: runsBefore,
+      runsBefore: {...runsBefore, ...applies},
+      applies: applies,
       options: options,
       annotationsTypeMap: annotationsTypeMap,
     );
@@ -167,6 +184,9 @@ class BuilderEntryImpl implements BuilderEntry {
 
   @override
   String toString() => key;
+
+  @override
+  Set<String> get outputExtensions => builder.outputExtensions;
 }
 
 class CombiningBuilderEntry implements BuilderEntry {
@@ -182,6 +202,7 @@ class CombiningBuilderEntry implements BuilderEntry {
     required this.key,
     required this.generateFor,
     required this.runsBefore,
+    this.applies = const {},
     this.annotationsTypeMap = const {},
   });
 
@@ -193,6 +214,9 @@ class CombiningBuilderEntry implements BuilderEntry {
 
   @override
   final Set<String> runsBefore;
+
+  @override
+  final Set<String> applies;
 
   @override
   bool shouldGenerateFor(BuildCandidate candidate) {
@@ -244,9 +268,13 @@ class CombiningBuilderEntry implements BuilderEntry {
       generateFor: entries.expand((e) => e.generateFor).toSet(),
       runsBefore: entries.expand((e) => e.runsBefore).toSet(),
       annotationsTypeMap: annotationsTypeMap,
+      applies: entries.expand((e) => e.applies).toSet(),
     );
   }
 
   @override
   String toString() => key;
+
+  @override
+  Set<String> get outputExtensions => Set.of(builders.expand((e) => e.outputExtensions));
 }

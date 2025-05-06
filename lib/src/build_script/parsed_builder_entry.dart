@@ -32,6 +32,7 @@ class BuilderDefinitionEntry {
   final bool? generateToCache;
   final Set<String>? runsBefore;
   final Set<String>? generateFor;
+  final Set<String>? applies;
   final Map<String, dynamic>? options;
   final BuilderType builderType;
   final bool? allowSyntaxErrors;
@@ -45,6 +46,7 @@ class BuilderDefinitionEntry {
     required this.builderType,
     required this.generatorName,
     required this.expectsOptions,
+    this.applies,
     this.options,
     this.generateToCache,
     this.generateFor,

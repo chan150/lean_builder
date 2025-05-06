@@ -21,7 +21,7 @@ void main(List<String> args) async {
   final process = await Process.start(runtimePath, [runnerExePath.path, ...args], mode: ProcessStartMode.inheritStdio);
   final exitCode = await process.exitCode;
   if (exitCode == 2) {
-    if (!isWatchMode) {
+    if (!isWatchMode && !isDevMode) {
       Logger.info('No Assets to process. Exiting.');
       exit(0);
     }

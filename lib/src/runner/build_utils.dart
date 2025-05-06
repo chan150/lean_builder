@@ -135,10 +135,11 @@ void validateBuilderEntries(List<BuilderEntry> builderEntries) {
 
     for (final checked in checked.entries) {
       for (final output in entry.builder.outputExtensions) {
-        if (checked.value.contains(output)) {}
-        throw Exception(
-          'Output conflict detected:\n Both ${entry.key} and ${checked.key} generate to the same output: $output',
-        );
+        if (checked.value.contains(output)) {
+          throw Exception(
+            'Output conflict detected:\n Both ${entry.key} and ${checked.key} generate to the same output: $output',
+          );
+        }
       }
     }
     checked[entry.key] = entry.builder.outputExtensions;

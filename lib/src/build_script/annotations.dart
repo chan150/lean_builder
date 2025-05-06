@@ -27,6 +27,7 @@ class LeanGenerator {
   final bool? generateToCache;
   final Set<String>? generateFor;
   final Set<String>? runsBefore;
+  final Set<String>? applies;
   final Set<Type>? annotations;
   final Set<String> outputExtensions;
   final bool? allowSyntaxErrors;
@@ -41,11 +42,13 @@ class LeanGenerator {
     this.generateFor,
     this.runsBefore,
     this.options,
+    this.applies,
   });
 
   const LeanGenerator.shared({
     this.key,
     this.allowSyntaxErrors,
+    this.applies,
     this.annotations,
     this.generateFor,
     this.runsBefore,
