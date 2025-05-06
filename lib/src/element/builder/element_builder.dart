@@ -37,7 +37,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     _resolveInterfaceTypeRefs(extensionTypeElement, implementsClause: node.implementsClause);
     extensionTypeElement.thisType = InterfaceTypeImpl(
       extensionTypeElement.name,
-      library.buildDeclarationRef(extensionTypeElement.name, TopLevelIdentifierType.$class),
+      library.buildDeclarationRef(extensionTypeElement.name, SymbolType.$class),
       resolver,
     );
 
@@ -213,7 +213,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
 
     classElement.thisType = InterfaceTypeImpl(
       classElement.name,
-      library.buildDeclarationRef(classElement.name, TopLevelIdentifierType.$class),
+      library.buildDeclarationRef(classElement.name, SymbolType.$class),
       resolver,
       typeArguments: classElement.typeParameters,
       element: classElement,
@@ -253,7 +253,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     });
     mixinElement.thisType = InterfaceTypeImpl(
       mixinElement.name,
-      libraryElement.buildDeclarationRef(mixinElement.name, TopLevelIdentifierType.$mixin),
+      libraryElement.buildDeclarationRef(mixinElement.name, SymbolType.$mixin),
       resolver,
       typeArguments: mixinElement.typeParameters,
       element: mixinElement,
@@ -276,7 +276,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
 
     enumElement.thisType = InterfaceTypeImpl(
       enumElement.name,
-      library.buildDeclarationRef(enumElement.name, TopLevelIdentifierType.$enum),
+      library.buildDeclarationRef(enumElement.name, SymbolType.$enum),
       resolver,
       element: enumElement,
     );
@@ -416,7 +416,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       enclosingEle.library.src,
       importPrefix: importPrefix?.name.lexeme,
     );
-    if (declarationRef.type == TopLevelIdentifierType.$typeAlias) {
+    if (declarationRef.type == SymbolType.$typeAlias) {
       return TypeAliasTypeImpl(
         typename,
         declarationRef,

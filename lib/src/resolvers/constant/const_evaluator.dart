@@ -116,7 +116,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
     final interfaceName = interfaceDec.name.lexeme;
     final type = InterfaceTypeImpl(
       interfaceName,
-      _library.buildDeclarationRef(interfaceName, TopLevelIdentifierType.$class),
+      _library.buildDeclarationRef(interfaceName, SymbolType.$class),
       _resolver,
     );
     return ConstObjectImpl(values, type, positionalNames: positionalNames);

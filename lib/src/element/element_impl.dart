@@ -311,7 +311,7 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   int get hashCode => src.id.hashCode;
 
   @override
-  DeclarationRef buildDeclarationRef(String identifier, TopLevelIdentifierType type) {
+  DeclarationRef buildDeclarationRef(String identifier, SymbolType type) {
     return DeclarationRef(
       identifier: identifier,
       srcId: src.id,

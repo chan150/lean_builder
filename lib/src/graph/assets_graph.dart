@@ -109,7 +109,7 @@ class AssetsGraph extends AssetsScanResults {
         srcId: srcEntry.key,
         srcUri: uriForAsset(srcEntry.key),
         providerId: providerId ?? srcEntry.key,
-        type: TopLevelIdentifierType.fromValue(srcEntry.value),
+        type: SymbolType.fromValue(srcEntry.value),
         importingLibrary: importingSrc,
         importPrefix: importPrefix,
       );
@@ -179,7 +179,7 @@ class AssetsGraph extends AssetsScanResults {
           identifier: name,
           srcId: providerSrc,
           providerId: providerSrc,
-          type: TopLevelIdentifierType.fromValue(entry.value[GraphIndex.identifierType]),
+          type: SymbolType.fromValue(entry.value[GraphIndex.identifierType]),
           srcUri: uriForAsset(providerSrc),
         );
       }
@@ -192,7 +192,7 @@ class AssetsGraph extends AssetsScanResults {
         identifier: name,
         srcId: src,
         providerId: providerSrc,
-        type: TopLevelIdentifierType.fromValue(possibleSrcs[src]![GraphIndex.identifierType]),
+        type: SymbolType.fromValue(possibleSrcs[src]![GraphIndex.identifierType]),
         srcUri: uriForAsset(src),
       );
     }
@@ -329,7 +329,7 @@ class AssetsGraph extends AssetsScanResults {
     for (final entry in identifiers) {
       if (entry[GraphIndex.identifierSrc] == id) {
         final name = entry[GraphIndex.identifierName];
-        final type = TopLevelIdentifierType.fromValue(entry[GraphIndex.identifierType]);
+        final type = SymbolType.fromValue(entry[GraphIndex.identifierType]);
         exportedSymbols.add(ExportedSymbol(name, type));
       }
     }

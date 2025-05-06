@@ -18,6 +18,8 @@ abstract class Builder {
   FutureOr<void> build(BuildStep buildStep);
 
   /// The allowed output extensions for this builder.
+  ///
+  /// the first element is the primary output extension, the rest are secondary
   Set<String> get outputExtensions;
 }
 
@@ -79,7 +81,7 @@ class BuildCandidate {
 
 class ExportedSymbol {
   final String name;
-  final TopLevelIdentifierType type;
+  final SymbolType type;
 
   ExportedSymbol(this.name, this.type);
 

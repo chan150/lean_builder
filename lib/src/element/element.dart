@@ -178,7 +178,7 @@ abstract class InterfaceElement extends InstanceElement with TypeParameterizedEl
 abstract class LibraryElement extends Element {
   Asset get src;
 
-  DeclarationRef buildDeclarationRef(String identifier, TopLevelIdentifierType type);
+  DeclarationRef buildDeclarationRef(String identifier, SymbolType type);
 
   CompilationUnit get compilationUnit;
 

@@ -19,11 +19,11 @@ class DeclarationRef {
   final String srcId;
   final Uri srcUri;
   final String providerId;
-  final TopLevelIdentifierType type;
+  final SymbolType type;
   final Asset? importingLibrary;
   final String? importPrefix;
 
-  factory DeclarationRef.from(String name, String uri, TopLevelIdentifierType type) {
+  factory DeclarationRef.from(String name, String uri, SymbolType type) {
     return DeclarationRef(
       identifier: name,
       srcId: xxh3String(Uint8List.fromList(uri.codeUnits)),

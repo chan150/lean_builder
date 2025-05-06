@@ -72,18 +72,18 @@ class AssetsScanner {
               nextToken = parseTypeDef(nextToken, asset) ?? nextToken;
               break;
             case Keyword.CLASS:
-              results.addDeclaration(nextLexeme, asset, TopLevelIdentifierType.$class);
+              results.addDeclaration(nextLexeme, asset, SymbolType.$class);
               nextToken = _skipUntilAny(token, {TokenType.OPEN_CURLY_BRACKET, TokenType.SEMICOLON});
               break;
             case Keyword.MIXIN:
               if (nextToken.type == Keyword.CLASS) {
                 break;
               }
-              results.addDeclaration(nextLexeme, asset, TopLevelIdentifierType.$mixin);
+              results.addDeclaration(nextLexeme, asset, SymbolType.$mixin);
               nextToken = _skipUntil(token, TokenType.OPEN_CURLY_BRACKET);
               break;
             case Keyword.ENUM:
-              results.addDeclaration(nextLexeme, asset, TopLevelIdentifierType.fromKeyword(type));
+              results.addDeclaration(nextLexeme, asset, SymbolType.$enum);
               nextToken = _skipUntil(token, TokenType.OPEN_CURLY_BRACKET);
               break;
             case Keyword.EXTENSION:
@@ -97,7 +97,7 @@ class AssetsScanner {
                   extName = current.lexeme;
                 }
               }
-              results.addDeclaration(extName, asset, TopLevelIdentifierType.$extension);
+              results.addDeclaration(extName, asset, SymbolType.$extension);
 
               nextToken = _skipUntil(nextToken, TokenType.OPEN_CURLY_BRACKET);
               break;
@@ -146,7 +146,7 @@ class AssetsScanner {
     } else if (next != null && _skipLTGT(next).type == TokenType.OPEN_PAREN) {
       funcFound = true;
       if (_isValidName(current?.lexeme)) {
-        results.addDeclaration(current!.lexeme, asset, TopLevelIdentifierType.$function);
+        results.addDeclaration(current!.lexeme, asset, SymbolType.$function);
       }
     } else if (next != null && next.type == TokenType.LT) {
       return _skipLTGT(next);
@@ -180,7 +180,7 @@ class AssetsScanner {
       if (currentToken.isIdentifier) {
         var afterIdentifier = currentToken.next;
         if (afterIdentifier != null && (afterIdentifier.type == TokenType.EQ)) {
-          results.addDeclaration(currentToken.lexeme, asset, TopLevelIdentifierType.$variable);
+          results.addDeclaration(currentToken.lexeme, asset, SymbolType.$variable);
           break;
         }
       }
@@ -293,7 +293,7 @@ class AssetsScanner {
     final eqIndex = identifiers.indexWhere((e) => e.type == TokenType.EQ);
     final nameLexeme = eqIndex > 0 ? identifiers[eqIndex - 1].lexeme : identifiers.lastOrNull?.lexeme;
     if (_isValidName(nameLexeme)) {
-      results.addDeclaration(nameLexeme!, asset, TopLevelIdentifierType.$typeAlias);
+      results.addDeclaration(nameLexeme!, asset, SymbolType.$typeAlias);
     }
 
     return token;

@@ -109,7 +109,7 @@ class Resolver {
     }
     if (declarationRef.type.representsInterfaceType) {
       return InterfaceTypeImpl(name, declarationRef, this);
-    } else if (declarationRef.type == TopLevelIdentifierType.$typeAlias) {
+    } else if (declarationRef.type == SymbolType.$typeAlias) {
       return TypeAliasTypeImpl(name, declarationRef, this);
     } else {
       throw Exception('$name does not refer to a named type');
@@ -205,19 +205,19 @@ class Resolver {
     final library = libraryFor(assetFile);
     final compilationUnit = library.compilationUnit;
 
-    if (declarationRef.type == TopLevelIdentifierType.$variable) {
+    if (declarationRef.type == SymbolType.$variable) {
       final unit = compilationUnit.declarations.whereType<TopLevelVariableDeclaration>().firstWhere(
         (e) => e.variables.variables.any((v) => v.name.lexeme == declarationRef.identifier),
         orElse: () => throw Exception('Identifier  ${declarationRef.identifier} not found in $srcUri'),
       );
       return _resolvedUnitsCache.cacheKey(cacheKey, (library, unit, declarationRef));
-    } else if (declarationRef.type == TopLevelIdentifierType.$function) {
+    } else if (declarationRef.type == SymbolType.$function) {
       final unit = compilationUnit.declarations.whereType<FunctionDeclaration>().firstWhere(
         (e) => e.name.lexeme == declarationRef.identifier,
         orElse: () => throw Exception('Identifier  ${declarationRef.identifier} not found in $srcUri'),
       );
       return _resolvedUnitsCache.cacheKey(cacheKey, (library, unit, declarationRef));
-    } else if (declarationRef.type == TopLevelIdentifierType.$typeAlias) {
+    } else if (declarationRef.type == SymbolType.$typeAlias) {
       final unit = compilationUnit.declarations.whereType<TypeAlias>().firstWhere(
         (e) => e.name.lexeme == declarationRef.identifier,
         orElse: () => throw Exception('Identifier  ${declarationRef.identifier} not found in $srcUri'),

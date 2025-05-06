@@ -14,22 +14,22 @@ class TypeUtils {
   TypeUtils(this.resolver, {this.strictCasts = false});
 
   InterfaceType get objectType {
-    final declarationRef = DeclarationRef.from('Object', CoreTypeSource.coreObject, TopLevelIdentifierType.$class);
+    final declarationRef = DeclarationRef.from('Object', CoreTypeSource.coreObject, SymbolType.$class);
     return InterfaceTypeImpl('Object', declarationRef, resolver);
   }
 
   InterfaceType get objectTypeNullable {
-    final declarationRef = DeclarationRef.from('Object', CoreTypeSource.coreObject, TopLevelIdentifierType.$class);
+    final declarationRef = DeclarationRef.from('Object', CoreTypeSource.coreObject, SymbolType.$class);
     return InterfaceTypeImpl('Object?', declarationRef, resolver, isNullable: true);
   }
 
   InterfaceType get nullTypeObject {
-    final declarationRef = DeclarationRef.from('Null', CoreTypeSource.coreNull, TopLevelIdentifierType.$class);
+    final declarationRef = DeclarationRef.from('Null', CoreTypeSource.coreNull, SymbolType.$class);
     return InterfaceTypeImpl('Null', declarationRef, resolver);
   }
 
   InterfaceType buildFutureType(DartType typeParam, {bool isNullable = false}) {
-    final declarationRef = DeclarationRef.from('Future', CoreTypeSource.asyncFuture, TopLevelIdentifierType.$class);
+    final declarationRef = DeclarationRef.from('Future', CoreTypeSource.asyncFuture, SymbolType.$class);
     return InterfaceTypeImpl('Future', declarationRef, resolver, typeArguments: [typeParam], isNullable: false);
   }
 

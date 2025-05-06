@@ -1,8 +1,6 @@
 import 'dart:collection';
 import 'dart:typed_data';
 
-import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/dart/ast/token.dart';
 import 'package:collection/collection.dart';
 import 'package:lean_builder/src/asset/asset.dart';
 import 'package:xxh3/xxh3.dart';
@@ -12,10 +10,14 @@ import 'directive_statement.dart';
 class GraphIndex {
   const GraphIndex._();
 
-  // asset
+  /// asset
   static const assetUri = 0;
   static const assetDigest = 1;
-  // 0 no annotation, 1 has regular annotation, 2 has builder annotation, 3 has both
+
+  /// 0: no annotation
+  /// 1: has regular annotation
+  /// 2: has builder annotation
+  /// 3: has both
   /// represents the values of [TLMFlag]
   static const assetTLMFlag = 2;
 
@@ -23,12 +25,12 @@ class GraphIndex {
   static const assetState = 3;
   static const assetLibraryName = 4;
 
-  // identifier
+  /// identifier
   static const identifierName = 0;
   static const identifierSrc = 1;
   static const identifierType = 2;
 
-  // directive
+  /// directive
   static const directiveType = 0;
   static const directiveSrc = 1;
   static const directiveStringUri = 2;
@@ -69,7 +71,7 @@ abstract class ScanResults {
 
   void addAsset(Asset asset);
 
-  void addDeclaration(String identifier, Asset declaringFile, TopLevelIdentifierType type);
+  void addDeclaration(String identifier, Asset declaringFile, SymbolType type);
 
   void removeAsset(String id);
 
@@ -244,7 +246,7 @@ class AssetsScanResults extends ScanResults {
   }
 
   @override
-  void addDeclaration(String identifier, Asset declaringFile, TopLevelIdentifierType type) {
+  void addDeclaration(String identifier, Asset declaringFile, SymbolType type) {
     if (!assets.containsKey(declaringFile.id)) {
       throw Exception('Asset not found: $declaringFile');
     }
@@ -410,7 +412,7 @@ class AssetsScanResults extends ScanResults {
   }
 }
 
-enum TopLevelIdentifierType {
+enum SymbolType {
   unknown(-1),
   $class(0),
   $mixin(1),
@@ -426,9 +428,9 @@ enum TopLevelIdentifierType {
     return this == $class || this == $mixin || this == $enum;
   }
 
-  const TopLevelIdentifierType(this.value);
+  const SymbolType(this.value);
 
-  static TopLevelIdentifierType fromValue(int value) {
+  static SymbolType fromValue(int value) {
     switch (value) {
       case 0:
         return $class;
@@ -446,41 +448,6 @@ enum TopLevelIdentifierType {
         return $variable;
       default:
         throw ArgumentError('Invalid value: $value');
-    }
-  }
-
-  static TopLevelIdentifierType fromKeyword(TokenType type) {
-    switch (type) {
-      case Keyword.CLASS:
-        return $class;
-      case Keyword.MIXIN:
-        return $mixin;
-      case Keyword.EXTENSION:
-        return $extension;
-      case Keyword.ENUM:
-        return $enum;
-      case Keyword.TYPEDEF:
-        return $typeAlias;
-      default:
-        throw ArgumentError('Invalid value: $type');
-    }
-  }
-
-  static TopLevelIdentifierType fromDeclaration(NamedCompilationUnitMember node) {
-    if (node is ClassDeclaration) {
-      return $class;
-    } else if (node is MixinDeclaration) {
-      return $mixin;
-    } else if (node is ExtensionDeclaration) {
-      return $extension;
-    } else if (node is EnumDeclaration) {
-      return $enum;
-    } else if (node is TypeAlias) {
-      return $typeAlias;
-    } else if (node is FunctionDeclaration) {
-      return $function;
-    } else {
-      throw ArgumentError('Invalid value: $node');
     }
   }
 

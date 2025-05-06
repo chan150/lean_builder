@@ -32,11 +32,11 @@ main() {
     ''');
     scanner.scan(file);
     final expected = [
-      ['_privateConst', file.id, TopLevelIdentifierType.$variable.value],
-      ['kPi', file.id, TopLevelIdentifierType.$variable.value],
-      ['inferredConst', file.id, TopLevelIdentifierType.$variable.value],
-      ['constants', file.id, TopLevelIdentifierType.$variable.value],
-      ['kValue', file.id, TopLevelIdentifierType.$variable.value],
+      ['_privateConst', file.id, SymbolType.$variable.value],
+      ['kPi', file.id, SymbolType.$variable.value],
+      ['inferredConst', file.id, SymbolType.$variable.value],
+      ['constants', file.id, SymbolType.$variable.value],
+      ['kValue', file.id, SymbolType.$variable.value],
     ];
     expect(assetsGraph.identifiers, expected);
   });
@@ -76,8 +76,8 @@ main() {
     ''');
     scanner.scan(file);
     final expected = [
-      ['Enum', file.id, TopLevelIdentifierType.$enum.value],
-      ['EnumWithImpl', file.id, TopLevelIdentifierType.$enum.value],
+      ['Enum', file.id, SymbolType.$enum.value],
+      ['EnumWithImpl', file.id, SymbolType.$enum.value],
     ];
     expect(assetsGraph.identifiers, expected);
   });
@@ -105,23 +105,23 @@ main() {
     ''');
     scanner.scan(file);
     final expected = [
-      ['JsonMap', file.id, TopLevelIdentifierType.$typeAlias.value],
-      ['Record', file.id, TopLevelIdentifierType.$typeAlias.value],
-      ['Callback', file.id, TopLevelIdentifierType.$typeAlias.value],
-      ['GenericCallback', file.id, TopLevelIdentifierType.$typeAlias.value],
-      ['GenericCallback2', file.id, TopLevelIdentifierType.$typeAlias.value],
-      ['ElementPredicate', file.id, TopLevelIdentifierType.$typeAlias.value],
-      ['TypeName', file.id, TopLevelIdentifierType.$typeAlias.value],
-      ['ConsumerCallback', file.id, TopLevelIdentifierType.$typeAlias.value],
-      ['NullableMap', file.id, TopLevelIdentifierType.$typeAlias.value],
-      ['FunctionFactory', file.id, TopLevelIdentifierType.$typeAlias.value],
-      ['Comparable', file.id, TopLevelIdentifierType.$typeAlias.value],
-      ['ComplexRecord', file.id, TopLevelIdentifierType.$typeAlias.value],
-      ['KeyValuePair', file.id, TopLevelIdentifierType.$typeAlias.value],
-      ['OptionalParams', file.id, TopLevelIdentifierType.$typeAlias.value],
-      ['NamedParams', file.id, TopLevelIdentifierType.$typeAlias.value],
-      ['JsonProcessor', file.id, TopLevelIdentifierType.$typeAlias.value],
-      ['Transformer', file.id, TopLevelIdentifierType.$typeAlias.value],
+      ['JsonMap', file.id, SymbolType.$typeAlias.value],
+      ['Record', file.id, SymbolType.$typeAlias.value],
+      ['Callback', file.id, SymbolType.$typeAlias.value],
+      ['GenericCallback', file.id, SymbolType.$typeAlias.value],
+      ['GenericCallback2', file.id, SymbolType.$typeAlias.value],
+      ['ElementPredicate', file.id, SymbolType.$typeAlias.value],
+      ['TypeName', file.id, SymbolType.$typeAlias.value],
+      ['ConsumerCallback', file.id, SymbolType.$typeAlias.value],
+      ['NullableMap', file.id, SymbolType.$typeAlias.value],
+      ['FunctionFactory', file.id, SymbolType.$typeAlias.value],
+      ['Comparable', file.id, SymbolType.$typeAlias.value],
+      ['ComplexRecord', file.id, SymbolType.$typeAlias.value],
+      ['KeyValuePair', file.id, SymbolType.$typeAlias.value],
+      ['OptionalParams', file.id, SymbolType.$typeAlias.value],
+      ['NamedParams', file.id, SymbolType.$typeAlias.value],
+      ['JsonProcessor', file.id, SymbolType.$typeAlias.value],
+      ['Transformer', file.id, SymbolType.$typeAlias.value],
     ];
     expect(assetsGraph.identifiers, expected);
   });
@@ -135,10 +135,10 @@ main() {
     ''');
     scanner.scan(file);
     final expected = [
-      ['StringExt', file.id, TopLevelIdentifierType.$extension.value],
-      ['ListExt', file.id, TopLevelIdentifierType.$extension.value],
-      ['TypeExt', file.id, TopLevelIdentifierType.$extension.value],
-      ['TypeExt2', file.id, TopLevelIdentifierType.$extension.value],
+      ['StringExt', file.id, SymbolType.$extension.value],
+      ['ListExt', file.id, SymbolType.$extension.value],
+      ['TypeExt', file.id, SymbolType.$extension.value],
+      ['TypeExt2', file.id, SymbolType.$extension.value],
     ];
     expect(assetsGraph.identifiers, expected);
   });
@@ -154,8 +154,8 @@ main() {
     ''');
     scanner.scan(file);
     final expected = [
-      ['Logger', file.id, TopLevelIdentifierType.$mixin.value],
-      ['Logger2', file.id, TopLevelIdentifierType.$mixin.value],
+      ['Logger', file.id, SymbolType.$mixin.value],
+      ['Logger2', file.id, SymbolType.$mixin.value],
     ];
     expect(assetsGraph.identifiers, expected);
   });
@@ -178,17 +178,17 @@ main() {
     ''');
     scanner.scan(file);
     final expected = [
-      ['Shape', file.id, TopLevelIdentifierType.$class.value],
-      ['Rectangle', file.id, TopLevelIdentifierType.$class.value],
-      ['Box', file.id, TopLevelIdentifierType.$class.value],
-      ['Boxes', file.id, TopLevelIdentifierType.$class.value],
-      ['AbstractShape', file.id, TopLevelIdentifierType.$class.value],
-      ['FinalShape', file.id, TopLevelIdentifierType.$class.value],
-      ['Shape2', file.id, TopLevelIdentifierType.$class.value],
-      ['Shape3', file.id, TopLevelIdentifierType.$class.value],
-      ['Shape4', file.id, TopLevelIdentifierType.$class.value],
-      ['GenericMixin', file.id, TopLevelIdentifierType.$class.value],
-      ['AliasedClass', file.id, TopLevelIdentifierType.$class.value],
+      ['Shape', file.id, SymbolType.$class.value],
+      ['Rectangle', file.id, SymbolType.$class.value],
+      ['Box', file.id, SymbolType.$class.value],
+      ['Boxes', file.id, SymbolType.$class.value],
+      ['AbstractShape', file.id, SymbolType.$class.value],
+      ['FinalShape', file.id, SymbolType.$class.value],
+      ['Shape2', file.id, SymbolType.$class.value],
+      ['Shape3', file.id, SymbolType.$class.value],
+      ['Shape4', file.id, SymbolType.$class.value],
+      ['GenericMixin', file.id, SymbolType.$class.value],
+      ['AliasedClass', file.id, SymbolType.$class.value],
     ];
     expect(assetsGraph.identifiers, expected);
   });
@@ -214,18 +214,18 @@ main() {
 
     scanner.scan(file);
     final expected = [
-      ['noReturn', file.id, TopLevelIdentifierType.$function.value],
-      ['printMsg', file.id, TopLevelIdentifierType.$function.value],
-      ['add', file.id, TopLevelIdentifierType.$function.value],
-      ['configure', file.id, TopLevelIdentifierType.$function.value],
-      ['getRange', file.id, TopLevelIdentifierType.$function.value],
-      ['nestedList', file.id, TopLevelIdentifierType.$function.value],
-      ['identity', file.id, TopLevelIdentifierType.$function.value],
-      ['fetchData', file.id, TopLevelIdentifierType.$function.value],
-      ['countStream', file.id, TopLevelIdentifierType.$function.value],
-      ['runTests', file.id, TopLevelIdentifierType.$function.value],
-      ['codeUnitForDigit', file.id, TopLevelIdentifierType.$function.value],
-      ['processSourceReport', file.id, TopLevelIdentifierType.$function.value],
+      ['noReturn', file.id, SymbolType.$function.value],
+      ['printMsg', file.id, SymbolType.$function.value],
+      ['add', file.id, SymbolType.$function.value],
+      ['configure', file.id, SymbolType.$function.value],
+      ['getRange', file.id, SymbolType.$function.value],
+      ['nestedList', file.id, SymbolType.$function.value],
+      ['identity', file.id, SymbolType.$function.value],
+      ['fetchData', file.id, SymbolType.$function.value],
+      ['countStream', file.id, SymbolType.$function.value],
+      ['runTests', file.id, SymbolType.$function.value],
+      ['codeUnitForDigit', file.id, SymbolType.$function.value],
+      ['processSourceReport', file.id, SymbolType.$function.value],
     ];
     expect(assetsGraph.identifiers, expected);
   });
@@ -250,16 +250,16 @@ main() {
 
     scanner.scan(file);
     final expected = [
-      ['syncGenerator', file.id, TopLevelIdentifierType.$function.value],
-      ['nativeFunction', file.id, TopLevelIdentifierType.$function.value],
-      ['groupBy', file.id, TopLevelIdentifierType.$function.value],
-      ['processComplexData', file.id, TopLevelIdentifierType.$function.value],
-      ['makeAdder', file.id, TopLevelIdentifierType.$function.value],
-      ['operator', file.id, TopLevelIdentifierType.$function.value],
-      ['nullableReturn', file.id, TopLevelIdentifierType.$function.value],
-      ['functionWithRecords', file.id, TopLevelIdentifierType.$function.value],
-      ['returnRecord', file.id, TopLevelIdentifierType.$function.value],
-      ['namedRecord', file.id, TopLevelIdentifierType.$function.value],
+      ['syncGenerator', file.id, SymbolType.$function.value],
+      ['nativeFunction', file.id, SymbolType.$function.value],
+      ['groupBy', file.id, SymbolType.$function.value],
+      ['processComplexData', file.id, SymbolType.$function.value],
+      ['makeAdder', file.id, SymbolType.$function.value],
+      ['operator', file.id, SymbolType.$function.value],
+      ['nullableReturn', file.id, SymbolType.$function.value],
+      ['functionWithRecords', file.id, SymbolType.$function.value],
+      ['returnRecord', file.id, SymbolType.$function.value],
+      ['namedRecord', file.id, SymbolType.$function.value],
     ];
     expect(assetsGraph.identifiers, expected);
   });
@@ -402,7 +402,7 @@ main() {
       class MyClass {}
     ''');
     scanner.registerAndScan(asset);
-    expect(assetsGraph.identifiers.first, ['MyClass', asset.id, TopLevelIdentifierType.$class.value]);
+    expect(assetsGraph.identifiers.first, ['MyClass', asset.id, SymbolType.$class.value]);
     expect(assetsGraph.assets[asset.id]?[2], 1);
   });
 
@@ -412,7 +412,7 @@ main() {
       class MyClass {}
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, ['MyClass', file.id, TopLevelIdentifierType.$class.value]);
+    expect(assetsGraph.identifiers.first, ['MyClass', file.id, SymbolType.$class.value]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
 
@@ -422,7 +422,7 @@ main() {
       class MyClass {}
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, ['MyClass', file.id, TopLevelIdentifierType.$class.value]);
+    expect(assetsGraph.identifiers.first, ['MyClass', file.id, SymbolType.$class.value]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
 
@@ -432,7 +432,7 @@ main() {
       const myVar = 42;
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, ['myVar', file.id, TopLevelIdentifierType.$variable.value]);
+    expect(assetsGraph.identifiers.first, ['myVar', file.id, SymbolType.$variable.value]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
 
@@ -442,7 +442,7 @@ main() {
       const myVar = 42;
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, ['myVar', file.id, TopLevelIdentifierType.$variable.value]);
+    expect(assetsGraph.identifiers.first, ['myVar', file.id, SymbolType.$variable.value]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
 
@@ -453,7 +453,7 @@ main() {
       class MyClass {}
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, ['MyClass', file.id, TopLevelIdentifierType.$class.value]);
+    expect(assetsGraph.identifiers.first, ['MyClass', file.id, SymbolType.$class.value]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
 
@@ -464,7 +464,7 @@ main() {
       class MyClass {}
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, ['MyClass', file.id, TopLevelIdentifierType.$class.value]);
+    expect(assetsGraph.identifiers.first, ['MyClass', file.id, SymbolType.$class.value]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
 
@@ -477,7 +477,7 @@ main() {
       void myFunction() {}
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, ['myFunction', file.id, TopLevelIdentifierType.$function.value]);
+    expect(assetsGraph.identifiers.first, ['myFunction', file.id, SymbolType.$function.value]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
 
@@ -491,7 +491,7 @@ main() {
       }
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, ['MyClass', file.id, TopLevelIdentifierType.$class.value]);
+    expect(assetsGraph.identifiers.first, ['MyClass', file.id, SymbolType.$class.value]);
     expect(assetsGraph.assets[file.id]?[2], 0);
   });
 
@@ -500,7 +500,7 @@ main() {
       void myFunction(@Annotation() int arg) {}
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, ['myFunction', file.id, TopLevelIdentifierType.$function.value]);
+    expect(assetsGraph.identifiers.first, ['myFunction', file.id, SymbolType.$function.value]);
     expect(assetsGraph.assets[file.id]?[2], 0);
   });
 }
