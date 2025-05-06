@@ -21,7 +21,10 @@ abstract class Asset {
 
   Map<String, dynamic> toJson();
 
-  /// returns null if [shortUri] is not a package asset or it has empty segments
+  /// if [shortUri] is a package uri, e.g `package:foo/bar.dart`, return `foo`
+  /// if [shortUri] is an asset uri, e.g  `asset:foo/bar.dart`, return `foo`
+  /// if [shortUri] is a dart uri, e.g `dart:core/string.dart`, return `dart`
+  /// otherwise return null
   String? get packageName;
 
   Uri uriWithExtension(String ext);
@@ -76,9 +79,11 @@ class FileAsset implements Asset {
 
   @override
   String? get packageName {
-    if (shortUri.scheme != 'package') return null;
-    final segments = shortUri.pathSegments;
-    return segments.firstOrNull;
+    return switch (shortUri.scheme) {
+      'dart' => 'dart',
+      'package' || 'asset' => shortUri.pathSegments.firstOrNull,
+      _ => null,
+    };
   }
 
   @override

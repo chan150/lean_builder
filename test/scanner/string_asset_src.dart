@@ -35,9 +35,11 @@ class StringAsset implements Asset {
 
   @override
   String? get packageName {
-    final segments = uri.pathSegments;
-    if (segments.isEmpty) return null;
-    return segments[0];
+    return switch (shortUri.scheme) {
+      'dart' => 'dart',
+      'package' || 'asset' => shortUri.pathSegments.firstOrNull,
+      _ => null,
+    };
   }
 
   @override

@@ -69,6 +69,7 @@ class BuildCommand extends BaseCommand<int> {
     final assets = List.of(
       processableAssets.where((e) {
         final asset = e.asset;
+        print('${asset.shortUri} ${asset.shortUri.scheme} ${asset.packageName}');
         return asset.packageName == resolver.fileResolver.rootPackage;
       }),
     );
