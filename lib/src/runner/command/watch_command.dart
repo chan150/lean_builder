@@ -37,16 +37,15 @@ class WatchCommand extends BuildCommand {
         automaticReload: false,
         debounceInterval: Duration.zero,
         onAfterReload: (ctx) async {
-          Logger.info('Hot reload triggered: ${ctx.result.name}');
+          Logger.info('Hot reload triggered');
           final builderConfigAssets = graph.getBuilderProcessableAssets(fileResolver);
           if (builderConfigAssets.any((e) => e.state != AssetState.processed)) {
             graph.invalidateProcessedAssetsOf(fileResolver.rootPackage);
+            for (final entry in graph.getProcessableAssets(fileResolver)) {
+              resolver.invalidateAssetCache(entry.asset);
+            }
           }
-          final newAssets = graph.getProcessableAssets(fileResolver);
-          for(final entry in newAssets){
-             resolver.invalidateAssetCache(entry.asset);
-          }
-          await processAssets(newAssets, resolver);
+          await processAssets(graph.getProcessableAssets(fileResolver), resolver);
         },
       );
     }
