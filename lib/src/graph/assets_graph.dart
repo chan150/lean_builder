@@ -277,6 +277,12 @@ class AssetsGraph extends AssetsScanResults {
     }
   }
 
+  void invalidateProcessedAssets() {
+    for (final id in outputs.keys) {
+      updateAssetState(id, AssetState.unProcessed);
+    }
+  }
+
   // get any asset that depends on this asset,
   // either via direct import, part-of or via re-exports
   Map<String, List<dynamic>> dependentsOf(String id) {
@@ -315,7 +321,7 @@ class AssetsGraph extends AssetsScanResults {
     return dependents;
   }
 
-  String? getGeneratorOfSource(String id) {
+  String? getGeneratorOfOutput(String id) {
     for (final entry in outputs.entries) {
       if (entry.value.contains(id)) {
         return entry.key;

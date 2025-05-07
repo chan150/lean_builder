@@ -1,7 +1,8 @@
 import 'package:example/src/annotations.dart';
+import 'package:glob/glob.dart';
 import 'package:lean_builder/builder.dart';
 
-@LeanGenerator({'.lib.dart'}, applies: {'Serializable2'})
+@LeanGenerator({'.lib.dart'}, applies: {'Serializable2'}, generateToCache: false)
 class SerializableGenerator extends GeneratorForAnnotatedClass<Serializable> {
   @override
   Future<String> generateForClass(buildStep, element, annotation) async {
@@ -22,6 +23,8 @@ class SerializableGeneratorAll extends GeneratorForAnnotatedClass<Serializable2>
   @override
   dynamic generateForClass(buildStep, element, annotation) async {
     print('Generating for ${buildStep.asset.shortUri} with annotation $annotation');
-    return '// output';
+    final glob = Glob('**.lib.dart');
+    final files = buildStep.findAssets(glob);
+    return '// output ${files.length}';
   }
 }

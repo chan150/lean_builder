@@ -165,7 +165,7 @@ class AssetScanManager {
   }
 
   void handleDeletedAsset(Asset asset) {
-    final generatorSrc = assetsGraph.getGeneratorOfSource(asset.id);
+    final generatorSrc = assetsGraph.getGeneratorOfOutput(asset.id);
     if (generatorSrc != null) {
       assetsGraph.updateAssetState(generatorSrc, AssetState.unProcessed);
     }

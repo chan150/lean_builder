@@ -4,4 +4,4 @@
 // Generator: SerializableGeneratorAll
 // **************************************************************************
 
-// output
+// output 2

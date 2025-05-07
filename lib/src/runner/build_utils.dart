@@ -5,14 +5,14 @@ import 'package:lean_builder/runner.dart';
 import 'package:lean_builder/src/graph/asset_scan_manager.dart';
 import 'dart:collection';
 
-List<List<ProcessableAsset>> calculateChunks(List<ProcessableAsset> assets) {
+List<Set<ProcessableAsset>> calculateChunks(Set<ProcessableAsset> assets) {
   final isolateCount = max(1, Platform.numberOfProcessors - 1);
   final actualIsolateCount = min(isolateCount, assets.length);
 
   final assetsWithTLM = assets.where((a) => a.tlmFlag.hasNormal).toList();
   final assetsWithoutTLM = assets.where((a) => !a.tlmFlag.hasNormal).toList();
 
-  final chunks = List.generate(actualIsolateCount, (_) => <ProcessableAsset>[]);
+  final chunks = List.generate(actualIsolateCount, (_) => <ProcessableAsset>{});
 
   // Distribute annotated assets evenly across chunks
   for (int i = 0; i < assetsWithTLM.length; i++) {

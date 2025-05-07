@@ -292,6 +292,11 @@ class AssetsScanResults extends ScanResults {
     directives.remove(id);
     // remove all identifiers that reference this asset
     identifiers.removeWhere((element) => element[GraphIndex.identifierSrc] == id);
+
+    // remove all outputs that reference this asset
+    for (final entry in outputs.entries) {
+      entry.value.remove(id);
+    }
     outputs.remove(id);
   }
 

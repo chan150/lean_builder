@@ -1,9 +1,6 @@
 import 'package:example/main.dart';
 import 'package:example/src/annotations.dart';
 
-part 'model.g.dart';
-
-
 @Serializable()
 class Model {
   final String namex;
@@ -13,4 +10,5 @@ class Model {
   final String xxx;
   final SampleX sample;
 
+  Model(this.namex, this.age, this.isActive, this.surname, this.xxx, this.sample);
 }

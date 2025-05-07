@@ -108,10 +108,10 @@ class FileAsset implements Asset {
       identical(this, other) ||
       other is FileAsset &&
           runtimeType == other.runtimeType &&
-          file == other.file &&
+          uri == other.uri &&
           id == other.id &&
           shortUri == other.shortUri;
 
   @override
-  int get hashCode => file.hashCode ^ id.hashCode ^ shortUri.hashCode;
+  int get hashCode => uri.hashCode ^ id.hashCode ^ shortUri.hashCode;
 }

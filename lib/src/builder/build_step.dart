@@ -6,8 +6,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:glob/glob.dart';
 import 'package:lean_builder/builder.dart';
 import 'package:lean_builder/src/asset/asset.dart' show Asset;
+import 'package:lean_builder/src/asset/assets_reader.dart';
 import 'package:lean_builder/src/build_script/files.dart';
 import 'package:path/path.dart' as p;
 
@@ -31,6 +33,9 @@ abstract class BuildStep {
   /// the [allowedExtensions].
   ///
   Set<String> get allowedExtensions;
+
+  /// finds assets within the root package that matches the [glob]
+  List<Asset> findAssets(Glob glob);
 
   /// Writes [bytes] to a binary file located at [id].
   ///
@@ -144,6 +149,13 @@ class BuildStepImpl implements BuildStep {
       }
     }
     return false;
+  }
+
+  late final _assetReader = FileAssetReader(resolver.fileResolver);
+
+  @override
+  List<Asset> findAssets(Glob glob) {
+    return _assetReader.findRootAssets(glob);
   }
 }
 

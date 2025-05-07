@@ -23,9 +23,9 @@ class WatchCommand extends BuildCommand {
   String get invocation => 'lean_builder watch [options]';
 
   @override
-  Future<int> processAssets(Set<ProcessableAsset> assets, Resolver resolver) async {
+  Future<int> onRun(Set<ProcessableAsset> assets, Resolver resolver) async {
     HotReloader? hotReloader;
-    await processAssetsInternal(assets, resolver);
+    await processAssets(assets, resolver);
 
     if (isDevMode) {
       hotReloader = await HotReloader.create(
@@ -33,7 +33,7 @@ class WatchCommand extends BuildCommand {
         debounceInterval: Duration.zero,
         onAfterReload: (ctx) async {
           Logger.info('Hot reload triggered');
-          await processAssetsInternal(assets, resolver);
+          await processAssets(assets, resolver);
         },
       );
     }
@@ -84,17 +84,17 @@ class WatchCommand extends BuildCommand {
           final assetsToProcess = assetsGraph.getProcessableAssets(fileResolver);
           if (assetsToProcess.isEmpty) return;
           Logger.info('Starting build for ${assetsToProcess.length} effected assets');
-          await processAssetsInternal(assetsToProcess, resolver);
+          await processAssets(assetsToProcess, resolver);
         }
       });
     });
 
-    StreamSubscription? sigIntSub;
-    sigIntSub = ProcessSignal.sigint.watch().listen((signal) async {
+    StreamSubscription? sigintSub;
+    sigintSub = ProcessSignal.sigint.watch().listen((signal) async {
       debouncer.cancel();
       await watchSub.cancel();
       await hotReloader?.stop();
-      sigIntSub?.cancel();
+      sigintSub?.cancel();
       exit(0);
     });
     return 0;
