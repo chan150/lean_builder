@@ -9,7 +9,6 @@ import 'package:lean_builder/src/asset/package_file_resolver.dart';
 import 'package:lean_builder/src/graph/asset_scan_manager.dart';
 import 'package:lean_builder/src/graph/assets_graph.dart';
 import 'package:lean_builder/src/graph/assets_scanner.dart';
-import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/logger.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart' show ResolverImpl;
 import 'package:lean_builder/src/runner/build_utils.dart';

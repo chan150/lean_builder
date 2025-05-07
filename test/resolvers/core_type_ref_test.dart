@@ -1,4 +1,4 @@
-import 'package:lean_builder/src/asset/package_file_resolver.dart' show PackageFileResolver, PackageFileResolverImpl;
+import 'package:lean_builder/src/asset/package_file_resolver.dart' show PackageFileResolver;
 import 'package:lean_builder/src/graph/assets_graph.dart';
 import 'package:lean_builder/src/graph/assets_scanner.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';

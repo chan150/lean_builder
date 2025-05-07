@@ -1,4 +1,3 @@
-import 'package:lean_builder/builder.dart';
 import 'package:lean_builder/src/element/element.dart';
 import 'package:collection/collection.dart';
 import 'package:lean_builder/src/graph/identifier_ref.dart' show DeclarationRef;
