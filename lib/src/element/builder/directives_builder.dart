@@ -33,7 +33,8 @@ class DirectivesBuilder extends ElementBuilder {
       prefix: node.prefix?.name,
       isDeferred: node.deferredKeyword != null,
     );
-
+    setCodeRange(element, node);
+    element.setNameRange(node.uri.offset, node.uri.length);
     visitElementScoped(element, () {
       node.documentationComment?.accept(this);
     });
@@ -66,7 +67,8 @@ class DirectivesBuilder extends ElementBuilder {
       shownNames: showNames,
       hiddenNames: hideNames,
     );
-
+    setCodeRange(element, node);
+    element.setNameRange(node.uri.offset, node.uri.length);
     visitElementScoped(element, () {
       node.documentationComment?.accept(this);
     });
@@ -87,7 +89,8 @@ class DirectivesBuilder extends ElementBuilder {
       srcId: directive[GraphIndex.directiveSrc],
       uri: resolver.uriForAsset(directive[GraphIndex.directiveSrc]),
     );
-
+    setCodeRange(element, node);
+    element.setNameRange(node.uri.offset, node.uri.length);
     visitElementScoped(element, () {
       node.documentationComment?.accept(this);
     });
@@ -112,6 +115,8 @@ class DirectivesBuilder extends ElementBuilder {
       srcId: actualSrc,
       stringUri: stringUri,
     );
+    setCodeRange(element, node);
+    element.setNameRange(node.uri!.offset, node.uri!.length);
     visitElementScoped(element, () {
       node.documentationComment?.accept(this);
     });
@@ -135,6 +140,10 @@ class DirectivesBuilder extends ElementBuilder {
       srcId: library.src.id,
       uri: resolver.uriForAsset(library.src.id),
     );
+
+    setCodeRange(element, node);
+    element.setNameRange(node.name2?.offset ?? node.offset, node.name2?.length ?? node.length);
+
     visitElementScoped(element, () {
       node.documentationComment?.accept(this);
     });

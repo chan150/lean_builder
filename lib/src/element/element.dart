@@ -111,6 +111,12 @@ abstract class Element {
   /// declaration of this element, or `-1` if this element is synthetic, does
   /// not have a name, or otherwise does not have an offset.
   int get nameOffset;
+
+  int get codeOffset;
+
+  int get codeLength;
+
+  String? get source;
 }
 
 abstract class TypeParameterizedElement extends Element {

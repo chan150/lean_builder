@@ -108,18 +108,47 @@ abstract class ElementImpl implements Element {
   @override
   bool get isPublic => !isPrivate;
 
-  int _nameLength = 0;
   @override
   int get nameLength => _nameLength;
-
-  int _nameOffset = -1;
 
   @override
   int get nameOffset => _nameOffset;
 
-  void setCodeRange(int nameLength, int nameOffset) {
-    _nameLength = nameLength;
-    _nameOffset = nameOffset;
+  int _nameLength = 0;
+  int _nameOffset = -1;
+
+  int _codeOffset = -1;
+  int _codeLength = 0;
+
+  AstNode? _astNode;
+
+  @override
+  String? get source {
+    if (_astNode == null) {
+      return null;
+    }
+    final source = _astNode!.toSource();
+    if (source.isEmpty) {
+      return null;
+    }
+    return source;
+  }
+
+  @override
+  int get codeOffset => _codeOffset;
+
+  @override
+  int get codeLength => _codeLength;
+
+  void setCodeRange(AstNode? node, int offset, int length) {
+    _astNode = node;
+    _codeOffset = offset;
+    _codeLength = length;
+  }
+
+  void setNameRange(int offset, int length) {
+    _nameOffset = offset;
+    _nameLength = length;
   }
 
   @override
@@ -329,6 +358,11 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
       _didResolveDirectives = true;
     }
     return _elementsOfType<DirectiveElement>();
+  }
+
+  @override
+  String get source {
+    return compilationUnit.toSource();
   }
 }
 

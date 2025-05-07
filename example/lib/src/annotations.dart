@@ -1,8 +1,4 @@
+/// A marker class to indicate that a class is serializable.
 class Serializable {
-  final String arg;
-  const Serializable([this.arg = 'default']);
-}
-
-class Serializable2 {
-  const Serializable2();
+  const Serializable();
 }

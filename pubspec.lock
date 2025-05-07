@@ -361,7 +361,7 @@ packages:
     source: hosted
     version: "0.10.13"
   source_span:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: source_span
       sha256: "254ee5351d6cb365c859e20ee823c3bb479bf4a293c22d17a9f1bf144ce86f7c"
@@ -513,7 +513,7 @@ packages:
     source: hosted
     version: "1.2.0"
   yaml:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: yaml
       sha256: b9da305ac7c39faa3f030eccd175340f968459dae4af175130b3fc47e40d76ce

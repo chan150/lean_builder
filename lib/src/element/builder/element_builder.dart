@@ -24,7 +24,8 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     final library = currentLibrary();
     if (library.hasElement(node.name.lexeme)) return;
     final extensionTypeElement = ExtensionTypeImpl(name: node.name.lexeme, library: library, compilationUnit: node);
-    _setCodeRange(extensionTypeElement, node);
+    setCodeRange(extensionTypeElement, node);
+    extensionTypeElement.setNameRange(node.name.offset, node.name.length);
     library.addElement(extensionTypeElement);
     visitElementScoped(extensionTypeElement, () {
       node.documentationComment?.accept(this);
@@ -63,8 +64,8 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       isMixinApplication: true,
     );
 
-    _setCodeRange(clazzElement, node);
-
+    setCodeRange(clazzElement, node);
+    clazzElement.setNameRange(node.name.offset, node.name.length);
     visitElementScoped(clazzElement, () {
       node.documentationComment?.accept(this);
       node.typeParameters?.visitChildren(this);
@@ -134,7 +135,8 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     final library = currentLibrary();
     if (library.hasElement(node.name.lexeme)) return;
     final typeAliasElm = TypeAliasElementImpl(name: node.name.lexeme, library: library);
-    _setCodeRange(typeAliasElm, node);
+    setCodeRange(typeAliasElm, node);
+    typeAliasElm.setNameRange(node.name.offset, node.name.length);
     library.addElement(typeAliasElm);
     visitElementScoped(typeAliasElm, () {
       node.documentationComment?.accept(this);
@@ -158,7 +160,8 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     final library = currentLibrary();
     if (library.hasElement(node.name.lexeme)) return;
     final funcElement = FunctionElementImpl(name: node.name.lexeme, enclosingElement: library);
-    _setCodeRange(funcElement, node);
+    setCodeRange(funcElement, node);
+    funcElement.setNameRange(node.name.offset, node.name.length);
     visitElementScoped(funcElement, () {
       node.documentationComment?.accept(this);
       node.typeParameters?.visitChildren(this);
@@ -199,8 +202,8 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       isMixinApplication: false,
     );
     library.addElement(classElement);
-    _setCodeRange(classElement, node);
-
+    setCodeRange(classElement, node);
+    classElement.setNameRange(node.name.offset, node.name.length);
     visitElementScoped(classElement, () {
       node.documentationComment?.accept(this);
       node.typeParameters?.visitChildren(this);
@@ -239,7 +242,8 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       isBase: node.baseKeyword != null,
     );
 
-    _setCodeRange(mixinElement, node);
+    setCodeRange(mixinElement, node);
+    mixinElement.setNameRange(node.name.offset, node.name.length);
     libraryElement.addElement(mixinElement);
 
     visitElementScoped(mixinElement, () {
@@ -272,8 +276,8 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
 
     final enumElement = EnumElementImpl(name: node.name.lexeme, library: library, compilationUnit: node);
     library.addElement(enumElement);
-    _setCodeRange(enumElement, node);
-
+    setCodeRange(enumElement, node);
+    enumElement.setNameRange(node.name.offset, node.name.length);
     enumElement.thisType = InterfaceTypeImpl(
       enumElement.name,
       library.buildDeclarationRef(enumElement.name, SymbolType.$enum),
@@ -334,7 +338,8 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       });
     }
     enumElement.addField(fieldEle);
-    _setCodeRange(fieldEle, node);
+    setCodeRange(fieldEle, node);
+    fieldEle.setNameRange(node.name.offset, node.name.length);
     registerMetadataResolver(fieldEle, node.metadata);
   }
 
@@ -465,7 +470,8 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
           return constEvaluator.evaluate(variable.initializer!);
         });
       }
-      _setCodeRange(fieldEle, variable);
+      setCodeRange(fieldEle, node);
+      fieldEle.setNameRange(variable.name.offset, variable.name.length);
       interfaceElement.addField(fieldEle);
       registerMetadataResolver(fieldEle, node.metadata);
     }
@@ -572,7 +578,8 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       isGenerator: body.isGenerator,
       isSynchronous: body.isSynchronous,
     );
-    _setCodeRange(funcElement, node);
+    setCodeRange(funcElement, node);
+    funcElement.setNameRange(node.name.offset, node.name.length);
     libraryElement.addElement(funcElement);
     visitElementScoped(funcElement, () {
       node.documentationComment?.accept(this);
@@ -763,7 +770,12 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
 
     parameterElement.type = type ?? DartType.neverType;
     registerMetadataResolver(parameterElement, node.metadata);
-    _setCodeRange(parameterElement, node);
+    setCodeRange(parameterElement, node);
+    parameterElement.setNameRange(node.name?.offset ?? 0, node.name?.length ?? 0);
+    final nameToken = node.name;
+    if (nameToken != null) {
+      parameterElement.setNameRange(nameToken.offset, nameToken.length);
+    }
     return parameterElement;
   }
 
@@ -798,7 +810,8 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       if (!preResolveTopLevelMetadata) {
         registerMetadataResolver(topLevelVar, node.metadata);
       }
-      _setCodeRange(topLevelVar, variable);
+      setCodeRange(topLevelVar, variable);
+      topLevelVar.setNameRange(variable.name.offset, variable.name.length);
       library.addElement(topLevelVar);
     }
   }
@@ -843,7 +856,8 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       isNullable: false,
     );
 
-    _setCodeRange(methodElement, node);
+    setCodeRange(methodElement, node);
+    methodElement.setNameRange(node.name.offset, node.name.length);
     registerMetadataResolver(methodElement, node.metadata);
   }
 
@@ -873,7 +887,15 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       superConstructor: superConstructor,
     );
 
-    _setCodeRange(constructorElement, node);
+    setCodeRange(constructorElement, node);
+    Token? nameNode = node.name;
+    if (nameNode == null) {
+      final parentName = node.thisOrAncestorOfType<NamedCompilationUnitMember>()!.name;
+      constructorElement.setNameRange(node.offset, parentName.length);
+    } else {
+      constructorElement.setNameRange(nameNode.offset, nameNode.length);
+    }
+
     interfaceElement.addConstructor(constructorElement);
     constructorElement.returnType = interfaceElement.thisType;
 
@@ -915,7 +937,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
     currentElementAs<ElementImpl>().documentationComment = buffer.toString();
   }
 
-  void _setCodeRange(ElementImpl element, AstNode node) {
+  void setCodeRange(ElementImpl element, AstNode node) {
     var parent = node.parent;
     if (node is FormalParameter && parent is DefaultFormalParameter) {
       node = parent;
@@ -925,11 +947,11 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
       var fieldDeclaration = parent.parent;
       if (fieldDeclaration != null && parent.variables.first == node) {
         var offset = fieldDeclaration.offset;
-        element.setCodeRange(offset, node.end - offset);
+        element.setCodeRange(node, offset, node.end - offset);
         return;
       }
     }
 
-    element.setCodeRange(node.offset, node.length);
+    element.setCodeRange(node, node.offset, node.length);
   }
 }

@@ -33,23 +33,24 @@ class BuildCommand extends BaseCommand<int> {
   @override
   Future<int>? run() async {
     prepare();
+    return runZoned(() {
+      final fileResolver = PackageFileResolver.forRoot();
+      var assetsGraph = AssetsGraph.init(fileResolver.packagesHash);
 
-    final fileResolver = PackageFileResolver.forRoot();
-    var assetsGraph = AssetsGraph.init(fileResolver.packagesHash);
+      if (assetsGraph.shouldInvalidate) {
+        Logger.info('Cache is invalidated, deleting old outputs...');
+        _deleteExistingOutputs(assetsGraph, fileResolver);
+        assetsGraph = AssetsGraph(assetsGraph.hash);
+      }
+      if (isDevMode) {
+        assetsGraph.invalidateProcessedAssetsOf(fileResolver.rootPackage);
+      }
 
-    if (assetsGraph.shouldInvalidate) {
-      Logger.info('Cache is invalidated, deleting old outputs...');
-      _deleteExistingOutputs(assetsGraph, fileResolver);
-      assetsGraph = AssetsGraph(assetsGraph.hash);
-    }
-    if (isDevMode) {
-      assetsGraph.invalidateProcessedAssetsOf(fileResolver.rootPackage);
-    }
-
-    final sourceParser = SourceParser();
-    final resolver = ResolverImpl(assetsGraph, fileResolver, sourceParser);
-    final assets = assetsGraph.getProcessableAssets(fileResolver);
-    return onRun(assets, resolver);
+      final sourceParser = SourceParser();
+      final resolver = ResolverImpl(assetsGraph, fileResolver, sourceParser);
+      final assets = assetsGraph.getProcessableAssets(fileResolver);
+      return onRun(assets, resolver);
+    }, zoneValues: {#isDevMode: isDevMode});
   }
 
   Future<int> onRun(Set<ProcessableAsset> assets, ResolverImpl resolver) async {

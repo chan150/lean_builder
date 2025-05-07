@@ -12,6 +12,8 @@ import 'generator/generator.dart';
 
 const defaultFileHeader = '// GENERATED CODE - DO NOT MODIFY BY HAND';
 
+final _isDevMode = Zone.current[#isDevMode] == true;
+
 String _defaultFormatOutput(String code) =>
     DartFormatter(languageVersion: DartFormatter.latestLanguageVersion).format(code);
 
@@ -145,8 +147,9 @@ which was output to `${fileResolver.toShortUri(output)}`.
 This may indicate an issue in the generator, the input source code, or in the source formatter.''',
         stackTrace: stack,
       );
-      return Future.value(null);
     }
+    // allow syntax errors in the generated code in dev mode
+    if (!_isDevMode) return Future.value(null);
     return buildStep.writeAsString(content, extension: extension);
   }
 

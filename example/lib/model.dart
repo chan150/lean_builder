@@ -1,14 +1,25 @@
-import 'package:example/main.dart';
 import 'package:example/src/annotations.dart';
 
-@Serializable('hello')
-class Model {
-  final String namex;
-  final int age;
-  final bool isActive;
-  final String surname;
-  final String xxx;
-  final SampleX sample;
+part 'model.g.dart';
 
-  Model(this.namex, this.age, this.isActive, this.surname, this.xxx, this.sample);
+@Serializable()
+class Person {
+  final String name;
+  final int age;
+  final Address address;
+  final List<String> hobbies;
+
+  Person(this.name, this.age, this.address, this.hobbies);
+
+  factory Person.fromJson(Map<String, dynamic> json) => _$PersonFromJson(json);
+}
+
+@Serializable()
+class Address {
+  final String street;
+  final String city;
+
+  Address(this.street, this.city);
+
+  factory Address.fromJson(Map<String, dynamic> json) => _$AddressFromJson(json);
 }

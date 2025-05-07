@@ -1,33 +1,47 @@
 import 'package:example/src/annotations.dart';
-import 'package:glob/glob.dart';
 import 'package:lean_builder/builder.dart';
-import 'utils.dart';
+import 'package:lean_builder/type.dart';
 
-@LeanGenerator({'.lib.dart'}, applies: {'Serializable2'}, generateToCache: false)
+/// A very basic example of a generator that generates a JSON serialization method
+///
+/// it doesn't handle all cases, but it should give you an idea of how to implement
+@LeanGenerator.shared()
 class SerializableGenerator extends GeneratorForAnnotatedClass<Serializable> {
   @override
   Future<String> generateForClass(buildStep, element, annotation) async {
-    final buffer = StringBuffer();
-    final writeln = buffer.writeln;
-    writeln('// ${annotation.constant}');
-    writeln('class Gen${element.name} {');
-    for (final field in element.fields) {
-      writeln('/// ${toLowerCase(field.name)}');
-      writeln('final ${field.type} ${field.name};');
+    final b = StringBuffer();
+    final constructor = element.unnamedConstructor;
+
+    if (constructor == null) {
+      throw Exception('Class ${element.name} must have a default constructor');
     }
-    writeln('}');
 
-    return buffer.toString();
-  }
-}
+    b.writeln('${element.name} _\$${element.name}FromJson(Map<String, dynamic> json) => ${element.name}(');
+    for (final param in constructor.parameters) {
+      final type = param.type;
 
-@LeanGenerator({'.all.dart'}, key: 'Serializable2')
-class SerializableGeneratorAll extends GeneratorForAnnotatedClass<Serializable2> {
-  @override
-  dynamic generateForClass(buildStep, element, annotation) async {
-    print('Generating for ${buildStep.asset.shortUri} with annotation $annotation');
-    final glob = Glob('**.lib.dart');
-    final files = buildStep.findAssets(glob);
-    return '// output ${files.length} found';
+      if (param.isNamed) b.writeln('${param.name}: ');
+
+      if (type.isDartCoreInt ||
+          type.isDartCoreBool ||
+          type.isDartCoreDouble ||
+          type.isDartCoreString ||
+          type.isDartCoreNum) {
+        b.writeln('json[\'${param.name}\'] as ${param.type} ${param.isOptional ? '?' : ''},');
+      } else if (type.isDartCoreList) {
+        b.writeln(
+          '  (json[\'${param.name}\'] as List<dynamic>).cast<${(type as NamedDartType).typeArguments.first}>(),',
+        );
+      } else if (type.isDartCoreMap) {
+        b.writeln(
+          '  (json[\'${param.name}\'] as Map<String, dynamic>).map((k, v) => MapEntry(k, ${type.element?.name}.fromJson(v))),',
+        );
+      } else {
+        b.writeln(' ${type.element?.name}.fromJson(json[\'${param.name}\'] as Map<String, dynamic>),');
+      }
+    }
+    b.writeln(');');
+
+    return b.toString();
   }
 }
