@@ -16,7 +16,6 @@ import 'package:collection/collection.dart';
 import 'package:lean_builder/src/type/type.dart';
 import 'package:lean_builder/src/type/type_checker.dart';
 import 'package:lean_builder/src/type/type_utils.dart';
-import 'package:synchronized/synchronized.dart';
 import 'package:xxh3/xxh3.dart';
 
 import 'constant/constant.dart';
@@ -60,15 +59,17 @@ abstract class Resolver {
 class ResolverImpl extends Resolver {
   final AssetsGraph graph;
   final SourceParser parser;
-  final PackageFileResolver fileResolver;
+
   late final typeUtils = TypeUtils(this);
   final _registeredTypesMap = HashMap<Type, String>();
   final _libraryCache = HashMap<String, LibraryElementImpl>();
   final _typeCheckersCache = HashMap<String, TypeChecker>();
   final _resolvedUnitsCache = SourceBasedCache<(LibraryElementImpl, AstNode, DeclarationRef)>();
-  final _elementResolveLocks = SourceBasedCache<Lock>();
   final _resolvedTypeRefs = SourceBasedCache<Element>();
   final evaluatedConstantsCache = SourceBasedCache<Constant>();
+
+  @override
+  final PackageFileResolver fileResolver;
 
   ResolverImpl(this.graph, this.fileResolver, this.parser);
 
@@ -78,8 +79,15 @@ class ResolverImpl extends Resolver {
     _libraryCache.remove(src.id);
     _resolvedUnitsCache.invalidateForSource(src.id);
     _resolvedTypeRefs.invalidateForSource(src.id);
-    _elementResolveLocks.invalidateForSource(src.id);
     evaluatedConstantsCache.invalidateForSource(src.id);
+  }
+
+  void invalidateAllCaches() {
+    parser.clear();
+    _libraryCache.clear();
+    _resolvedUnitsCache.clear();
+    _resolvedTypeRefs.clear();
+    evaluatedConstantsCache.clear();
   }
 
   void registerTypeMap(Type type, String srcId) {

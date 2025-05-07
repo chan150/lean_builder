@@ -43,7 +43,7 @@ class BuildCommand extends BaseCommand<int> {
       assetsGraph = AssetsGraph(assetsGraph.hash);
     }
     if (isDevMode) {
-      // assetsGraph.invalidateProcessedAssets();
+      assetsGraph.invalidateProcessedAssetsOf(fileResolver.rootPackage);
     }
 
     final sourceParser = SourceParser();

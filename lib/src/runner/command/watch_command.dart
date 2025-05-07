@@ -1,3 +1,4 @@
+import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
 
 import 'build_command.dart';
@@ -28,22 +29,30 @@ class WatchCommand extends BuildCommand {
     HotReloader? hotReloader;
     await processAssets(assets, resolver);
 
+    final fileResolver = resolver.fileResolver;
+    final graph = resolver.graph;
+
     if (isDevMode) {
       hotReloader = await HotReloader.create(
         automaticReload: false,
         debounceInterval: Duration.zero,
         onAfterReload: (ctx) async {
-          Logger.info('Hot reload triggered');
-          await processAssets(assets, resolver);
+          Logger.info('Hot reload triggered: ${ctx.result.name}');
+          final builderConfigAssets = graph.getBuilderProcessableAssets(fileResolver);
+          if (builderConfigAssets.any((e) => e.state != AssetState.processed)) {
+            graph.invalidateProcessedAssetsOf(fileResolver.rootPackage);
+          }
+          final newAssets = graph.getProcessableAssets(fileResolver);
+          for(final entry in newAssets){
+             resolver.invalidateAssetCache(entry.asset);
+          }
+          await processAssets(newAssets, resolver);
         },
       );
     }
 
-    final fileResolver = resolver.fileResolver;
-    final assetsGraph = resolver.graph;
-
     final scanManager = AssetScanManager(
-      assetsGraph: assetsGraph,
+      assetsGraph: graph,
       fileResolver: fileResolver,
       rootPackage: fileResolver.rootPackage,
     );
@@ -59,7 +68,7 @@ class WatchCommand extends BuildCommand {
       if (!PackageFileResolver.isDirSupported(subDir)) return;
       final asset = fileResolver.assetForUri(Uri.file(event.path));
 
-      if (assetsGraph.isAGeneratedSource(asset.id) && event.type != ChangeType.REMOVE) {
+      if (graph.isAGeneratedSource(asset.id) && event.type != ChangeType.REMOVE) {
         // ignore generated sources changes
         return;
       }
@@ -82,7 +91,7 @@ class WatchCommand extends BuildCommand {
           // triggering a hot reload will process pending assets
           hotReloader.reloadCode();
         } else {
-          final assetsToProcess = assetsGraph.getProcessableAssets(fileResolver);
+          final assetsToProcess = graph.getProcessableAssets(fileResolver);
           if (assetsToProcess.isEmpty) return;
           Logger.info('Starting build for ${assetsToProcess.length} effected assets');
           await processAssets(assetsToProcess, resolver);

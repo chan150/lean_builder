@@ -92,7 +92,7 @@ class AssetsGraph extends AssetsScanResults {
     return assets;
   }
 
-  void markPackageAssetsUnprocessed(String package) {
+  void invalidateProcessedAssetsOf(String package) {
     for (final entry in assets.entries) {
       final uri = Uri.parse(entry.value[GraphIndex.assetUri]);
       if (uri.pathSegments.isEmpty) continue;
@@ -277,12 +277,6 @@ class AssetsGraph extends AssetsScanResults {
     }
   }
 
-  void invalidateProcessedAssets() {
-    for (final id in outputs.keys) {
-      updateAssetState(id, AssetState.unProcessed);
-    }
-  }
-
   // get any asset that depends on this asset,
   // either via direct import, part-of or via re-exports
   Map<String, List<dynamic>> dependentsOf(String id) {
@@ -396,6 +390,11 @@ class AssetsGraph extends AssetsScanResults {
       }
     }
     return processableAssets;
+  }
+
+  bool isBuilderConfigAsset(String id) {
+    final tlmFlag = assets[id]?[GraphIndex.assetTLMFlag];
+    return tlmFlag == TLMFlag.builder.index || tlmFlag == TLMFlag.both.index;
   }
 
   bool hasProcessableAssets() {

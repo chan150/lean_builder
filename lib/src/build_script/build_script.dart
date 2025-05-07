@@ -48,7 +48,7 @@ String? prepareBuildScript(Set<ProcessableAsset> assets, ResolverImpl resolver) 
 
   /// invalidate processed assets on new build script generation
   final rootPackage = resolver.fileResolver.rootPackage;
-  resolver.graph.markPackageAssetsUnprocessed(rootPackage);
+  resolver.graph.invalidateProcessedAssetsOf(rootPackage);
 
   final (entries, overrides) = parseBuilderEntries(Set.of(assets.map((e) => e.asset)), resolver);
   if (entries.isEmpty) {

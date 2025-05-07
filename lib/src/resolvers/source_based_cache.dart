@@ -56,8 +56,17 @@ class SourceBasedCache<T> {
     }
   }
 
+  void clear() {
+    _cache.clear();
+  }
+
   void invalidateForSource(String source) {
     _cache.remove(source);
+  }
+
+  @override
+  String toString() {
+    return 'SourceBasedCache{_cache: $_cache}';
   }
 }
 

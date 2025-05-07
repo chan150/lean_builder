@@ -23,6 +23,7 @@ class SourceParser {
   void invalidate(String key) {
     _cache.remove(key);
   }
+  
 
   void clear() {
     _cache.clear();

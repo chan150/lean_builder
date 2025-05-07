@@ -1,9 +1,7 @@
 import 'package:example/src/annotations.dart';
-import 'package:json_annotation/json_annotation.dart';
 
-@Serializable()
+@Serializable('Samp')
 class SampleX {
-  @JsonKey()
   final String r;
 
   final String? t;
