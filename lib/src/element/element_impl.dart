@@ -109,11 +109,12 @@ abstract class ElementImpl implements Element {
   bool get isPublic => !isPrivate;
 
   int _nameLength = 0;
-
+  @override
   int get nameLength => _nameLength;
 
   int _nameOffset = -1;
 
+  @override
   int get nameOffset => _nameOffset;
 
   void setCodeRange(int nameLength, int nameOffset) {
@@ -139,7 +140,7 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   final CompilationUnit compilationUnit;
 
   @override
-  final Resolver resolver;
+  final ResolverImpl resolver;
 
   List<Element> get resolvedElements => List.unmodifiable(_resolvedElements);
 

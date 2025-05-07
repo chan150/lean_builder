@@ -11,7 +11,7 @@ import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/type/type.dart';
 
 class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack {
-  final Resolver resolver;
+  final ResolverImpl resolver;
 
   final bool preResolveTopLevelMetadata;
 

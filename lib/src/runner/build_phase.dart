@@ -2,21 +2,23 @@ import 'dart:collection';
 import 'dart:io';
 import 'dart:isolate';
 
-import 'package:lean_builder/builder.dart' show BuildCandidate, Resolver;
+import 'package:lean_builder/builder.dart' show BuildCandidate;
 import 'package:lean_builder/runner.dart';
 import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
 import 'package:lean_builder/src/graph/asset_scan_manager.dart';
 import 'package:lean_builder/src/graph/assets_graph.dart';
 import 'package:lean_builder/src/graph/assets_scanner.dart';
+import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/logger.dart';
+import 'package:lean_builder/src/resolvers/resolver.dart' show ResolverImpl;
 import 'package:lean_builder/src/runner/build_utils.dart';
 import 'package:path/path.dart' as p;
 
 import 'build_result.dart';
 
 class BuildPhase {
-  final Resolver resolver;
+  final ResolverImpl resolver;
   final List<BuilderEntry> builders;
 
   BuildPhase(this.resolver, this.builders);
@@ -27,7 +29,7 @@ class BuildPhase {
 
   PackageFileResolver get fileResolver => resolver.fileResolver;
 
-  void beforeBuild(Resolver resolver, List<ProcessableAsset> assets) {
+  void beforeBuild(ResolverImpl resolver, List<ProcessableAsset> assets) {
     final outputExtensions = HashSet<String>();
     for (final builder in builders) {
       // some builder entries need to do stuff before the build

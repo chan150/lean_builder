@@ -1,3 +1,5 @@
+import 'package:lean_builder/src/resolvers/resolver.dart';
+
 import 'build_command.dart';
 import 'package:watcher/watcher.dart';
 import 'package:path/path.dart' as p;
@@ -6,7 +8,6 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
 
-import 'package:lean_builder/builder.dart';
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
 import 'package:lean_builder/src/graph/asset_scan_manager.dart';
 import 'package:lean_builder/src/logger.dart';
@@ -23,7 +24,7 @@ class WatchCommand extends BuildCommand {
   String get invocation => 'lean_builder watch [options]';
 
   @override
-  Future<int> onRun(Set<ProcessableAsset> assets, Resolver resolver) async {
+  Future<int> onRun(Set<ProcessableAsset> assets, ResolverImpl resolver) async {
     HotReloader? hotReloader;
     await processAssets(assets, resolver);
 

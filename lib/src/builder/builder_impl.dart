@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:collection/collection.dart';
 import 'package:dart_style/dart_style.dart';
 import 'package:lean_builder/src/element/element.dart';
 import 'package:lean_builder/src/logger.dart';

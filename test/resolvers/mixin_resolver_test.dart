@@ -10,7 +10,7 @@ import '../scanner/string_asset_src.dart';
 void main() {
   late PackageFileResolver fileResolver;
   AssetsScanner? scanner;
-  Resolver? resolver;
+  ResolverImpl? resolver;
 
   setUpAll(() {
     fileResolver = PackageFileResolver.forRoot();
@@ -19,7 +19,7 @@ void main() {
   setUp(() {
     final AssetsGraph graph = AssetsGraph('hash');
     scanner = AssetsScanner(graph, fileResolver);
-    resolver = Resolver(graph, fileResolver, SourceParser());
+    resolver = ResolverImpl(graph, fileResolver, SourceParser());
   });
 
   test('should resolve simple mixin element', () {

@@ -17,7 +17,7 @@ import 'constant.dart';
 // some implementations of this class is borrowed from analyzer package
 
 class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementStack<Constant> {
-  final Resolver _resolver;
+  final ResolverImpl _resolver;
 
   final ElementBuilder _elementBuilder;
 

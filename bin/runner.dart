@@ -21,7 +21,7 @@ Future<void> main(List<String> args) async {
     await scanManager.scanAssets();
     Logger.info("Assets graph synced in ${stopWatch.elapsed.formattedMS}.");
     final builderAssets = graph.getBuilderProcessableAssets(fileResolver);
-    final resolver = Resolver(graph, fileResolver, SourceParser());
+    final resolver = ResolverImpl(graph, fileResolver, SourceParser());
     final scriptPath = prepareBuildScript(builderAssets, resolver);
     await graph.save();
 

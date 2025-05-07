@@ -383,15 +383,3 @@ class _AnyChecker extends TypeChecker {
     return _checkers.any((c) => c.isAssignableFromType(typeRef));
   }
 }
-
-String _toSnakeCase(String str) {
-  final buffer = StringBuffer();
-  for (int i = 0; i < str.length; i++) {
-    final char = str[i];
-    if (i > 0 && char.toUpperCase() == char && char != '_') {
-      buffer.write('_');
-    }
-    buffer.write(char.toLowerCase());
-  }
-  return buffer.toString();
-}

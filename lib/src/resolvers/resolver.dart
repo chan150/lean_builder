@@ -23,7 +23,41 @@ import 'constant/constant.dart';
 
 typedef ElementPredicate<T> = bool Function(T element);
 
-class Resolver {
+abstract class Resolver {
+  PackageFileResolver get fileResolver;
+
+  void invalidateAssetCache(Asset src);
+
+  LibraryElementImpl libraryFor(Asset src, {bool allowSyntaxErrors = false});
+
+  LibraryElement resolveLibrary(Asset src, {bool preResolveTopLevelMetadata = false, bool allowSyntaxErrors = false});
+
+  TypeChecker typeCheckerOf<T>();
+
+  TypeChecker typeCheckerFor(String name, String packageImport);
+
+  NamedDartType getNamedType(String name, String packageUrl);
+
+  LibraryElement libraryForDirective(DirectiveElement directive);
+
+  DeclarationRef getDeclarationRef(String identifier, Asset importingSrc, {String? importPrefix});
+
+  Element? elementOf(DartType type);
+
+  List<InterfaceType> allSupertypesOf(InterfaceElement element);
+
+  void resolveMethods(InterfaceElement elem, {ElementPredicate<MethodDeclaration>? predicate});
+
+  void resolveFields(InterfaceElement elem);
+
+  void resolveConstructors(InterfaceElement elem);
+
+  bool isLibrary(Asset asset);
+
+  Uri uriForAsset(String id);
+}
+
+class ResolverImpl extends Resolver {
   final AssetsGraph graph;
   final SourceParser parser;
   final PackageFileResolver fileResolver;
@@ -36,8 +70,9 @@ class Resolver {
   final _resolvedTypeRefs = SourceBasedCache<Element>();
   final evaluatedConstantsCache = SourceBasedCache<Constant>();
 
-  Resolver(this.graph, this.fileResolver, this.parser);
+  ResolverImpl(this.graph, this.fileResolver, this.parser);
 
+  @override
   void invalidateAssetCache(Asset src) {
     parser.invalidate(src.id);
     _libraryCache.remove(src.id);
@@ -55,6 +90,7 @@ class Resolver {
     _registeredTypesMap.addAll(typeMaps);
   }
 
+  @override
   LibraryElement resolveLibrary(Asset src, {bool preResolveTopLevelMetadata = false, bool allowSyntaxErrors = false}) {
     final library = libraryFor(src, allowSyntaxErrors: allowSyntaxErrors);
     final visitor = ElementBuilder(this, library, preResolveTopLevelMetadata: preResolveTopLevelMetadata);
@@ -66,6 +102,7 @@ class Resolver {
     return library;
   }
 
+  @override
   TypeChecker typeCheckerOf<T>() {
     assert(T != dynamic, 'T cannot be dynamic');
     final type = T;
@@ -82,6 +119,7 @@ class Resolver {
     throw Exception('Type $type not registered');
   }
 
+  @override
   TypeChecker typeCheckerFor(String name, String packageImport) {
     final key = '$packageImport#$name';
     if (_typeCheckersCache.containsKey(key)) {
@@ -93,6 +131,7 @@ class Resolver {
     return _typeCheckersCache[key] = typeChecker;
   }
 
+  @override
   NamedDartType getNamedType(String name, String packageUrl) {
     var uri = Uri.parse(packageUrl);
     if (uri.scheme != 'package' && uri.scheme != 'dart') {
@@ -116,15 +155,18 @@ class Resolver {
     }
   }
 
+  @override
   LibraryElement libraryForDirective(DirectiveElement directive) {
     final assetSrc = fileResolver.assetForUri(directive.uri);
     return libraryFor(assetSrc);
   }
 
+  @override
   DeclarationRef getDeclarationRef(String identifier, Asset importingSrc, {String? importPrefix}) {
     return graph.getDeclarationRef(identifier, importingSrc, importPrefix: importPrefix);
   }
 
+  @override
   Element? elementOf(DartType type) {
     if (type is NamedDartType) {
       final key = _resolvedTypeRefs.keyFor(type.declarationRef.srcId, type.name);
@@ -149,6 +191,7 @@ class Resolver {
     return null;
   }
 
+  @override
   List<InterfaceType> allSupertypesOf(InterfaceElement element) {
     final superTypes = <InterfaceType>[];
     final thisLevelTypes = <NamedDartType>[
@@ -180,6 +223,7 @@ class Resolver {
     return superTypes;
   }
 
+  @override
   LibraryElementImpl libraryFor(Asset src, {bool allowSyntaxErrors = false}) {
     assert(src.uri.path.endsWith('.dart'), 'Asset $src is not a dart file');
     return _libraryCache.putIfAbsent(src.id, () {
@@ -259,10 +303,12 @@ class Resolver {
     return _resolvedUnitsCache.cacheKey(cacheKey, (library, unit, declarationRef));
   }
 
+  @override
   Uri uriForAsset(String id) {
     return graph.uriForAsset(id);
   }
 
+  @override
   bool isLibrary(Asset asset) {
     if (!asset.uri.path.endsWith('.dart')) {
       return false;
@@ -278,6 +324,7 @@ class Resolver {
     }
   }
 
+  @override
   void resolveMethods(InterfaceElement elem, {ElementPredicate<MethodDeclaration>? predicate}) {
     final elementBuilder = ElementBuilder(this, elem.library);
     final namedUnit = (elem as InterfaceElementImpl).compilationUnit;
@@ -289,6 +336,7 @@ class Resolver {
     });
   }
 
+  @override
   void resolveFields(InterfaceElement elem) {
     final elementBuilder = ElementBuilder(this, elem.library);
     final interfaceElem = elem as InterfaceElementImpl;
@@ -301,6 +349,7 @@ class Resolver {
     });
   }
 
+  @override
   void resolveConstructors(InterfaceElement elem) {
     final elementBuilder = ElementBuilder(this, elem.library);
     final interfaceElem = elem as InterfaceElementImpl;

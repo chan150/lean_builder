@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:lean_builder/builder.dart';
 import 'package:lean_builder/runner.dart' show BuilderEntry;
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
 import 'package:lean_builder/src/graph/asset_scan_manager.dart';
@@ -8,6 +7,7 @@ import 'package:lean_builder/src/graph/assets_graph.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/logger.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
+import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/runner/build_phase.dart' show BuildPhase;
 import 'package:lean_builder/src/runner/build_result.dart';
 import 'package:lean_builder/src/runner/build_utils.dart';
@@ -47,19 +47,19 @@ class BuildCommand extends BaseCommand<int> {
     }
 
     final sourceParser = SourceParser();
-    final resolver = Resolver(assetsGraph, fileResolver, sourceParser);
+    final resolver = ResolverImpl(assetsGraph, fileResolver, sourceParser);
     final assets = assetsGraph.getProcessableAssets(fileResolver);
     return onRun(assets, resolver);
   }
 
-  Future<int> onRun(Set<ProcessableAsset> assets, Resolver resolver) async {
+  Future<int> onRun(Set<ProcessableAsset> assets, ResolverImpl resolver) async {
     return processAssets(assets, resolver);
   }
 
-  Future<int> processAssets(Set<ProcessableAsset> processableAssets, Resolver resolver) async {
+  Future<int> processAssets(Set<ProcessableAsset> assets, ResolverImpl resolver) async {
     final stopWatch = Stopwatch()..start();
 
-    for (final entry in processableAssets) {
+    for (final entry in assets) {
       /// assume assets reaching this point are processed,
       /// if something goes wrong, we revert back to unprocessed
       if (entry.state != AssetState.deleted) {
@@ -67,14 +67,14 @@ class BuildCommand extends BaseCommand<int> {
       }
     }
 
-    final assets = List.of(
-      processableAssets.where((e) {
+    final rootAssets = List.of(
+      assets.where((e) {
         final asset = e.asset;
         return asset.packageName == resolver.fileResolver.rootPackage;
       }),
     );
 
-    if (assets.isEmpty) {
+    if (rootAssets.isEmpty) {
       Logger.success('Build succeeded with no outputs ${stopWatch.elapsed.formattedMS}');
       return 0;
     }
@@ -82,7 +82,7 @@ class BuildCommand extends BaseCommand<int> {
     validateBuilderEntries(buildRunner.builderEntries);
 
     try {
-      final outputCount = await build(assets: assets, builders: buildRunner.builderEntries, resolver: resolver);
+      final outputCount = await build(assets: rootAssets, builders: buildRunner.builderEntries, resolver: resolver);
       await resolver.graph.save();
       Logger.success('Build succeeded in ${stopWatch.elapsed.formattedMS}, with ($outputCount) outputs');
       return 0;
@@ -115,7 +115,7 @@ class BuildCommand extends BaseCommand<int> {
   Future<int> build({
     required List<ProcessableAsset> assets,
     required List<BuilderEntry> builders,
-    required Resolver resolver,
+    required ResolverImpl resolver,
   }) async {
     assert(assets.isNotEmpty);
 
@@ -190,7 +190,15 @@ class BuildCommand extends BaseCommand<int> {
         }
       }
       // add new outputs to the assets to be processed by the next phase
-      assetsToProcess.addAll(graph.getProcessableAssets(fileResolver));
+      final newAssets = graph.getProcessableAssets(fileResolver);
+      assetsToProcess.addAll(newAssets);
+      // we assume that the new assets will be processed in the next phase
+      // if something goes wrong, we revert back to unprocessed
+      for (final entry in newAssets) {
+        if (entry.state != AssetState.deleted) {
+          graph.updateAssetState(entry.asset.id, AssetState.processed);
+        }
+      }
     }
     return outputCount;
   }

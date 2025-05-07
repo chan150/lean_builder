@@ -1,11 +1,10 @@
-import 'package:analyzer/dart/element/type.dart';
 import 'package:lean_builder/builder.dart';
 import 'package:lean_builder/element.dart';
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
 import 'package:lean_builder/src/graph/assets_graph.dart';
 import 'package:lean_builder/src/graph/assets_scanner.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
-import 'package:lean_builder/src/type/type.dart';
+import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:test/expect.dart';
 import 'package:test/scaffolding.dart';
 
@@ -15,12 +14,12 @@ import '../utils/test_utils.dart';
 void main() {
   late AssetsScanner scanner;
   late AssetsGraph assetsGraph;
-  late Resolver resolver;
+  late ResolverImpl resolver;
   setUp(() {
     final fileResolver = PackageFileResolver.forRoot();
     assetsGraph = AssetsGraph(fileResolver.packagesHash);
     scanner = AssetsScanner(assetsGraph, fileResolver);
-    resolver = Resolver(assetsGraph, fileResolver, SourceParser());
+    resolver = ResolverImpl(assetsGraph, fileResolver, SourceParser());
   });
 
   test('Should evaluate const fields with literal values', () {

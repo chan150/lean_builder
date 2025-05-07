@@ -1,14 +1,14 @@
-import 'package:lean_builder/builder.dart';
 import 'package:lean_builder/element.dart';
 import 'package:lean_builder/src/graph/identifier_ref.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
+import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/type/core_type_source.dart';
 import 'package:lean_builder/src/type/substitution.dart';
 import 'package:lean_builder/src/type/subtype.dart';
 import 'package:lean_builder/src/type/type.dart';
 
 class TypeUtils {
-  final Resolver resolver;
+  final ResolverImpl resolver;
   late final _subtypeHelper = SubtypeHelper(this);
   final bool strictCasts;
   TypeUtils(this.resolver, {this.strictCasts = false});

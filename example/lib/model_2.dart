@@ -1,6 +1,6 @@
 import 'package:example/src/annotations.dart';
 
-// @Serializable()
+@Serializable()
 class Model2 {
-  // hello222222222
+  // hello2222222222323
 }

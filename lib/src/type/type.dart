@@ -2,6 +2,7 @@ import 'package:lean_builder/builder.dart';
 import 'package:lean_builder/src/element/element.dart';
 import 'package:collection/collection.dart';
 import 'package:lean_builder/src/graph/identifier_ref.dart' show DeclarationRef;
+import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/type/substitution.dart';
 
 import 'core_type_source.dart';
@@ -135,7 +136,7 @@ abstract class NamedDartType extends ParameterizedType {
   @override
   String get name;
 
-  Resolver get resolver;
+  ResolverImpl get resolver;
 
   @override
   List<DartType> get typeArguments;
@@ -339,7 +340,7 @@ class InterfaceTypeImpl extends TypeImpl implements InterfaceType {
   String get identifier => '$name@${declarationRef.srcId}';
 
   @override
-  final Resolver resolver;
+  final ResolverImpl resolver;
 
   @override
   final List<DartType> typeArguments;
@@ -538,7 +539,7 @@ class TypeAliasTypeImpl extends TypeImpl implements TypeAliasType {
   final List<DartType> typeArguments;
 
   @override
-  final Resolver resolver;
+  final ResolverImpl resolver;
 
   @override
   final String name;

@@ -184,7 +184,7 @@ abstract class LibraryElement extends Element {
 
   List<ClassElementImpl> get classes;
 
-  Resolver get resolver;
+  ResolverImpl get resolver;
 
   List<MixinElementImpl> get mixins;
 

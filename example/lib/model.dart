@@ -1,7 +1,7 @@
 import 'package:example/main.dart';
 import 'package:example/src/annotations.dart';
 
-@Serializable()
+// @Serializable()
 class Model {
   final String namex;
   final int age;

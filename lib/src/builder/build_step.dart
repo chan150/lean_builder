@@ -79,6 +79,7 @@ class BuildStepImpl implements BuildStep {
 
   @override
   final Resolver resolver;
+
   final bool generateToCache;
 
   BuildStepImpl(this.asset, this.resolver, {required this.allowedExtensions, required this.generateToCache});

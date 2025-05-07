@@ -5,6 +5,7 @@ import 'package:lean_builder/src/build_script/errors.dart';
 import 'package:lean_builder/src/graph/assets_graph.dart';
 import 'package:lean_builder/src/graph/assets_scanner.dart';
 import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
+import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:test/test.dart';
 
 import '../scanner/string_asset_src.dart';
@@ -13,7 +14,7 @@ import '../utils/test_utils.dart';
 void main() {
   late PackageFileResolver fileResolver;
   late AssetsScanner scanner;
-  late Resolver resolver;
+  late ResolverImpl resolver;
 
   setUpAll(() {
     fileResolver = PackageFileResolver.forRoot();
@@ -23,7 +24,7 @@ void main() {
     final AssetsGraph graph = AssetsGraph('hash');
     scanner = AssetsScanner(graph, fileResolver);
     scanDartSdk(scanner, also: {'lean_builder'});
-    resolver = Resolver(graph, fileResolver, SourceParser());
+    resolver = ResolverImpl(graph, fileResolver, SourceParser());
   });
 
   test('Should parse Simple SharedPart builder entry', () {

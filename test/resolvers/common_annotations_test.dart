@@ -12,13 +12,13 @@ import '../utils/test_utils.dart';
 void main() {
   PackageFileResolver? fileResolver;
   AssetsScanner? scanner;
-  Resolver? resolver;
+  ResolverImpl? resolver;
 
   setUp(() {
     fileResolver = PackageFileResolver.forRoot();
     final AssetsGraph graph = AssetsGraph('hash');
     scanner = AssetsScanner(graph, fileResolver!);
-    resolver = Resolver(graph, fileResolver!, SourceParser());
+    resolver = ResolverImpl(graph, fileResolver!, SourceParser());
   });
 
   // should resolve refs of core dart types

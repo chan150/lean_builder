@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:lean_builder/builder.dart';
 import 'package:glob/glob.dart';
 import 'package:lean_builder/src/asset/asset.dart';
+import 'package:lean_builder/src/resolvers/resolver.dart' show ResolverImpl;
 
 /// Creates a [Generator] with the given [options].
 typedef GeneratorFactory = Generator Function(BuilderOptions options);
@@ -25,9 +26,9 @@ abstract class BuilderEntry {
 
   bool shouldGenerateFor(BuildCandidate candidate);
 
-  void onPrepare(Resolver resolver);
+  void onPrepare(ResolverImpl resolver);
 
-  FutureOr<Set<Uri>> build(Resolver resolver, Asset asset);
+  FutureOr<Set<Uri>> build(ResolverImpl resolver, Asset asset);
 
   factory BuilderEntry(
     String key,
@@ -166,12 +167,12 @@ class BuilderEntryImpl implements BuilderEntry {
   }
 
   @override
-  void onPrepare(Resolver resolver) {
+  void onPrepare(ResolverImpl resolver) {
     resolver.registerTypesMap(annotationsTypeMap);
   }
 
   @override
-  FutureOr<Set<Uri>> build(Resolver resolver, Asset asset) async {
+  FutureOr<Set<Uri>> build(ResolverImpl resolver, Asset asset) async {
     final buildStep = BuildStepImpl(
       asset,
       resolver,
@@ -242,12 +243,12 @@ class CombiningBuilderEntry implements BuilderEntry {
   }
 
   @override
-  void onPrepare(Resolver resolver) {
+  void onPrepare(ResolverImpl resolver) {
     resolver.registerTypesMap(annotationsTypeMap);
   }
 
   @override
-  FutureOr<Set<Uri>> build(Resolver resolver, Asset asset) async {
+  FutureOr<Set<Uri>> build(ResolverImpl resolver, Asset asset) async {
     final outputUri = asset.uriWithExtension(SharedPartBuilder.extension);
     final buildStep = SharedBuildStep(asset, resolver, outputUri: outputUri);
     for (final builder in builders) {

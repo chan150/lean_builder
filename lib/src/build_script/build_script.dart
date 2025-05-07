@@ -10,6 +10,7 @@ import 'package:lean_builder/src/build_script/generator.dart';
 import 'package:lean_builder/src/graph/asset_scan_manager.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/logger.dart';
+import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/type/type.dart';
 import 'package:path/path.dart' as p;
 import 'compile.dart' as compile;
@@ -20,7 +21,7 @@ const String _leanGenerator = 'package:lean_builder/src/builder/generator/genera
 const String _leanBuilders = 'package:lean_builder/src/builder/builder.dart';
 const String _parsedBuilderEntry = 'package:lean_builder/src/build_script/parsed_builder_entry.dart';
 
-String? prepareBuildScript(Set<ProcessableAsset> assets, Resolver resolver) {
+String? prepareBuildScript(Set<ProcessableAsset> assets, ResolverImpl resolver) {
   final scriptFile = File(scriptOutput);
 
   void deleteScriptFile() {
@@ -87,7 +88,7 @@ List<BuilderDefinitionEntry> applyOverrides(List<BuilderDefinitionEntry> entries
   return finalEntries;
 }
 
-(List<BuilderDefinitionEntry>, List<BuilderOverride>) parseBuilderEntries(Set<Asset> assets, Resolver resolver) {
+(List<BuilderDefinitionEntry>, List<BuilderOverride>) parseBuilderEntries(Set<Asset> assets, ResolverImpl resolver) {
   final parsedEntries = <BuilderDefinitionEntry>[];
   final parsedOverrides = <BuilderOverride>[];
   late final leanGenTypeChecker = resolver.typeCheckerFor('LeanGenerator', _leanAnnotations);
@@ -180,7 +181,7 @@ List<BuilderDefinitionEntry> applyOverrides(List<BuilderDefinitionEntry> entries
 BuilderDefinitionEntry _buildEntry(
   Asset asset,
   ConstObject constObj,
-  Resolver resolver,
+  ResolverImpl resolver,
   ClassElement element,
   BuilderType builderType,
 ) {
