@@ -3,6 +3,7 @@ import 'package:lean_builder/src/build_script/parsed_builder_entry.dart';
 const _leanBuilderImport = 'package:lean_builder/runner.dart';
 const _isolateImport = 'dart:isolate';
 
+/// Generates the build script for the given entries.
 String generateBuildScript(List<BuilderDefinitionEntry> entries) {
   assert(entries.isNotEmpty);
   final importPrefixes = <String, String>{};

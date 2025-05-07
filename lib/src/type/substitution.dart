@@ -1,9 +1,12 @@
 import 'package:lean_builder/src/element/element.dart';
 import 'package:lean_builder/src/type/type.dart';
 
+/// Represents a substitution of type parameters with concrete types.
 class Substitution {
+  /// The underlying map that stores the type parameter to type argument mappings.
   final Map<TypeParameterType, DartType> _map;
 
+  /// Creates a [Substitution] with the given map.
   Substitution(this._map);
 
   /// Creates a substitution that maps the given type parameters to the
@@ -21,6 +24,8 @@ class Substitution {
   }
 
   /// Applies this substitution to the given [type].
+  ///
+  /// If [isNullable] is true, the resulting type will be nullable.
   DartType substituteType(DartType type, {bool isNullable = false}) {
     if (type is TypeParameterType) {
       return _map[type]?.withNullability(type.isNullable) ?? type;

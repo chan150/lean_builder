@@ -7,32 +7,67 @@ import 'package:lean_builder/src/type/substitution.dart';
 import 'package:lean_builder/src/type/subtype.dart';
 import 'package:lean_builder/src/type/type.dart';
 
+/// {@template type_utils}
+/// Utility class for working with Dart types at build time.
+///
+/// Provides methods for type comparison, checking subtype relationships,
+/// and creating commonly used types.
+/// {@endtemplate}
 class TypeUtils {
+  /// The resolver to use for type-related operations.
   final ResolverImpl resolver;
+
+  /// Helper for checking subtype relationships.
   late final _subtypeHelper = SubtypeHelper(this);
+
+  /// Whether to enforce strict casting rules.
+  ///
+  /// When true, implicit downcasts are not allowed.
   final bool strictCasts;
+
+  /// Creates a [TypeUtils] instance with the specified resolver and strictness settings.
   TypeUtils(this.resolver, {this.strictCasts = false});
 
+  /// {@template core_type_getter}
+  /// Returns an [InterfaceType] instance representing the {TYPE} type.
+  /// {@endtemplate}
+
+  /// {@macro core_type_getter}
   InterfaceType get objectType {
     final declarationRef = DeclarationRef.from('Object', CoreTypeSource.coreObject, SymbolType.$class);
     return InterfaceTypeImpl('Object', declarationRef, resolver);
   }
 
+  /// {@macro core_type_getter}
+  ///
+  /// This returns a nullable version of the Object type.
   InterfaceType get objectTypeNullable {
     final declarationRef = DeclarationRef.from('Object', CoreTypeSource.coreObject, SymbolType.$class);
     return InterfaceTypeImpl('Object?', declarationRef, resolver, isNullable: true);
   }
 
+  /// {@macro core_type_getter}
   InterfaceType get nullTypeObject {
     final declarationRef = DeclarationRef.from('Null', CoreTypeSource.coreNull, SymbolType.$class);
     return InterfaceTypeImpl('Null', declarationRef, resolver);
   }
 
+  /// Builds a [Future<T>] type with the specified type parameter.
+  ///
+  /// [typeParam] is the type argument for the Future.
+  /// [isNullable] specifies whether the Future type itself is nullable.
   InterfaceType buildFutureType(DartType typeParam, {bool isNullable = false}) {
     final declarationRef = DeclarationRef.from('Future', CoreTypeSource.asyncFuture, SymbolType.$class);
-    return InterfaceTypeImpl('Future', declarationRef, resolver, typeArguments: [typeParam], isNullable: false);
+    return InterfaceTypeImpl('Future', declarationRef, resolver, typeArguments: [typeParam], isNullable: isNullable);
   }
 
+  /// Determines if a type is nullable according to Dart's type system.
+  ///
+  /// A type is nullable if:
+  /// - It's explicitly marked as nullable
+  /// - It's a special type like dynamic, void, or invalid
+  /// - It's the Null type
+  /// - It's a FutureOr<T> where T is nullable
   bool isNullable(DartType type) {
     if (type is DynamicType ||
         type is InvalidType ||
@@ -52,11 +87,13 @@ class TypeUtils {
     return false;
   }
 
-  /// Given two lists of type parameters, check that they have the same
+  /// Relates two lists of type parameters to determine if they're compatible.
+  ///
+  /// Given two lists of type parameters, checks that they have the same
   /// number of elements, and their bounds are equal.
   ///
-  /// The return value will be a new list of fresh type parameters, that can
-  /// be used to instantiate both function types, allowing further comparison.
+  /// Returns a [RelatedTypeParameters] instance with fresh type parameters that can
+  /// be used to instantiate both function types, or null if the parameters are incompatible.
   RelatedTypeParameters? relateTypeParameters(
     List<TypeParameterType> typeParameters1,
     List<TypeParameterType> typeParameters2,
@@ -99,14 +136,24 @@ class TypeUtils {
     return RelatedTypeParameters._(freshTypeParameters, freshTypeParameterTypes);
   }
 
+  /// Checks if two types are exactly equal.
+  ///
+  /// Types are equal if they are subtypes of each other.
   bool isEqualTo(DartType left, DartType right) {
     return isSubtypeOf(left, right) && isSubtypeOf(right, left);
   }
 
+  /// Checks if [leftType] is a subtype of [rightType].
+  ///
+  /// Uses the subtype helper to determine the relationship.
   bool isSubtypeOf(DartType leftType, DartType rightType) {
     return _subtypeHelper.isSubtypeOf(leftType, rightType);
   }
 
+  /// Determines if [fromType] can be assigned to [toType].
+  ///
+  /// This checks for subtype relationships and also handles special cases
+  /// like implicit downcasts (when [strictCasts] is false) and function type compatibility.
   bool isAssignableTo(DartType fromType, DartType toType) {
     // An actual subtype
     if (isSubtypeOf(fromType, toType)) {
@@ -156,6 +203,12 @@ class TypeUtils {
     return false;
   }
 
+  /// Determines if a type accepts a function type.
+  ///
+  /// A type accepts a function type if:
+  /// - It is a function type
+  /// - It is the Function class from dart:core
+  /// - It is FutureOr<T> where T accepts a function type
   bool acceptsFunctionType(DartType? t) {
     if (t == null) return false;
     if (t.isDartAsyncFutureOr) {
@@ -164,6 +217,10 @@ class TypeUtils {
     return t is FunctionType || t.isDartCoreFunction;
   }
 
+  /// Retrieves the function type of the 'call' method on a type, if it exists.
+  ///
+  /// This is used to handle callable classes that define a call method.
+  /// Returns null if the type doesn't have a call method.
   FunctionType? getCallMethodType(DartType t) {
     if (t is InterfaceType) {
       final interfaceElement = t.element;
@@ -173,11 +230,22 @@ class TypeUtils {
   }
 }
 
+/// {@template related_type_parameters}
+/// Represents a relationship between two sets of type parameters.
+///
+/// This class holds fresh type parameters that are compatible with two
+/// different sets of type parameters, allowing for further comparison.
+/// {@endtemplate}
 class RelatedTypeParameters {
+  /// An empty instance for when there are no type parameters.
   static final _empty = RelatedTypeParameters._(const [], const []);
 
+  /// Fresh type parameters that can be used in place of the original ones.
   final List<TypeParameterType> typeParameters;
+
+  /// Types corresponding to the fresh type parameters.
   final List<TypeParameterType> typeParameterTypes;
 
+  /// Creates a new [RelatedTypeParameters] instance.
   RelatedTypeParameters._(this.typeParameters, this.typeParameterTypes);
 }

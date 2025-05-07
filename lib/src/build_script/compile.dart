@@ -1,8 +1,15 @@
 import 'dart:io';
 
 import 'errors.dart';
-import 'files.dart';
+import 'paths.dart';
 
+/// Compiles the build script at the given path to an AOT snapshot.
+///
+/// Uses the Dart compiler to create an executable snapshot that can be
+/// run more efficiently than interpreting the script each time.
+/// Throws a [CompileError] if compilation fails.
+///
+/// @param scriptPath The path to the Dart script to be compiled
 void compileScript(String scriptPath) {
   final execPath = getExecutablePath();
   final result = Process.runSync('dart', ['compile', 'aot-snapshot', scriptPath]);
@@ -14,18 +21,27 @@ void compileScript(String scriptPath) {
   }
 }
 
+/// Returns the platform-specific path to the compiled executable.
+///
+/// The path is determined based on the current platform and the
+/// global [scriptExecutable] configuration.
+///
+/// @return The path to the compiled executable
 String getExecutablePath() {
-  if (Platform.isWindows) {
-    return '$scriptExecutable.aot';
-  } else {
-    return '$scriptExecutable.aot';
-  }
+  return '$scriptExecutable.aot';
 }
 
+/// Checks if the compiled executable exists on the file system.
+///
+/// @return `true` if the executable exists, `false` otherwise
 bool executableExists() {
   return File(getExecutablePath()).existsSync();
 }
 
+/// Deletes the compiled executable if it exists.
+///
+/// Used to force recompilation when the script has been modified
+/// or when the executable may be in an inconsistent state.
 void invalidateExecutable() {
   final executable = File(getExecutablePath());
   if (executable.existsSync()) {

@@ -1,30 +1,54 @@
-import 'package:lean_builder/src/element/element.dart';
 import 'package:collection/collection.dart';
+import 'package:lean_builder/src/element/element.dart';
 import 'package:lean_builder/src/graph/identifier_ref.dart' show DeclarationRef;
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/type/substitution.dart';
 
 import 'core_type_source.dart';
 
-sealed class DartType {
+part 'type_impl.dart';
+
+/// {@template dart_type}
+/// Base class representing a Dart type in the type system.
+///
+/// This is the foundation for all types in Dart, including primitive types,
+/// interface types, function types, and special types.
+/// {@endtemplate}
+abstract class DartType {
+  /// A const constructor for [DartType].
   const DartType();
 
+  /// Whether this type is nullable.
   bool get isNullable;
 
   /// Return the element representing the declaration of this type, or `null`
   /// if the type is not associated with an element.
   Element? get element;
 
+  /// Returns whether this type is valid (not an [invalidType]).
   bool get isValid => this != invalidType;
 
   /// returns the name of the type if it's a named type
   /// otherwise returns null
   String? get name;
 
+  /// {@template core_type_constant}
+  /// The predefined type representing `{TYPE}`.
+  /// {@endtemplate}
+
+  /// {@macro core_type_constant}
   static const voidType = VoidType.instance;
+
+  /// {@macro core_type_constant}
   static const dynamicType = DynamicType.instance;
+
+  /// {@macro core_type_constant}
   static const neverType = NeverType.instance;
+
+  /// {@macro core_type_constant}
   static const invalidType = InvalidType.instance;
+
+  /// {@macro core_type_constant}
   static const unknownInferredType = UnknownInferredType.instance;
 
   /// Return `true` if this type represents the type 'void'
@@ -39,119 +63,131 @@ sealed class DartType {
   /// Return `true` if this type represents the type 'Invalid'
   bool get isInvalid;
 
-  /// Return `true` if this type represents the type 'Future' defined in the
+  /// {@template dart_async_check}
+  /// Return `true` if this type represents the type '{TYPE}' defined in the
   /// dart:async library.
+  /// {@endtemplate}
+
+  /// {@macro dart_async_check}
   bool get isDartAsyncFuture;
 
-  /// Return `true` if this type represents the type 'FutureOr&lt;T&gt;' defined in
-  /// the dart:async library.
+  /// {@macro dart_async_check}
   bool get isDartAsyncFutureOr;
 
-  /// Return `true` if this type represents the type 'Stream' defined in the
-  /// dart:async library.
+  /// {@macro dart_async_check}
   bool get isDartAsyncStream;
 
-  /// Return `true` if this type represents the type 'bool' defined in the
+  /// {@template dart_core_check}
+  /// Return `true` if this type represents the type '{TYPE}' defined in the
   /// dart:core library.
+  /// {@endtemplate}
+
+  /// {@macro dart_core_check}
   bool get isDartCoreBool;
 
-  /// Return `true` if this type represents the type 'double' defined in the
-  /// dart:core library.
+  /// {@macro dart_core_check}
   bool get isDartCoreDouble;
 
-  /// Return `true` if this type represents the type 'Enum' defined in the
-  /// dart:core library.
+  /// {@macro dart_core_check}
   bool get isDartCoreEnum;
 
-  /// Return `true` if this type represents the type 'Function' defined in the
-  /// dart:core library.
+  /// {@macro dart_core_check}
   bool get isDartCoreFunction;
 
-  /// Return `true` if this type represents the type 'int' defined in the
-  /// dart:core library.
+  /// {@macro dart_core_check}
   bool get isDartCoreInt;
 
-  /// Return `true` if this type represents the type 'BigInt' defined in the
-  /// dart:core library.
+  /// {@macro dart_core_check}
   bool get isDartCoreBigInt;
 
-  /// Returns `true` if this type represents the type 'Iterable' defined in the
-  /// dart:core library.
+  /// {@macro dart_core_check}
   bool get isDartCoreIterable;
 
-  /// Returns `true` if this type represents the type 'List' defined in the
-  /// dart:core library.
+  /// {@macro dart_core_check}
   bool get isDartCoreList;
 
-  /// Returns `true` if this type represents the type 'Map' defined in the
-  /// dart:core library.
+  /// {@macro dart_core_check}
   bool get isDartCoreMap;
 
-  /// Return `true` if this type represents the type 'Null' defined in the
-  /// dart:core library.
+  /// {@macro dart_core_check}
   bool get isDartCoreNull;
 
-  /// Return `true` if this type represents the type 'num' defined in the
-  /// dart:core library.
+  /// {@macro dart_core_check}
   bool get isDartCoreNum;
 
-  /// Return `true` if this type represents the type `Object` defined in the
-  /// dart:core library.
+  /// {@macro dart_core_check}
   bool get isDartCoreObject;
 
-  /// Return `true` if this type represents the type 'Record' defined in the
-  /// dart:core library.
+  /// {@macro dart_core_check}
   bool get isDartCoreRecord;
 
-  /// Returns `true` if this type represents the type 'Set' defined in the
-  /// dart:core library.
+  /// {@macro dart_core_check}
   bool get isDartCoreSet;
 
-  /// Return `true` if this type represents the type 'String' defined in the
-  /// dart:core library.
+  /// {@macro dart_core_check}
   bool get isDartCoreString;
 
-  /// Returns `true` if this type represents the type 'Symbol' defined in the
-  /// dart:core library.
+  /// {@macro dart_core_check}
   bool get isDartCoreSymbol;
 
-  /// Return `true` if this type represents the type 'Type' defined in the
-  /// dart:core library.
+  /// {@macro dart_core_check}
   bool get isDartCoreType;
 
-  /// Return `true` if this type represents the type 'DateTime' defined in the
-  /// dart:core library.
+  /// {@macro dart_core_check}
   bool get isDartCoreDateTime;
 
+  /// Returns a copy of this type with the specified nullability.
   DartType withNullability(bool isNullable);
 }
 
+/// {@template parameterized_type}
+/// Represents a type that can be parameterized with type arguments.
+///
+/// Examples include generic classes like List<T> and Map<K,V>.
+/// {@endtemplate}
 abstract class ParameterizedType extends DartType {
+  /// The list of type arguments for this parameterized type.
   List<DartType> get typeArguments;
 }
 
-// could be a type alias or a interface type
+/// {@template named_dart_type}
+/// Represents a Dart type that has a name.
+///
+/// This could be a type alias or an interface type.
+/// {@endtemplate}
 abstract class NamedDartType extends ParameterizedType {
+  /// The name of this type.
   @override
   String get name;
 
+  /// The resolver used to resolve this type.
   ResolverImpl get resolver;
 
+  /// The type arguments applied to this type.
   @override
   List<DartType> get typeArguments;
 
+  /// Reference to the declaration of this type.
   DeclarationRef get declarationRef;
 
   /// then identifier that points to declaration of this type
   String get identifier;
 
+  /// Determines if this type is exactly the same as [other].
   bool isExactly(DartType other);
 }
 
+/// {@template type_impl}
+/// Base implementation of the [DartType] interface.
+///
+/// Provides default implementations for many methods.
+/// {@endtemplate}
 abstract class TypeImpl extends DartType {
+  /// Whether this type is nullable.
   @override
   final bool isNullable;
 
+  /// Creates a new [TypeImpl] with the specified nullability.
   const TypeImpl({required this.isNullable});
 
   @override
@@ -242,12 +278,20 @@ abstract class TypeImpl extends DartType {
   String? get name => null;
 }
 
+/// {@template non_element_type}
+/// Represents a type that is not associated with an element in the source code.
+///
+/// Examples include special types like void, dynamic, and Never.
+/// {@endtemplate}
 abstract class NonElementType extends TypeImpl {
+  /// Creates a new [NonElementType] with the given name and nullability.
   const NonElementType(this.name, {required super.isNullable});
 
+  /// Non-element types don't have an associated element.
   @override
   Null get element => null;
 
+  /// The name of this non-element type.
   @override
   final String name;
 
@@ -265,588 +309,70 @@ abstract class NonElementType extends TypeImpl {
   NonElementType withNullability(bool isNullable) => this;
 }
 
-class VoidType extends NonElementType {
-  const VoidType._() : super('void', isNullable: false);
-
-  static const VoidType instance = VoidType._();
-
-  @override
-  bool get isVoid => true;
-}
-
-class DynamicType extends NonElementType {
-  const DynamicType._() : super('dynamic', isNullable: true);
-
-  static const DynamicType instance = DynamicType._();
-
-  @override
-  bool get isDynamic => true;
-}
-
-class NeverType extends NonElementType {
-  const NeverType._() : super('Never', isNullable: false);
-
-  static const NeverType instance = NeverType._();
-
-  @override
-  bool get isNever => true;
-}
-
-class InvalidType extends NonElementType {
-  const InvalidType._() : super('Invalid', isNullable: false);
-
-  static const InvalidType instance = InvalidType._();
-
-  @override
-  bool get isInvalid => true;
-}
-
-class UnknownInferredType extends NonElementType {
-  const UnknownInferredType._() : super('UnknownInferred', isNullable: false);
-
-  static const UnknownInferredType instance = UnknownInferredType._();
-}
-
+/// {@template interface_type}
+/// Represents a class, mixin, or interface type in Dart.
+///
+/// Provides access to the type's members, interfaces, and inheritance hierarchy.
+/// {@endtemplate}
 abstract class InterfaceType extends NamedDartType {
+  /// The element that declares this interface type.
   @override
   InterfaceElement get element;
 
+  /// The list of interfaces implemented by this type.
   List<NamedDartType> get interfaces;
 
+  /// The list of mixins applied to this type.
   List<NamedDartType> get mixins;
 
+  /// The super type of this interface type, or null if it's Object.
   NamedDartType? get superType;
 
+  /// All direct and indirect supertypes of this interface type.
   List<NamedDartType> get allSupertypes;
 
+  /// Returns the method with the given [name], or null if not found.
   MethodElement? getMethod(String name);
 
+  /// Returns the field with the given [name], or null if not found.
   FieldElement? getField(String name);
 
+  /// Returns the constructor with the given [name], or null if not found.
   ConstructorElement? getConstructor(String name);
 
+  /// Returns true if this type has a method with the given [name].
   bool hasMethod(String name);
 
+  /// Returns true if this type has a property accessor with the given [name].
   bool hasPropertyAccessor(String name);
 
+  /// Returns true if this type has a field with the given [name].
   bool hasField(String name);
 
+  /// Returns true if this type has a constructor with the given [name].
   bool hasConstructor(String name);
 }
 
-class InterfaceTypeImpl extends TypeImpl implements InterfaceType {
-  @override
-  String get identifier => '$name@${declarationRef.srcId}';
-
-  @override
-  final ResolverImpl resolver;
-
-  @override
-  final List<DartType> typeArguments;
-
-  @override
-  final String name;
-
-  @override
-  final DeclarationRef declarationRef;
-
-  InterfaceTypeImpl(
-    this.name,
-    this.declarationRef,
-    this.resolver, {
-    super.isNullable = false,
-    this.typeArguments = const [],
-    InterfaceElement? element,
-  }) : _element = element;
-
-  String get _srcName => declarationRef.srcUri.toString();
-
-  @override
-  bool get isDartCoreBool => name == 'bool' && _srcName == CoreTypeSource.coreBool;
-
-  @override
-  bool get isDartCoreDouble => name == 'double' && _srcName == CoreTypeSource.coreDouble;
-
-  @override
-  bool get isDartCoreEnum => name == 'Enum' && _srcName == CoreTypeSource.coreEnum;
-
-  @override
-  bool get isDartCoreFunction => name == 'Function' && _srcName == CoreTypeSource.coreFunction;
-
-  @override
-  bool get isDartCoreInt => name == 'int' && _srcName == CoreTypeSource.coreInt;
-
-  @override
-  bool get isDartCoreNum => name == 'num' && _srcName == CoreTypeSource.coreNum;
-
-  @override
-  bool get isDartCoreIterable => name == 'Iterable' && _srcName == CoreTypeSource.coreIterable;
-
-  @override
-  bool get isDartCoreList => name == 'List' && _srcName == CoreTypeSource.coreList;
-
-  @override
-  bool get isDartCoreMap => name == 'Map' && _srcName == CoreTypeSource.coreMap;
-
-  @override
-  bool get isDartCoreNull => name == 'Null' && _srcName == CoreTypeSource.coreNull;
-
-  @override
-  bool get isDartCoreObject => name == 'Object' && _srcName == CoreTypeSource.coreObject;
-
-  @override
-  bool get isDartCoreRecord => name == 'Record' && _srcName == CoreTypeSource.coreRecord;
-
-  @override
-  bool get isDartCoreSet => name == 'Set' && _srcName == CoreTypeSource.coreSet;
-
-  @override
-  bool get isDartCoreString => name == 'String' && _srcName == CoreTypeSource.coreString;
-
-  @override
-  bool get isDartCoreSymbol => name == 'Symbol' && _srcName == CoreTypeSource.coreSymbol;
-
-  @override
-  bool get isDartCoreType => name == 'Type' && _srcName == CoreTypeSource.coreType;
-
-  @override
-  bool get isDartAsyncFuture => name == 'Future' && _srcName == CoreTypeSource.asyncFuture;
-
-  @override
-  bool get isDartAsyncFutureOr => name == 'FutureOr' && _srcName == CoreTypeSource.asyncFutureOr;
-
-  @override
-  bool get isDartAsyncStream => name == 'Stream' && _srcName == CoreTypeSource.asyncStream;
-
-  @override
-  bool get isDartCoreBigInt => name == 'BigInt' && _srcName == CoreTypeSource.coreBigInt;
-
-  @override
-  bool get isDartCoreDateTime => name == 'DateTime' && _srcName == CoreTypeSource.coreDateTime;
-
-  @override
-  String toString() {
-    final buffer = StringBuffer();
-    buffer.write(name);
-    if (typeArguments.isNotEmpty) {
-      buffer.write('<');
-      buffer.write(typeArguments.map((e) => e.toString()).join(', '));
-      buffer.write('>');
-    }
-    if (isNullable) {
-      buffer.write('?');
-    }
-    return buffer.toString();
-  }
-
-  @override
-  InterfaceTypeImpl withNullability(bool isNullable) {
-    if (this.isNullable == isNullable) {
-      return this;
-    }
-    return InterfaceTypeImpl(name, declarationRef, resolver, isNullable: isNullable, typeArguments: typeArguments);
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is InterfaceTypeImpl &&
-          runtimeType == other.runtimeType &&
-          name == other.name &&
-          declarationRef.srcId == other.declarationRef.srcId &&
-          const ListEquality().equals(typeArguments, other.typeArguments);
-
-  @override
-  int get hashCode => name.hashCode ^ declarationRef.srcId.hashCode ^ const ListEquality().hash(typeArguments);
-
-  @override
-  bool isExactly(DartType other) {
-    if (other is NamedDartType) {
-      return name == other.name && declarationRef.srcId == other.declarationRef.srcId;
-    }
-    return false;
-  }
-
-  InterfaceElement? _element;
-
-  InterfaceElement _resolveElement() {
-    final ele = resolver.elementOf(this);
-    if (ele is! InterfaceElement) {
-      throw Exception('Element of $this (${ele.runtimeType}) is not an InterfaceElement');
-    }
-    return ele;
-  }
-
-  @override
-  InterfaceElement get element => _element ??= _resolveElement();
-
-  @override
-  List<NamedDartType> get allSupertypes => element.allSupertypes;
-
-  @override
-  List<NamedDartType> get interfaces => element.interfaces;
-
-  @override
-  List<NamedDartType> get mixins => element.mixins;
-
-  @override
-  NamedDartType? get superType => element.superType;
-
-  @override
-  ConstructorElement? getConstructor(String name) {
-    return element.getConstructor(name);
-  }
-
-  @override
-  FieldElement? getField(String name) {
-    return element.getField(name);
-  }
-
-  @override
-  MethodElement? getMethod(String name) {
-    return element.getMethod(name);
-  }
-
-  @override
-  bool hasConstructor(String name) {
-    return element.hasConstructor(name);
-  }
-
-  @override
-  bool hasField(String name) {
-    return element.hasField(name);
-  }
-
-  @override
-  bool hasMethod(String name) {
-    return element.hasMethod(name);
-  }
-
-  @override
-  bool hasPropertyAccessor(String name) {
-    return element.hasPropertyAccessor(name);
-  }
-}
-
+/// {@template type_alias_type}
+/// Represents a type alias defined using the `typedef` keyword.
+///
+/// Type aliases provide alternative names for existing types.
+/// {@endtemplate}
 abstract class TypeAliasType extends NamedDartType {
+  /// The element that declares this type alias.
   @override
   TypeAliasElement get element;
 }
 
-class TypeAliasTypeImpl extends TypeImpl implements TypeAliasType {
-  @override
-  final List<DartType> typeArguments;
-
-  @override
-  final ResolverImpl resolver;
-
-  @override
-  final String name;
-
-  @override
-  final DeclarationRef declarationRef;
-
-  TypeAliasTypeImpl(
-    this.name,
-    this.declarationRef,
-    this.resolver, {
-    super.isNullable = false,
-    this.typeArguments = const [],
-  });
-
-  @override
-  TypeAliasElement get element => _element ??= _resolveElement();
-
-  TypeAliasElement? _element;
-
-  TypeAliasElement _resolveElement() {
-    final ele = resolver.elementOf(this);
-    if (ele is! TypeAliasElement) {
-      throw Exception('Element of $this is not a TypeAliasElement');
-    }
-    return ele;
-  }
-
-  @override
-  String get identifier => '$name@${declarationRef.srcId}';
-
-  @override
-  bool isExactly(DartType other) {
-    if (other is TypeAliasTypeImpl) {
-      return name == other.name && declarationRef.srcId == other.declarationRef.srcId;
-    }
-    return false;
-  }
-
-  @override
-  DartType withNullability(bool isNullable) {
-    if (this.isNullable == isNullable) {
-      return this;
-    }
-    return TypeAliasTypeImpl(name, declarationRef, resolver, isNullable: isNullable, typeArguments: typeArguments);
-  }
-}
-
-class FunctionType extends TypeImpl {
-  final List<ParameterElement> parameters;
-  final List<TypeParameterType> typeParameters;
-  final DartType returnType;
-
-  FunctionType({
-    required super.isNullable,
-    required this.parameters,
-    this.typeParameters = const [],
-    required this.returnType,
-  });
-
-  @override
-  FunctionType withNullability(bool isNullable) {
-    if (this.isNullable == isNullable) {
-      return this;
-    }
-    return FunctionType(
-      isNullable: isNullable,
-      parameters: parameters,
-      typeParameters: typeParameters,
-      returnType: returnType,
-    );
-  }
-
-  @override
-  String toString() {
-    final requiredPositionalParams = parameters.where((p) => p.isRequiredPositional);
-    final optionalPositionalParams = parameters.where((p) => p.isOptionalPositional);
-    final namedParams = parameters.where((p) => p.isNamed);
-
-    final buffer = StringBuffer();
-    if (returnType != DartType.neverType) {
-      buffer.write('$returnType ');
-    }
-    if (typeParameters.isNotEmpty) {
-      buffer.write('<');
-      buffer.write(typeParameters.toString());
-      buffer.write('>');
-    }
-    buffer.write('Function');
-    if (parameters.isNotEmpty) {
-      buffer.write('(');
-      if (requiredPositionalParams.isNotEmpty) {
-        buffer.write(requiredPositionalParams.map((e) => '${e.type} ${e.name}').join(', '));
-      }
-      if (optionalPositionalParams.isNotEmpty) {
-        if (requiredPositionalParams.isNotEmpty) {
-          buffer.write(', ');
-        }
-        buffer.write('[');
-        buffer.write(optionalPositionalParams.map((e) => '${e.type} ${e.name}').join(', '));
-        buffer.write(']');
-      }
-      if (namedParams.isNotEmpty) {
-        if (requiredPositionalParams.isNotEmpty || optionalPositionalParams.isNotEmpty) {
-          buffer.write(', ');
-        }
-        buffer.write('{');
-        buffer.write(namedParams.map((e) => '${e.type} ${e.name}').join(', '));
-        buffer.write('}');
-      }
-      buffer.write(')');
-    }
-    if (isNullable) {
-      buffer.write('?');
-    }
-    return buffer.toString();
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is FunctionType &&
-          runtimeType == other.runtimeType &&
-          const ListEquality().equals(parameters, other.parameters) &&
-          const ListEquality().equals(typeParameters, other.typeParameters) &&
-          returnType == other.returnType;
-
-  @override
-  int get hashCode =>
-      const ListEquality().hash(parameters) ^ const ListEquality().hash(typeParameters) ^ returnType.hashCode;
-
-  Map<String, DartType> get namedParameterTypes {
-    Map<String, DartType> types = <String, DartType>{};
-    for (final parameter in parameters) {
-      if (parameter.isNamed && parameter.isRequiredNamed) {
-        types[parameter.name] = parameter.type;
-      }
-    }
-    return types;
-  }
-
-  List<DartType> get normalParameterTypes {
-    List<DartType> types = <DartType>[];
-    for (final parameter in parameters) {
-      if (parameter.isRequired) {
-        types.add(parameter.type);
-      }
-    }
-    return types;
-  }
-
-  List<DartType> get optionalParameterTypes {
-    List<DartType> types = <DartType>[];
-    for (final parameter in parameters) {
-      if (parameter.isOptional) {
-        types.add(parameter.type);
-      }
-    }
-    return types;
-  }
-
-  List<String> get normalParameterNames => parameters.where((p) => p.isRequiredPositional).map((p) => p.name).toList();
-
-  List<String> get optionalParameterNames =>
-      parameters.where((p) => p.isOptionalPositional).map((p) => p.name).toList();
-
-  @override
-  Null get element => null;
-
-  FunctionType instantiate(List<DartType> argumentTypes) {
-    if (argumentTypes.length != typeParameters.length) {
-      throw ArgumentError(
-        "argumentTypes.length (${argumentTypes.length}) != "
-        "typeParameters.length (${typeParameters.length})",
-      );
-    }
-    if (argumentTypes.isEmpty) {
-      return this;
-    }
-
-    var substitution = Substitution.fromPairs(typeParameters, argumentTypes);
-
-    final newParams = List.of(parameters);
-    for (final param in parameters.whereType<ParameterElementImpl>()) {
-      param.type = substitution.substituteType(param.type);
-    }
-
-    return FunctionType(
-      returnType: substitution.substituteType(returnType),
-      typeParameters: const [],
-      parameters: newParams,
-      isNullable: isNullable,
-    );
-  }
-}
-
-class TypeParameterType extends TypeImpl {
-  final DartType bound;
-
-  /// todo: investigate if implemented this is needed in the const context
-  /// for now it always returns null
-  final DartType? promotedBound;
-
-  @override
-  final String name;
-
-  TypeParameterType(this.name, {required this.bound, super.isNullable = false, this.promotedBound});
-
-  @override
-  TypeParameterType withNullability(bool isNullable) {
-    if (this.isNullable == isNullable) {
-      return this;
-    }
-    return TypeParameterType(name, bound: bound, isNullable: isNullable);
-  }
-
-  @override
-  String toString() {
-    final buffer = StringBuffer();
-    buffer.write(name);
-    if (bound != DartType.dynamicType) {
-      buffer.write(' extends ');
-      buffer.write(bound.toString());
-    }
-    if (isNullable) {
-      buffer.write('?');
-    }
-    return buffer.toString();
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is TypeParameterType && runtimeType == other.runtimeType && bound == other.bound && name == other.name;
-
-  @override
-  int get hashCode => bound.hashCode;
-
-  @override
-  Null get element => null;
-}
-
-class RecordType extends TypeImpl {
-  List<RecordTypeNamedField> namedFields;
-  List<RecordTypePositionalField> positionalFields;
-
-  RecordType({required this.positionalFields, required this.namedFields, required super.isNullable});
-
-  @override
-  String toString() {
-    final buffer = StringBuffer();
-    buffer.write('(');
-    if (positionalFields.isNotEmpty) {
-      buffer.write(positionalFields.mapIndexed((i, e) => '${e.type} ${r'$'}${i + 1}').join(', '));
-    }
-    if (namedFields.isNotEmpty) {
-      if (positionalFields.isNotEmpty) {
-        buffer.write(', ');
-      }
-      buffer.write('{');
-      buffer.write(namedFields.map((e) => '${e.type} ${e.name}').join(', '));
-      buffer.write('}');
-    }
-    buffer.write(')');
-    if (isNullable) {
-      buffer.write('?');
-    }
-    return buffer.toString();
-  }
-
-  @override
-  RecordType withNullability(bool isNullable) {
-    if (this.isNullable == isNullable) {
-      return this;
-    }
-    return RecordType(positionalFields: positionalFields, namedFields: namedFields, isNullable: isNullable);
-  }
-
-  @override
-  Element? get element => null;
-}
-
+/// {@template record_type_field}
+/// Represents a field in a record type.
+///
+/// Record types in Dart are composite types with named or positional fields.
+/// {@endtemplate}
 abstract class RecordTypeField {
   /// The type of the field.
   DartType get type;
 
+  /// Creates a new record type field.
   const RecordTypeField();
-}
-
-/// A named field in a [RecordType].
-///
-/// Clients may not extend, implement or mix-in this class.
-class RecordTypeNamedField implements RecordTypeField {
-  /// The name of the field.
-  final String name;
-
-  @override
-  final DartType type;
-
-  RecordTypeNamedField(this.name, this.type);
-}
-
-/// A positional field in a [RecordType].
-///
-/// Clients may not extend, implement or mix-in this class.
-class RecordTypePositionalField implements RecordTypeField {
-  @override
-  final DartType type;
-
-  const RecordTypePositionalField(this.type);
 }

@@ -1,7 +1,3 @@
-// Copyright (c) 2017, the Dart project authors.  Please see the AUTHORS file
-// for details. All rights reserved. Use of this source code is governed by a
-// BSD-style license that can be found in the LICENSE file.
-
 import 'dart:typed_data';
 
 import 'package:analyzer/dart/ast/ast.dart';
@@ -11,14 +7,29 @@ import 'package:xxh3/xxh3.dart';
 
 import '../element/element.dart';
 
-/// The abstractions are borrowed from the source_gen package
+/// {@template type_checker}
 /// An abstraction around doing static type checking at compile/build time.
+///
+/// The abstractions are borrowed from the source_gen package.
+/// This class provides methods to check type compatibility, examine annotations,
+/// and perform other type-related operations.
+/// {@endtemplate}
 abstract class TypeChecker {
   const TypeChecker._();
 
-  /// Create a new [TypeChecker] backed by a [DartType].
+  /// {@template type_checker_factory}
+  /// Creates a new [TypeChecker] that can check against the given type.
+  /// {@endtemplate}
+
+  /// {@macro type_checker_factory}
+  ///
+  /// This factory creates a checker based on a [NamedDartType] reference.
   factory TypeChecker.fromTypeRef(NamedDartType type) = _RefTypeChecker;
 
+  /// {@macro type_checker_factory}
+  ///
+  /// This factory creates a checker based on a URL string.
+  ///
   /// The expected format of the url is either a direct package url to
   /// the source file declaring the type, or a dart core type.
   /// For example:
@@ -27,20 +38,17 @@ abstract class TypeChecker {
   /// - `dart:core#int` 'int' which will be normalized to `dart:core/int.dart`
   factory TypeChecker.fromUrl(String url) = _UriTypeChecker;
 
+  /// {@macro type_checker_factory}
+  ///
   /// Creates a new [TypeChecker] that delegates to other [checkers].
-  ///
-  /// This implementation will return `true` for type checks if _any_ of the
-  /// provided type checkers return true, which is useful for deprecating an
-  /// API:
-  /// ```dart
-  /// const $Foo = const TypeChecker.fromRuntime(Foo);
-  /// const $Bar = const TypeChecker.fromRuntime(Bar);
-  ///
-  /// // Used until $Foo is deleted.
-  /// const $FooOrBar = const TypeChecker.forAny(const [$Foo, $Bar]);
-  /// ```
   factory TypeChecker.any(Iterable<TypeChecker> checkers) = _AnyChecker;
 
+  /// {@template annotation_check}
+  /// Examines the annotations on [element] related to this type checker.
+  /// {@endtemplate}
+
+  /// {@macro annotation_check}
+  ///
   /// Returns the first annotation on [element] that is assignable to this type.
   ElementAnnotation? firstAnnotationOf(Element element) {
     if (element.metadata.isEmpty) {
@@ -50,11 +58,13 @@ abstract class TypeChecker {
     return results.isEmpty ? null : results.first;
   }
 
-  /// Returns if a constant annotating [element] is assignable to this type.
+  /// {@macro annotation_check}
   ///
-  /// Throws on unresolved annotations unless [throwOnUnresolved] is `false`.
+  /// Returns if a constant annotating [element] is assignable to this type.
   bool hasAnnotationOf(Element element) => firstAnnotationOf(element) != null;
 
+  /// {@macro annotation_check}
+  ///
   /// Returns the first constant annotating [element] that is exactly this type.
   ElementAnnotation? firstAnnotationOfExact(Element element) {
     if (element.metadata.isEmpty) {
@@ -64,9 +74,13 @@ abstract class TypeChecker {
     return results.isEmpty ? null : results.first;
   }
 
+  /// {@macro annotation_check}
+  ///
   /// Returns if a constant annotating [element] is exactly this type.
   bool hasAnnotationOfExact(Element element) => firstAnnotationOfExact(element) != null;
 
+  /// {@macro annotation_check}
+  ///
   /// Returns annotating constants on [element] assignable to this type.
   Iterable<ElementAnnotation> annotationsOf(Element element) => _annotationsWhere(element, (ref) {
     return isAssignableFromType(ref);
@@ -81,17 +95,33 @@ abstract class TypeChecker {
     }
   }
 
+  /// {@macro annotation_check}
+  ///
   /// Returns annotating constants on [element] of exactly this type.
   Iterable<ElementAnnotation> annotationsOfExact(Element element) => _annotationsWhere(element, isExactlyType);
 
+  /// {@template type_assignability}
+  /// Checks type assignability according to Dart's type system rules.
+  /// {@endtemplate}
+
+  /// {@macro type_assignability}
+  ///
   /// Returns `true` if the type of [element] can be assigned to this type.
   bool isAssignableFrom(Element element) {
     return isExactly(element) || (element is InterfaceElement && isAssignableFromType(element.thisType));
   }
 
+  /// {@macro type_assignability}
+  ///
   /// Returns `true` if [typeRef] can be assigned to this type.
   bool isAssignableFromType(DartType typeRef);
 
+  /// {@template type_equality}
+  /// Checks if types are exactly the same.
+  /// {@endtemplate}
+
+  /// {@macro type_equality}
+  ///
   /// Returns `true` if representing the exact same class as [element].
   bool isExactly(Element element) {
     if (element is InterfaceElement) {
@@ -100,12 +130,17 @@ abstract class TypeChecker {
     return false;
   }
 
+  /// {@macro type_equality}
+  ///
   /// Returns `true` if representing the exact same type as [typeRef].
   ///
-  /// This will always return false for types without a backingclass such as
+  /// This will always return false for types without a backing class such as
   /// `void` or function types.
   bool isExactlyType(DartType typeRef);
 
+  /// Finds a matching type or supertype for the given [typeRef].
+  ///
+  /// Returns the matching type if found, otherwise null.
   NamedDartType? matchingTypeOrSupertype(DartType typeRef);
 
   /// Returns `true` if representing a super class of [element].
@@ -187,7 +222,6 @@ class _UriTypeChecker extends _TypeCheckerImpl {
   }
 }
 
-// Checks a static type against another static type;
 abstract class _TypeCheckerImpl extends TypeChecker {
   _TypeCheckerImpl() : super._();
 

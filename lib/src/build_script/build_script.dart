@@ -14,13 +14,33 @@ import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/type/type.dart';
 import 'package:path/path.dart' as p;
 import 'compile.dart' as compile;
-import 'files.dart';
+import 'paths.dart';
 
+/// Import path for lean_builder annotation classes.
 const String _leanAnnotations = 'package:lean_builder/src/build_script/annotations.dart';
+
+/// Import path for the Generator base class.
 const String _leanGenerator = 'package:lean_builder/src/builder/generator/generator.dart';
+
+/// Import path for the Builder base class.
 const String _leanBuilders = 'package:lean_builder/src/builder/builder.dart';
+
+/// Import path for parsed builder entry classes.
 const String _parsedBuilderEntry = 'package:lean_builder/src/build_script/parsed_builder_entry.dart';
 
+/// Prepares the build script by generating code based on the provided assets.
+///
+/// This function analyzes the input assets to find builder and generator
+/// annotations, then generates a Dart script that will use these builders
+/// during the build process.
+///
+/// If no changes are detected and a script already exists, it returns the
+/// path to the existing script. Otherwise, it generates a new script,
+/// formats it, and invalidates any existing compiled executable.
+///
+/// @param assets Set of assets to analyze for annotations
+/// @param resolver Resolver to use for parsing annotations
+/// @return Path to the build script file, or null if no builders were found
 String? prepareBuildScript(Set<ProcessableAsset> assets, ResolverImpl resolver) {
   final scriptFile = File(scriptOutput);
 
@@ -72,6 +92,15 @@ String? prepareBuildScript(Set<ProcessableAsset> assets, ResolverImpl resolver) 
   return scriptFile.path;
 }
 
+/// Applies overrides to builder definitions and returns the merged result.
+///
+/// For each builder definition, if there's a matching override with the
+/// same key, it merges the override into the definition. Otherwise, it
+/// keeps the original definition unchanged.
+///
+/// @param entries Original builder definitions
+/// @param overrides Builder overrides to apply
+/// @return List of builder definitions with overrides applied
 List<BuilderDefinitionEntry> applyOverrides(List<BuilderDefinitionEntry> entries, List<BuilderOverride> overrides) {
   if (overrides.isEmpty) return entries;
 
@@ -88,6 +117,16 @@ List<BuilderDefinitionEntry> applyOverrides(List<BuilderDefinitionEntry> entries
   return finalEntries;
 }
 
+/// Parses a set of assets to extract builder definitions and overrides.
+///
+/// Analyzes the provided assets looking for classes annotated with
+/// LeanGenerator or LeanBuilder, and variables annotated with
+/// LeanBuilderOverrides. Validates that annotated classes extend
+/// the appropriate base classes and that overrides are correctly defined.
+///
+/// @param assets Set of assets to analyze
+/// @param resolver Resolver to use for parsing annotations
+/// @return Tuple containing a list of builder definitions and a list of overrides
 (List<BuilderDefinitionEntry>, List<BuilderOverride>) parseBuilderEntries(Set<Asset> assets, ResolverImpl resolver) {
   final parsedEntries = <BuilderDefinitionEntry>[];
   final parsedOverrides = <BuilderOverride>[];
@@ -178,6 +217,19 @@ List<BuilderDefinitionEntry> applyOverrides(List<BuilderDefinitionEntry> entries
   return (parsedEntries, parsedOverrides);
 }
 
+/// Builds a BuilderDefinitionEntry from a class element and its annotation.
+///
+/// Extracts configuration values from the annotation and validates that
+/// required fields are present depending on the builder type. Also processes
+/// type annotations referenced by the builder and records them for runtime
+/// registration.
+///
+/// @param asset The asset containing the annotated class
+/// @param constObj The annotation constant object
+/// @param resolver Resolver to use for type checking
+/// @param element The annotated class element
+/// @param builderType The type of builder being created
+/// @return A complete BuilderDefinitionEntry
 BuilderDefinitionEntry _buildEntry(
   Asset asset,
   ConstObject constObj,
@@ -245,6 +297,14 @@ BuilderDefinitionEntry _buildEntry(
   return builderDef;
 }
 
+/// Resolves an asset URI to an import string for the build script.
+///
+/// Converts asset URIs to relative paths from the build script location,
+/// and returns external package URIs as strings. For dart:core, returns null
+/// since it's implicitly imported.
+///
+/// @param uri The URI to resolve
+/// @return A string representation of the import path, or null for dart:core
 String? _resolveImport(Uri uri) {
   if (uri.scheme == 'dart' && uri.pathSegments.firstOrNull == 'core') {
     return null;

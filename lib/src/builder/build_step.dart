@@ -10,7 +10,7 @@ import 'package:glob/glob.dart';
 import 'package:lean_builder/builder.dart';
 import 'package:lean_builder/src/asset/asset.dart' show Asset;
 import 'package:lean_builder/src/asset/assets_reader.dart';
-import 'package:lean_builder/src/build_script/files.dart';
+import 'package:lean_builder/src/build_script/paths.dart';
 import 'package:path/path.dart' as p;
 
 /// some of the abstractions are borrowed from the build package
