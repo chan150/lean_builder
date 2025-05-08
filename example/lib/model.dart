@@ -21,7 +21,8 @@ class Address {
 
   Address(this.street, this.city);
 
-  factory Address.fromJson(Map<String, dynamic> json) => _$AddressFromJson(json);
+  factory Address.fromJson(Map<String, dynamic> json) =>
+      _$AddressFromJson(json);
 }
 
 // hello

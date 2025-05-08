@@ -19,7 +19,9 @@ class SerializableGenerator extends GeneratorForAnnotatedClass<Serializable> {
       throw Exception('Class ${element.name} must have a default constructor');
     }
 
-    b.writeln('${element.name} _\$${element.name}FromJson(Map<String, dynamic> json) => ${element.name}(');
+    b.writeln(
+      '${element.name} _\$${element.name}FromJson(Map<String, dynamic> json) => ${element.name}(',
+    );
     for (final param in constructor.parameters) {
       final type = param.type;
 
@@ -30,7 +32,9 @@ class SerializableGenerator extends GeneratorForAnnotatedClass<Serializable> {
           type.isDartCoreDouble ||
           type.isDartCoreString ||
           type.isDartCoreNum) {
-        b.writeln('json[\'${param.name}\'] as ${param.type} ${param.isOptional ? '?' : ''},');
+        b.writeln(
+          'json[\'${param.name}\'] as ${param.type} ${param.isOptional ? '?' : ''},',
+        );
       } else if (type.isDartCoreList) {
         b.writeln(
           '  (json[\'${param.name}\'] as List<dynamic>).cast<${(type as NamedDartType).typeArguments.first}>(),',
@@ -40,7 +44,9 @@ class SerializableGenerator extends GeneratorForAnnotatedClass<Serializable> {
           '  (json[\'${param.name}\'] as Map<String, dynamic>).map((k, v) => MapEntry(k, ${type.element?.name}.fromJson(v))),',
         );
       } else {
-        b.writeln(' ${type.element?.name}.fromJson(json[\'${param.name}\'] as Map<String, dynamic>),');
+        b.writeln(
+          ' ${type.element?.name}.fromJson(json[\'${param.name}\'] as Map<String, dynamic>),',
+        );
       }
     }
     b.writeln(');');

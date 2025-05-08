@@ -27,7 +27,12 @@ abstract class BaseCommand<T> extends Command<T> {
           'Run in development mode, this will use JIT compilation and delete all build outputs before each run.'
           'When used with `watch` command, it will activate hot reload mode.',
     );
-    argParser.addFlag('verbose', abbr: 'v', negatable: false, help: 'Enable verbose logging.');
+    argParser.addFlag(
+      'verbose',
+      abbr: 'v',
+      negatable: false,
+      help: 'Enable verbose logging.',
+    );
   }
 
   /// {@template base_command.prepare}
