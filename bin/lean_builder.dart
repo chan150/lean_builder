@@ -1,7 +1,6 @@
 import 'dart:io' show File, Directory, exit, Platform, Process, ProcessStartMode;
 import 'dart:isolate' show Isolate;
 
-import 'package:args/args.dart';
 import 'package:lean_builder/src/build_script/compile.dart';
 import 'package:lean_builder/src/build_script/paths.dart' as paths;
 import 'package:lean_builder/src/logger.dart';
