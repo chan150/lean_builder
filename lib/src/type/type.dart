@@ -1,8 +1,7 @@
-import 'package:collection/collection.dart'
-    show IterableExtension, ListEquality;
+import 'package:collection/collection.dart' show IterableExtension, ListEquality;
 import 'package:lean_builder/src/element/element.dart';
-import 'package:lean_builder/src/graph/declaration_ref.dart'
-    show DeclarationRef;
+import 'package:lean_builder/src/graph/declaration_ref.dart' show DeclarationRef;
+import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/type/substitution.dart';
 
@@ -51,8 +50,7 @@ abstract class DartType {
   static const InvalidType invalidType = InvalidType.instance;
 
   /// {@macro core_type_constant}
-  static const UnknownInferredType unknownInferredType =
-      UnknownInferredType.instance;
+  static const UnknownInferredType unknownInferredType = UnknownInferredType.instance;
 
   /// Return `true` if this type represents the type 'void'
   bool get isVoid;
@@ -139,6 +137,15 @@ abstract class DartType {
   /// {@macro dart_core_check}
   bool get isDartCoreDateTime;
 
+  /// Whether this type refers to an EnumElement.
+  bool get isEnum;
+
+  ///  Whether this type refers to a ClassElement.
+  bool get isClass;
+
+  /// Whether this type refers to a MixinElement.
+  bool get isMixin;
+
   /// Returns a copy of this type with the specified nullability.
   DartType withNullability(bool isNullable);
 }
@@ -164,7 +171,7 @@ abstract class NamedDartType extends ParameterizedType {
   String get name;
 
   /// The resolver used to resolve this type.
-  ResolverImpl get resolver;
+  Resolver get resolver;
 
   /// The type arguments applied to this type.
   @override
@@ -269,9 +276,16 @@ abstract class TypeImpl extends DartType {
   bool get isInvalid => false;
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is TypeImpl && runtimeType == other.runtimeType;
+  bool get isEnum => false;
+
+  @override
+  bool get isClass => false;
+
+  @override
+  bool get isMixin => false;
+
+  @override
+  bool operator ==(Object other) => identical(this, other) || other is TypeImpl && runtimeType == other.runtimeType;
 
   @override
   int get hashCode => 0;
@@ -302,10 +316,7 @@ abstract class NonElementType extends TypeImpl {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is NonElementType &&
-          runtimeType == other.runtimeType &&
-          name == other.name;
+      identical(this, other) || other is NonElementType && runtimeType == other.runtimeType && name == other.name;
 
   @override
   int get hashCode => name.hashCode;

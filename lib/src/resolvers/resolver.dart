@@ -11,6 +11,7 @@ import 'package:lean_builder/src/element/element.dart';
 import 'package:lean_builder/src/graph/assets_graph.dart';
 import 'package:lean_builder/src/graph/declaration_ref.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
+import 'package:lean_builder/src/resolvers/errors.dart';
 import 'package:lean_builder/src/resolvers/source_based_cache.dart';
 import 'package:collection/collection.dart' show IterableExtension;
 import 'package:lean_builder/src/resolvers/source_parser.dart';
@@ -79,11 +80,7 @@ abstract class Resolver {
   /// @param allowSyntaxErrors Whether to continue if syntax errors are encountered
   /// @return The resolved library element
   /// {@endtemplate}
-  LibraryElement resolveLibrary(
-    Asset src, {
-    bool preResolveTopLevelMetadata = false,
-    bool allowSyntaxErrors = false,
-  });
+  LibraryElement resolveLibrary(Asset src, {bool preResolveTopLevelMetadata = false, bool allowSyntaxErrors = false});
 
   /// {@template resolver.type_checker_of}
   /// Creates a type checker for the given type.
@@ -142,11 +139,7 @@ abstract class Resolver {
   /// @param importPrefix Optional import prefix for the identifier
   /// @return A reference to the declaration of the identifier
   /// {@endtemplate}
-  DeclarationRef getDeclarationRef(
-    String identifier,
-    Asset importingSrc, {
-    String? importPrefix,
-  });
+  DeclarationRef? getDeclarationRef(String identifier, Asset importingSrc, {String? importPrefix});
 
   /// {@template resolver.element_of}
   /// Gets the element represented by a type.
@@ -179,10 +172,7 @@ abstract class Resolver {
   /// @param elem The interface element to resolve methods for
   /// @param predicate Optional filter for which methods to resolve
   /// {@endtemplate}
-  void resolveMethods(
-    InterfaceElement elem, {
-    ElementPredicate<MethodDeclaration>? predicate,
-  });
+  void resolveMethods(InterfaceElement elem, {ElementPredicate<MethodDeclaration>? predicate});
 
   /// {@template resolver.resolve_fields}
   /// Resolves the fields of an interface element.
@@ -270,24 +260,21 @@ class ResolverImpl extends Resolver {
   /// This improves performance by avoiding re-parsing and re-resolving
   /// libraries that have already been processed.
   /// {@endtemplate}
-  final HashMap<String, LibraryElementImpl> _libraryCache =
-      HashMap<String, LibraryElementImpl>();
+  final HashMap<String, LibraryElementImpl> _libraryCache = HashMap<String, LibraryElementImpl>();
 
   /// {@template resolver_impl.type_checkers_cache}
   /// Cache of type checkers by type name and package.
   ///
   /// This improves performance by reusing type checkers for the same types.
   /// {@endtemplate}
-  final HashMap<String, TypeChecker> _typeCheckersCache =
-      HashMap<String, TypeChecker>();
+  final HashMap<String, TypeChecker> _typeCheckersCache = HashMap<String, TypeChecker>();
 
   /// {@template resolver_impl.resolved_units_cache}
   /// Cache of resolved AST nodes by source and identifier.
   ///
   /// This improves performance by avoiding re-resolving the same nodes.
   /// {@endtemplate}
-  final SourceBasedCache<(LibraryElementImpl, AstNode, DeclarationRef)>
-  _resolvedUnitsCache =
+  final SourceBasedCache<(LibraryElementImpl, AstNode, DeclarationRef)> _resolvedUnitsCache =
       SourceBasedCache<(LibraryElementImpl, AstNode, DeclarationRef)>();
 
   /// {@template resolver_impl.resolved_type_refs}
@@ -295,16 +282,14 @@ class ResolverImpl extends Resolver {
   ///
   /// This improves performance by caching the element for a type reference.
   /// {@endtemplate}
-  final SourceBasedCache<Element> _resolvedTypeRefs =
-      SourceBasedCache<Element>();
+  final SourceBasedCache<Element> _resolvedTypeRefs = SourceBasedCache<Element>();
 
   /// {@template resolver_impl.evaluated_constants_cache}
   /// Cache of evaluated constant values.
   ///
   /// This improves performance by avoiding re-evaluating constants.
   /// {@endtemplate}
-  final SourceBasedCache<Constant> evaluatedConstantsCache =
-      SourceBasedCache<Constant>();
+  final SourceBasedCache<Constant> evaluatedConstantsCache = SourceBasedCache<Constant>();
 
   @override
   final PackageFileResolver fileResolver;
@@ -366,22 +351,14 @@ class ResolverImpl extends Resolver {
   }
 
   @override
-  LibraryElement resolveLibrary(
-    Asset src, {
-    bool preResolveTopLevelMetadata = false,
-    bool allowSyntaxErrors = false,
-  }) {
-    final LibraryElementImpl library = libraryFor(
-      src,
-      allowSyntaxErrors: allowSyntaxErrors,
-    );
+  LibraryElement resolveLibrary(Asset src, {bool preResolveTopLevelMetadata = false, bool allowSyntaxErrors = false}) {
+    final LibraryElementImpl library = libraryFor(src, allowSyntaxErrors: allowSyntaxErrors);
     final ElementBuilder visitor = ElementBuilder(
       this,
       library,
       preResolveTopLevelMetadata: preResolveTopLevelMetadata,
     );
-    for (final AnnotatedNode child
-        in library.compilationUnit.childEntities.whereType<AnnotatedNode>()) {
+    for (final AnnotatedNode child in library.compilationUnit.childEntities.whereType<AnnotatedNode>()) {
       if (child.metadata.isNotEmpty) {
         child.accept(visitor);
       }
@@ -395,22 +372,12 @@ class ResolverImpl extends Resolver {
     final Type type = T;
     if (_registeredTypesMap.containsKey(type)) {
       final String srcId = _registeredTypesMap[type]!;
-      final DeclarationRef? declarationRef = graph.lookupIdentifierByProvider(
-        type.toString(),
-        srcId,
-      );
+      final DeclarationRef? declarationRef = graph.lookupIdentifierByProvider(type.toString(), srcId);
       if (declarationRef == null) {
         throw Exception('Identifier ${type.toString()} not found in $srcId');
       }
-      assert(
-        declarationRef.type.representsInterfaceType,
-        '$type does not refer to a named type',
-      );
-      final InterfaceTypeImpl typeRef = InterfaceTypeImpl(
-        declarationRef.identifier,
-        declarationRef,
-        this,
-      );
+      assert(declarationRef.type.representsInterfaceType, '$type does not refer to a named type');
+      final InterfaceTypeImpl typeRef = InterfaceTypeImpl(declarationRef.identifier, declarationRef, this);
       return TypeChecker.fromTypeRef(typeRef);
     }
     throw Exception('Type $type not registered');
@@ -432,21 +399,14 @@ class ResolverImpl extends Resolver {
   NamedDartType getNamedType(String name, String packageUrl) {
     Uri uri = Uri.parse(packageUrl);
     if (uri.scheme != 'package' && uri.scheme != 'dart') {
-      throw Exception(
-        'Invalid package import: $packageUrl, must be a package or dart import',
-      );
+      throw Exception('Invalid package import: $packageUrl, must be a package or dart import');
     }
     if (uri.scheme == 'dart' && !packageUrl.endsWith('.dart')) {
       final Uri absoluteUri = fileResolver.resolveFileUri(uri);
       uri = fileResolver.toShortUri(absoluteUri);
     }
-    final String srcId = xxh3String(
-      Uint8List.fromList(uri.toString().codeUnits),
-    );
-    final DeclarationRef? declarationRef = graph.lookupIdentifierByProvider(
-      name,
-      srcId,
-    );
+    final String srcId = xxh3String(Uint8List.fromList(uri.toString().codeUnits));
+    final DeclarationRef? declarationRef = graph.lookupIdentifierByProvider(name, srcId);
     if (declarationRef == null) {
       throw Exception('Identifier $name not found in $packageUrl');
     }
@@ -466,25 +426,14 @@ class ResolverImpl extends Resolver {
   }
 
   @override
-  DeclarationRef getDeclarationRef(
-    String identifier,
-    Asset importingSrc, {
-    String? importPrefix,
-  }) {
-    return graph.getDeclarationRef(
-      identifier,
-      importingSrc,
-      importPrefix: importPrefix,
-    );
+  DeclarationRef? getDeclarationRef(String identifier, Asset importingSrc, {String? importPrefix}) {
+    return graph.getDeclarationRef(identifier, importingSrc, importPrefix: importPrefix);
   }
 
   @override
   Element? elementOf(DartType type) {
     if (type is NamedDartType) {
-      final CompoundKey key = _resolvedTypeRefs.keyFor(
-        type.declarationRef.srcId,
-        type.name,
-      );
+      final CompoundKey key = _resolvedTypeRefs.keyFor(type.declarationRef.srcId, type.name);
 
       if (_resolvedTypeRefs.contains(key)) {
         return _resolvedTypeRefs[key];
@@ -493,14 +442,8 @@ class ResolverImpl extends Resolver {
       importingLibrary ??= fileResolver.assetForUri(type.declarationRef.srcUri);
 
       final LibraryElementImpl importingLib = libraryFor(importingLibrary);
-      final IdentifierRef identifier = IdentifierRef(
-        type.name,
-        declarationRef: type.declarationRef,
-      );
-      final (LibraryElementImpl library, AstNode unit, _) = astNodeFor(
-        identifier,
-        importingLib,
-      );
+      final IdentifierRef identifier = IdentifierRef(type.name, declarationRef: type.declarationRef);
+      final (LibraryElementImpl library, AstNode unit, _) = astNodeFor(identifier, importingLib);
       final ElementBuilder visitor = ElementBuilder(this, library);
       unit.accept(visitor);
       final Element? element = library.getElement(type.name);
@@ -519,8 +462,7 @@ class ResolverImpl extends Resolver {
       if (element.superType != null) element.superType!,
       ...element.mixins,
       ...element.interfaces,
-      if (element is MixinElement)
-        ...(element as MixinElement).superclassConstraints,
+      if (element is MixinElement) ...(element as MixinElement).superclassConstraints,
     ];
 
     for (final NamedDartType type in thisLevelTypes) {
@@ -529,17 +471,14 @@ class ResolverImpl extends Resolver {
         superTypes.add(type as InterfaceType);
         final List<InterfaceType> subTypes = allSupertypesOf(supElement);
         superTypes.addAll(subTypes);
-      } else if (supElement is TypeAliasElement &&
-          supElement.aliasedType is NamedDartType) {
+      } else if (supElement is TypeAliasElement && supElement.aliasedType is NamedDartType) {
         // if it's a NamedDartType it should eventually point to an InterfaceType
         final InterfaceType? aliasedType = supElement.aliasedInterfaceType;
         if (aliasedType == null) {
           throw Exception('Type $type is not an interface type');
         }
         superTypes.add(aliasedType);
-        final List<InterfaceType> subTypes = allSupertypesOf(
-          aliasedType.element,
-        );
+        final List<InterfaceType> subTypes = allSupertypesOf(aliasedType.element);
         superTypes.addAll(subTypes);
       } else if (supElement != null) {
         throw Exception('Type $type is not an interface type');
@@ -552,10 +491,7 @@ class ResolverImpl extends Resolver {
   LibraryElementImpl libraryFor(Asset src, {bool allowSyntaxErrors = false}) {
     assert(src.uri.path.endsWith('.dart'), 'Asset $src is not a dart file');
     return _libraryCache.putIfAbsent(src.id, () {
-      final CompilationUnit unit = parser.parse(
-        src,
-        allowSyntaxErrors: allowSyntaxErrors,
-      );
+      final CompilationUnit unit = parser.parse(src, allowSyntaxErrors: allowSyntaxErrors);
       return LibraryElementImpl(this, unit, src: src);
     });
   }
@@ -570,32 +506,22 @@ class ResolverImpl extends Resolver {
   /// @param enclosingLibrary The library containing the reference
   /// @return A tuple of (library, AST node, declaration reference)
   /// {@endtemplate}
-  (LibraryElementImpl, AstNode, DeclarationRef) astNodeFor(
-    IdentifierRef identifier,
-    LibraryElement enclosingLibrary,
-  ) {
+  (LibraryElementImpl, AstNode, DeclarationRef) astNodeFor(IdentifierRef identifier, LibraryElement enclosingLibrary) {
     final Asset enclosingAsset = enclosingLibrary.src;
-    final CompoundKey cacheKey = _resolvedUnitsCache.keyFor(
-      enclosingAsset.id,
-      identifier.toString(),
-    );
+    final CompoundKey cacheKey = _resolvedUnitsCache.keyFor(enclosingAsset.id, identifier.toString());
     if (_resolvedUnitsCache.contains(cacheKey)) {
       return _resolvedUnitsCache[cacheKey]!;
     }
 
-    final DeclarationRef declarationRef =
+    final DeclarationRef? declarationRef =
         identifier.declarationRef ??
-        getDeclarationRef(
-          identifier.topLevelTarget,
-          enclosingAsset,
-          importPrefix: identifier.importPrefix,
-        );
+        getDeclarationRef(identifier.topLevelTarget, enclosingAsset, importPrefix: identifier.importPrefix);
+    if (declarationRef == null) {
+      throw IdentifierNotFoundError(identifier.topLevelTarget, identifier.importPrefix, enclosingAsset.shortUri);
+    }
 
     final Uri srcUri = uriForAsset(declarationRef.srcId);
-    final Asset assetFile = fileResolver.assetForUri(
-      srcUri,
-      relativeTo: enclosingAsset,
-    );
+    final Asset assetFile = fileResolver.assetForUri(srcUri, relativeTo: enclosingAsset);
 
     final LibraryElementImpl library = libraryFor(assetFile);
     final CompilationUnit compilationUnit = library.compilationUnit;
@@ -604,116 +530,57 @@ class ResolverImpl extends Resolver {
       final TopLevelVariableDeclaration unit = compilationUnit.declarations
           .whereType<TopLevelVariableDeclaration>()
           .firstWhere(
-            (TopLevelVariableDeclaration e) => e.variables.variables.any(
-              (VariableDeclaration v) =>
-                  v.name.lexeme == declarationRef.identifier,
-            ),
-            orElse:
-                () =>
-                    throw Exception(
-                      'Identifier  ${declarationRef.identifier} not found in $srcUri',
-                    ),
+            (TopLevelVariableDeclaration e) =>
+                e.variables.variables.any((VariableDeclaration v) => v.name.lexeme == declarationRef.identifier),
+            orElse: () => throw Exception('Identifier  ${declarationRef.identifier} not found in $srcUri'),
           );
-      return _resolvedUnitsCache.cacheKey(cacheKey, (
-        library,
-        unit,
-        declarationRef,
-      ));
+      return _resolvedUnitsCache.cacheKey(cacheKey, (library, unit, declarationRef));
     } else if (declarationRef.type == ReferenceType.$function) {
-      final FunctionDeclaration unit = compilationUnit.declarations
-          .whereType<FunctionDeclaration>()
-          .firstWhere(
-            (FunctionDeclaration e) =>
-                e.name.lexeme == declarationRef.identifier,
-            orElse:
-                () =>
-                    throw Exception(
-                      'Identifier  ${declarationRef.identifier} not found in $srcUri',
-                    ),
-          );
-      return _resolvedUnitsCache.cacheKey(cacheKey, (
-        library,
-        unit,
-        declarationRef,
-      ));
-    } else if (declarationRef.type == ReferenceType.$typeAlias) {
-      final TypeAlias
-      unit = compilationUnit.declarations.whereType<TypeAlias>().firstWhere(
-        (TypeAlias e) => e.name.lexeme == declarationRef.identifier,
-        orElse:
-            () =>
-                throw Exception(
-                  'Identifier  ${declarationRef.identifier} not found in $srcUri',
-                ),
+      final FunctionDeclaration unit = compilationUnit.declarations.whereType<FunctionDeclaration>().firstWhere(
+        (FunctionDeclaration e) => e.name.lexeme == declarationRef.identifier,
+        orElse: () => throw Exception('Identifier  ${declarationRef.identifier} not found in $srcUri'),
       );
-      return _resolvedUnitsCache.cacheKey(cacheKey, (
-        library,
-        unit,
-        declarationRef,
-      ));
+      return _resolvedUnitsCache.cacheKey(cacheKey, (library, unit, declarationRef));
+    } else if (declarationRef.type == ReferenceType.$typeAlias) {
+      final TypeAlias unit = compilationUnit.declarations.whereType<TypeAlias>().firstWhere(
+        (TypeAlias e) => e.name.lexeme == declarationRef.identifier,
+        orElse: () => throw Exception('Identifier  ${declarationRef.identifier} not found in $srcUri'),
+      );
+      return _resolvedUnitsCache.cacheKey(cacheKey, (library, unit, declarationRef));
     }
 
     final NamedCompilationUnitMember? unit = compilationUnit.declarations
         .whereType<NamedCompilationUnitMember>()
-        .firstWhereOrNull(
-          (NamedCompilationUnitMember e) =>
-              e.name.lexeme == declarationRef.identifier,
-        );
+        .firstWhereOrNull((NamedCompilationUnitMember e) => e.name.lexeme == declarationRef.identifier);
 
     if (unit == null) {
-      throw Exception(
-        'Identifier  ${declarationRef.identifier} not found in $srcUri',
-      );
+      throw Exception('Identifier  ${declarationRef.identifier} not found in $srcUri');
     } else if (identifier.isPrefixed) {
       final String targetIdentifier = identifier.name;
 
       for (final SyntacticEntity member in unit.childEntities) {
         if (member is FieldDeclaration) {
-          if (member.fields.variables.any(
-            (VariableDeclaration v) => v.name.lexeme == targetIdentifier,
-          )) {
-            return _resolvedUnitsCache.cacheKey(cacheKey, (
-              library,
-              member,
-              declarationRef,
-            ));
+          if (member.fields.variables.any((VariableDeclaration v) => v.name.lexeme == targetIdentifier)) {
+            return _resolvedUnitsCache.cacheKey(cacheKey, (library, member, declarationRef));
           }
         } else if (member is ConstructorDeclaration) {
           if ((member.name?.lexeme ?? '') == targetIdentifier) {
-            return _resolvedUnitsCache.cacheKey(cacheKey, (
-              library,
-              member,
-              declarationRef,
-            ));
+            return _resolvedUnitsCache.cacheKey(cacheKey, (library, member, declarationRef));
           }
         } else if (member is MethodDeclaration) {
           if (member.name.lexeme == targetIdentifier) {
-            return _resolvedUnitsCache.cacheKey(cacheKey, (
-              library,
-              member,
-              declarationRef,
-            ));
+            return _resolvedUnitsCache.cacheKey(cacheKey, (library, member, declarationRef));
           }
         } else if (member is EnumConstantDeclaration) {
           if (member.name.lexeme == targetIdentifier) {
-            return _resolvedUnitsCache.cacheKey(cacheKey, (
-              library,
-              member,
-              declarationRef,
-            ));
+            return _resolvedUnitsCache.cacheKey(cacheKey, (library, member, declarationRef));
           }
         }
       }
-      throw Exception(
-        'Identifier $targetIdentifier (${identifier.toString()}) not found in $srcUri',
-      );
+      throw Exception('Identifier $targetIdentifier (${identifier.toString()}) not found in $srcUri');
     }
 
-    return _resolvedUnitsCache.cacheKey(cacheKey, (
-      library,
-      unit,
-      declarationRef,
-    ));
+    return _resolvedUnitsCache.cacheKey(cacheKey, (library, unit, declarationRef));
   }
 
   @override
@@ -746,15 +613,11 @@ class ResolverImpl extends Resolver {
   }
 
   @override
-  void resolveMethods(
-    InterfaceElement elem, {
-    ElementPredicate<MethodDeclaration>? predicate,
-  }) {
+  void resolveMethods(InterfaceElement elem, {ElementPredicate<MethodDeclaration>? predicate}) {
     final ElementBuilder elementBuilder = ElementBuilder(this, elem.library);
-    final NamedCompilationUnitMember namedUnit =
-        (elem as InterfaceElementImpl).compilationUnit;
-    final Iterable<MethodDeclaration> methods = namedUnit.childEntities
-        .filterAs<MethodDeclaration>(predicate);
+    final NamedCompilationUnitMember namedUnit = (elem as InterfaceElementImpl).compilationUnit;
+
+    final Iterable<MethodDeclaration> methods = namedUnit.childEntities.filterAs<MethodDeclaration>(predicate);
     elementBuilder.visitElementScoped(elem, () {
       for (final MethodDeclaration method in methods) {
         method.accept(elementBuilder);
@@ -767,8 +630,7 @@ class ResolverImpl extends Resolver {
     final ElementBuilder elementBuilder = ElementBuilder(this, elem.library);
     final InterfaceElementImpl interfaceElem = elem as InterfaceElementImpl;
     final NamedCompilationUnitMember namedUnit = interfaceElem.compilationUnit;
-    final Iterable<FieldDeclaration> fields =
-        namedUnit.childEntities.whereType<FieldDeclaration>();
+    final Iterable<FieldDeclaration> fields = namedUnit.childEntities.whereType<FieldDeclaration>();
     elementBuilder.visitElementScoped(interfaceElem, () {
       for (final FieldDeclaration field in fields) {
         field.accept(elementBuilder);
@@ -781,8 +643,7 @@ class ResolverImpl extends Resolver {
     final ElementBuilder elementBuilder = ElementBuilder(this, elem.library);
     final InterfaceElementImpl interfaceElem = elem as InterfaceElementImpl;
     final NamedCompilationUnitMember namedUnit = interfaceElem.compilationUnit;
-    final Iterable<ConstructorDeclaration> constructors =
-        namedUnit.childEntities.whereType<ConstructorDeclaration>();
+    final Iterable<ConstructorDeclaration> constructors = namedUnit.childEntities.whereType<ConstructorDeclaration>();
     elementBuilder.visitElementScoped(interfaceElem, () {
       for (final ConstructorDeclaration constructor in constructors) {
         constructor.accept(elementBuilder);
@@ -799,15 +660,10 @@ class ResolverImpl extends Resolver {
   /// @param library The library to resolve type aliases for
   /// @param predicate Optional filter for which type aliases to resolve
   /// {@endtemplate}
-  void resolveTypeAliases(
-    LibraryElementImpl library, {
-    ElementPredicate<TypeAlias>? predicate,
-  }) {
+  void resolveTypeAliases(LibraryElementImpl library, {ElementPredicate<TypeAlias>? predicate}) {
     final CompilationUnit unit = library.compilationUnit;
     final ElementBuilder visitor = ElementBuilder(this, library);
-    for (final TypeAlias typeAlias in unit.declarations.filterAs<TypeAlias>(
-      predicate,
-    )) {
+    for (final TypeAlias typeAlias in unit.declarations.filterAs<TypeAlias>(predicate)) {
       typeAlias.accept(visitor);
     }
   }
@@ -821,14 +677,10 @@ class ResolverImpl extends Resolver {
   /// @param library The library to resolve mixins for
   /// @param predicate Optional filter for which mixins to resolve
   /// {@endtemplate}
-  void resolveMixins(
-    LibraryElementImpl library, {
-    ElementPredicate<MixinDeclaration>? predicate,
-  }) {
+  void resolveMixins(LibraryElementImpl library, {ElementPredicate<MixinDeclaration>? predicate}) {
     final CompilationUnit unit = library.compilationUnit;
     final ElementBuilder visitor = ElementBuilder(this, library);
-    for (final MixinDeclaration mixin in unit.declarations
-        .filterAs<MixinDeclaration>(predicate)) {
+    for (final MixinDeclaration mixin in unit.declarations.filterAs<MixinDeclaration>(predicate)) {
       mixin.accept(visitor);
     }
   }
@@ -842,14 +694,10 @@ class ResolverImpl extends Resolver {
   /// @param library The library to resolve enums for
   /// @param predicate Optional filter for which enums to resolve
   /// {@endtemplate}
-  void resolveEnums(
-    LibraryElementImpl library, {
-    ElementPredicate<EnumDeclaration>? predicate,
-  }) {
+  void resolveEnums(LibraryElementImpl library, {ElementPredicate<EnumDeclaration>? predicate}) {
     final CompilationUnit unit = library.compilationUnit;
     final ElementBuilder visitor = ElementBuilder(this, library);
-    for (final EnumDeclaration enumDeclaration in unit.declarations
-        .filterAs<EnumDeclaration>(predicate)) {
+    for (final EnumDeclaration enumDeclaration in unit.declarations.filterAs<EnumDeclaration>(predicate)) {
       enumDeclaration.accept(visitor);
     }
   }
@@ -863,14 +711,10 @@ class ResolverImpl extends Resolver {
   /// @param library The library to resolve functions for
   /// @param predicate Optional filter for which functions to resolve
   /// {@endtemplate}
-  void resolveFunctions(
-    LibraryElementImpl library, {
-    ElementPredicate<FunctionDeclaration>? predicate,
-  }) {
+  void resolveFunctions(LibraryElementImpl library, {ElementPredicate<FunctionDeclaration>? predicate}) {
     final CompilationUnit unit = library.compilationUnit;
     final ElementBuilder visitor = ElementBuilder(this, library);
-    for (final FunctionDeclaration function in unit.declarations
-        .filterAs<FunctionDeclaration>(predicate)) {
+    for (final FunctionDeclaration function in unit.declarations.filterAs<FunctionDeclaration>(predicate)) {
       function.accept(visitor);
     }
   }
@@ -884,20 +728,15 @@ class ResolverImpl extends Resolver {
   /// @param library The library to resolve classes for
   /// @param predicate Optional filter for which classes to resolve
   /// {@endtemplate}
-  void resolveClasses(
-    LibraryElementImpl library, {
-    ElementPredicate<NamedCompilationUnitMember>? predicate,
-  }) {
+  void resolveClasses(LibraryElementImpl library, {ElementPredicate<NamedCompilationUnitMember>? predicate}) {
     final CompilationUnit unit = library.compilationUnit;
     final ElementBuilder visitor = ElementBuilder(this, library);
-    for (final ClassDeclaration classDeclaration in unit.declarations
-        .filterAs<ClassDeclaration>(predicate)) {
+    for (final ClassDeclaration classDeclaration in unit.declarations.filterAs<ClassDeclaration>(predicate)) {
       classDeclaration.accept(visitor);
     }
 
     /// class type alias are treated as classes
-    for (final ClassTypeAlias classTypeAlias in unit.declarations
-        .filterAs<ClassTypeAlias>(predicate)) {
+    for (final ClassTypeAlias classTypeAlias in unit.declarations.filterAs<ClassTypeAlias>(predicate)) {
       classTypeAlias.accept(visitor);
     }
   }
@@ -922,11 +761,7 @@ class ResolverImpl extends Resolver {
       final bool isImportPrefix = importPrefixes.contains(prefix);
       if (isImportPrefix) {
         final String? namedUnit = parts.length == 3 ? parts[1] : null;
-        return IdentifierRef(
-          parts.last,
-          prefix: namedUnit,
-          importPrefix: prefix,
-        );
+        return IdentifierRef(parts.last, prefix: namedUnit, importPrefix: prefix);
       } else {
         return IdentifierRef(parts.last, prefix: parts[0]);
       }

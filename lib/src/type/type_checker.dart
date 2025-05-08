@@ -4,6 +4,7 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/graph/assets_graph.dart';
 import 'package:lean_builder/src/graph/declaration_ref.dart';
+import 'package:lean_builder/src/resolvers/errors.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/type/type.dart';
 import 'package:xxh3/xxh3.dart' show xxh3String;
@@ -80,21 +81,16 @@ abstract class TypeChecker {
   /// {@macro annotation_check}
   ///
   /// Returns if a constant annotating [element] is exactly this type.
-  bool hasAnnotationOfExact(Element element) =>
-      firstAnnotationOfExact(element) != null;
+  bool hasAnnotationOfExact(Element element) => firstAnnotationOfExact(element) != null;
 
   /// {@macro annotation_check}
   ///
   /// Returns annotating constants on [element] assignable to this type.
-  Iterable<ElementAnnotation> annotationsOf(Element element) =>
-      _annotationsWhere(element, (DartType ref) {
-        return isAssignableFromType(ref);
-      });
+  Iterable<ElementAnnotation> annotationsOf(Element element) => _annotationsWhere(element, (DartType ref) {
+    return isAssignableFromType(ref);
+  });
 
-  Iterable<ElementAnnotation> _annotationsWhere(
-    Element element,
-    bool Function(DartType) predicate,
-  ) sync* {
+  Iterable<ElementAnnotation> _annotationsWhere(Element element, bool Function(DartType) predicate) sync* {
     for (int i = 0; i < element.metadata.length; i++) {
       final ElementAnnotation annotation = element.metadata[i];
       if (predicate(annotation.type)) {
@@ -106,8 +102,7 @@ abstract class TypeChecker {
   /// {@macro annotation_check}
   ///
   /// Returns annotating constants on [element] of exactly this type.
-  Iterable<ElementAnnotation> annotationsOfExact(Element element) =>
-      _annotationsWhere(element, isExactlyType);
+  Iterable<ElementAnnotation> annotationsOfExact(Element element) => _annotationsWhere(element, isExactlyType);
 
   /// {@template type_assignability}
   /// Checks type assignability according to Dart's type system rules.
@@ -117,8 +112,7 @@ abstract class TypeChecker {
   ///
   /// Returns `true` if the type of [element] can be assigned to this type.
   bool isAssignableFrom(Element element) {
-    return isExactly(element) ||
-        (element is InterfaceElement && isAssignableFromType(element.thisType));
+    return isExactly(element) || (element is InterfaceElement && isAssignableFromType(element.thisType));
   }
 
   /// {@macro type_assignability}
@@ -196,16 +190,12 @@ class _UriTypeChecker extends _TypeCheckerImpl {
   factory _UriTypeChecker(String url) {
     final List<String> parts = url.split('#');
     if (parts.length != 2) {
-      throw ArgumentError(
-        'Invalid url format: $url, expected format e.g package:foo/bar.dart#baz or dart:core#int',
-      );
+      throw ArgumentError('Invalid url format: $url, expected format e.g package:foo/bar.dart#baz or dart:core#int');
     }
     Uri libraryUrl = Uri.parse(parts[0]);
     final String typeName = parts[1];
     if (libraryUrl.scheme != 'package' && libraryUrl.scheme != 'dart') {
-      throw ArgumentError(
-        'Invalid url format: $url, expected format e.g package:foo/bar.dart#baz or dart:core#int',
-      );
+      throw ArgumentError('Invalid url format: $url, expected format e.g package:foo/bar.dart#baz or dart:core#int');
     }
     String? srcId;
     if (libraryUrl.path.endsWith('.dart')) {
@@ -228,7 +218,7 @@ class _UriTypeChecker extends _TypeCheckerImpl {
       }
       // at this point we should have something like dart:core;
       // we convert it to dart:core/core.dart
-      final ResolverImpl resolver = typeRef.resolver;
+      final ResolverImpl resolver = typeRef.resolver as ResolverImpl;
       final NamedDartType type = resolver.getNamedType(name, uri.toString());
       return type.isExactly(typeRef);
     }
@@ -239,11 +229,9 @@ class _UriTypeChecker extends _TypeCheckerImpl {
 abstract class _TypeCheckerImpl extends TypeChecker {
   _TypeCheckerImpl() : super._();
 
-  final Map<String, InterfaceType> _resolvedTypesCache =
-      <String, InterfaceType>{};
+  final Map<String, InterfaceType> _resolvedTypesCache = <String, InterfaceType>{};
 
-  final Map<String, (bool, NamedDartType?)> _superTypeChecksCache =
-      <String, (bool, NamedDartType?)>{};
+  final Map<String, (bool, NamedDartType?)> _superTypeChecksCache = <String, (bool, NamedDartType?)>{};
 
   (bool, NamedDartType?) _checkSupertypesRecursively(
     NamedDartType typeToCheck,
@@ -261,10 +249,8 @@ abstract class _TypeCheckerImpl extends TypeChecker {
       importPrefix: typeToCheck.declarationRef.importPrefix,
       declarationRef: typeToCheck.declarationRef,
     );
-    final (LibraryElementImpl library, AstNode unit, _) = importingLib.resolver
-        .astNodeFor(identifier, importingLib);
-    final Map<InterfaceType, LibraryElement> typesToSuperCheck =
-        <InterfaceType, LibraryElement>{};
+    final (LibraryElementImpl library, AstNode unit, _) = importingLib.resolver.astNodeFor(identifier, importingLib);
+    final Map<InterfaceType, LibraryElement> typesToSuperCheck = <InterfaceType, LibraryElement>{};
 
     (bool, InterfaceType?) check(NamedType? typeAnnotation) {
       if (typeAnnotation == null) {
@@ -286,10 +272,7 @@ abstract class _TypeCheckerImpl extends TypeChecker {
         if (match) {
           return _superTypeChecksCache[reqId] = (true, type);
         } else if (typesToSuperCheck.isNotEmpty) {
-          return _checkSupertypesRecursively(
-            typesToSuperCheck.keys.first,
-            typesToSuperCheck.values.first,
-          );
+          return _checkSupertypesRecursively(typesToSuperCheck.keys.first, typesToSuperCheck.values.first);
         }
       }
       return _superTypeChecksCache[reqId] = (false, null);
@@ -301,35 +284,27 @@ abstract class _TypeCheckerImpl extends TypeChecker {
       if (match) {
         return _superTypeChecksCache[reqId] = (true, type);
       }
-      for (final NamedType interface in <NamedType>[
-        ...?unit.implementsClause?.interfaces,
-      ]) {
+      for (final NamedType interface in <NamedType>[...?unit.implementsClause?.interfaces]) {
         final (bool match, InterfaceType? type) = check(interface);
         if (match) {
           return _superTypeChecksCache[reqId] = (true, type);
         }
       }
-      for (final NamedType mixin in <NamedType>[
-        ...?unit.withClause?.mixinTypes,
-      ]) {
+      for (final NamedType mixin in <NamedType>[...?unit.withClause?.mixinTypes]) {
         final (bool match, InterfaceType? type) = check(mixin);
         if (match) {
           return _superTypeChecksCache[reqId] = (true, type);
         }
       }
     } else if (unit is MixinDeclaration) {
-      for (final NamedType interface in <NamedType>[
-        ...?unit.implementsClause?.interfaces,
-      ]) {
+      for (final NamedType interface in <NamedType>[...?unit.implementsClause?.interfaces]) {
         final (bool match, InterfaceType? type) = check(interface);
         if (match) {
           return _superTypeChecksCache[reqId] = (true, type);
         }
       }
     } else if (unit is EnumDeclaration) {
-      for (final NamedType interface in <NamedType>[
-        ...?unit.implementsClause?.interfaces,
-      ]) {
+      for (final NamedType interface in <NamedType>[...?unit.implementsClause?.interfaces]) {
         final (bool match, InterfaceType? type) = check(interface);
         if (match) {
           return _superTypeChecksCache[reqId] = (true, type);
@@ -339,12 +314,8 @@ abstract class _TypeCheckerImpl extends TypeChecker {
       throw Exception('Unsupported AST node type: ${unit.runtimeType}');
     }
 
-    for (final MapEntry<InterfaceType, LibraryElement> entry
-        in typesToSuperCheck.entries) {
-      final (bool match, NamedDartType? type) = _checkSupertypesRecursively(
-        entry.key,
-        entry.value,
-      );
+    for (final MapEntry<InterfaceType, LibraryElement> entry in typesToSuperCheck.entries) {
+      final (bool match, NamedDartType? type) = _checkSupertypesRecursively(entry.key, entry.value);
       if (match) {
         return _superTypeChecksCache[reqId] = (true, type);
       }
@@ -352,10 +323,7 @@ abstract class _TypeCheckerImpl extends TypeChecker {
     return _superTypeChecksCache[reqId] = (false, null);
   }
 
-  InterfaceType _resolveType(
-    NamedType superType,
-    LibraryElementImpl importingLib,
-  ) {
+  InterfaceType _resolveType(NamedType superType, LibraryElementImpl importingLib) {
     final String reqId = '$superType@${importingLib.src.id}';
 
     if (_resolvedTypesCache.containsKey(reqId)) {
@@ -363,13 +331,15 @@ abstract class _TypeCheckerImpl extends TypeChecker {
     }
     final String typename = superType.name2.lexeme;
     final ImportPrefixReference? importPrefix = superType.importPrefix;
-    final DeclarationRef identifierLocation = importingLib.resolver
-        .getDeclarationRef(
-          typename,
-          importingLib.src,
-          importPrefix: importPrefix?.name.lexeme,
-        );
+    final DeclarationRef? identifierLocation = importingLib.resolver.getDeclarationRef(
+      typename,
+      importingLib.src,
+      importPrefix: importPrefix?.name.lexeme,
+    );
 
+    if (identifierLocation == null) {
+      throw IdentifierNotFoundError(typename, importPrefix?.name.lexeme, importingLib.src.shortUri);
+    }
     final InterfaceTypeImpl resolvedType = InterfaceTypeImpl(
       typename,
       identifierLocation,
@@ -380,21 +350,14 @@ abstract class _TypeCheckerImpl extends TypeChecker {
   }
 
   @override
-  bool isSupertypeOf(DartType typeRef) =>
-      _isSupertypeOf(typeRef, extendClauseOnly: true);
+  bool isSupertypeOf(DartType typeRef) => _isSupertypeOf(typeRef, extendClauseOnly: true);
 
   bool _isSupertypeOf(DartType typeRef, {bool extendClauseOnly = false}) {
     if (typeRef is InterfaceType) {
       final Asset? importingLibrary = typeRef.declarationRef.importingLibrary;
       if (importingLibrary == null) return false;
-      final LibraryElementImpl importingLib = typeRef.resolver.libraryFor(
-        importingLibrary,
-      );
-      final (bool match, _) = _checkSupertypesRecursively(
-        typeRef,
-        importingLib,
-        extendClauseOnly: extendClauseOnly,
-      );
+      final LibraryElementImpl importingLib = typeRef.resolver.libraryFor(importingLibrary);
+      final (bool match, _) = _checkSupertypesRecursively(typeRef, importingLib, extendClauseOnly: extendClauseOnly);
       return match;
     }
     return false;
@@ -408,13 +371,8 @@ abstract class _TypeCheckerImpl extends TypeChecker {
       }
       final Asset? importingLibrary = typeRef.declarationRef.importingLibrary;
       if (importingLibrary == null) return null;
-      final LibraryElementImpl importingLib = typeRef.resolver.libraryFor(
-        importingLibrary,
-      );
-      final (
-        bool match,
-        NamedDartType? superType,
-      ) = _checkSupertypesRecursively(typeRef, importingLib);
+      final LibraryElementImpl importingLib = typeRef.resolver.libraryFor(importingLibrary);
+      final (bool match, NamedDartType? superType) = _checkSupertypesRecursively(typeRef, importingLib);
       return match ? superType : null;
     }
     return null;

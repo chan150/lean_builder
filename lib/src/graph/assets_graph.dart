@@ -176,7 +176,7 @@ class AssetsGraph extends AssetsScanResults {
   ///
   /// Throws [IdentifierNotFoundError] if the identifier cannot be resolved.
   /// {@endtemplate}
-  DeclarationRef getDeclarationRef(String identifier, Asset importingSrc, {String? importPrefix}) {
+  DeclarationRef? getDeclarationRef(String identifier, Asset importingSrc, {String? importPrefix}) {
     DeclarationRef buildRef(MapEntry<String, int> srcEntry, {String? providerId}) {
       return DeclarationRef(
         identifier: identifier,
@@ -240,7 +240,7 @@ class AssetsGraph extends AssetsScanResults {
         return buildRef(srcEntry, providerId: importedFileSrc);
       }
     }
-    throw IdentifierNotFoundError(identifier, importPrefix, importingSrc.shortUri);
+    return null;
   }
 
   /// {@template assets_graph.lookup_identifier_by_provider}
