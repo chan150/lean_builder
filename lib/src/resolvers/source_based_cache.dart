@@ -19,7 +19,7 @@ class SourceBasedCache<T> {
   /// @return The cached value
   /// {@endtemplate}
   T cache(String source, String target, T value) {
-    return _cache.putIfAbsent(source, () => {})[target] = value;
+    return _cache.putIfAbsent(source, () => <String, T>{})[target] = value;
   }
 
   /// {@template source_based_cache.get}
@@ -72,7 +72,7 @@ class SourceBasedCache<T> {
   /// @return The existing or newly cached value
   /// {@endtemplate}
   T putIfAbsent(CompoundKey key, T Function() value) {
-    return _cache.putIfAbsent(key.source, () => {})[key.target] ??= value();
+    return _cache.putIfAbsent(key.source, () => <String, T>{})[key.target] ??= value();
   }
 
   /// {@template source_based_cache.cache_key}

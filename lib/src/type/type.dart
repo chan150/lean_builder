@@ -1,6 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:lean_builder/src/element/element.dart';
-import 'package:lean_builder/src/graph/identifier_ref.dart' show DeclarationRef;
+import 'package:lean_builder/src/graph/declaration_ref.dart' show DeclarationRef;
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/type/substitution.dart';
 
@@ -143,7 +143,7 @@ abstract class DartType {
 /// {@template parameterized_type}
 /// Represents a type that can be parameterized with type arguments.
 ///
-/// Examples include generic classes like List<T> and Map<K,V>.
+/// Examples include generic classes like List&lt;<T&gt; and Map&lt;K,V&gt;.
 /// {@endtemplate}
 abstract class ParameterizedType extends DartType {
   /// The list of type arguments for this parameterized type.

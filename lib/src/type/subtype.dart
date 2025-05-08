@@ -20,6 +20,7 @@ class SubtypeHelper {
 
   final TypeUtils _typeUtils;
 
+  /// Create a [SubtypeHelper] instance.
   SubtypeHelper(this._typeUtils)
     : _nullNone = _typeUtils.nullTypeObject,
       _objectNone = _typeUtils.objectType,

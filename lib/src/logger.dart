@@ -1,5 +1,5 @@
 import 'package:ansicolor/ansicolor.dart' show AnsiPen;
-import 'package:stack_trace/stack_trace.dart' show Trace;
+import 'package:stack_trace/stack_trace.dart' show Frame, Trace;
 
 /// A static logging utility for the lean_builder package.
 ///
@@ -33,7 +33,7 @@ class Logger {
   /// @param message The text to be logged
   void log(LogLevel level, String message) {
     if (level.index >= _currentLevel.index) {
-      final pen = _getLevelPen(level);
+      final AnsiPen pen = _getLevelPen(level);
       print('${pen('[${level.name.toUpperCase()}]')} $message');
     }
   }
@@ -68,8 +68,8 @@ class Logger {
   /// @param stackTrace Optional stack trace to include with the error
   static void error(String message, {StackTrace? stackTrace}) {
     if (stackTrace != null) {
-      final trace = Trace.from(stackTrace).terse;
-      final frames = _currentLevel == LogLevel.fine ? trace.frames : trace.frames.take(4);
+      final Trace trace = Trace.from(stackTrace).terse;
+      final Iterable<Frame> frames = _currentLevel == LogLevel.fine ? trace.frames : trace.frames.take(4);
       _instance.log(LogLevel.error, '$message\n${frames.join('\n')}');
     } else {
       _instance.log(LogLevel.error, message);

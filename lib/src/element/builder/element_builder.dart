@@ -4,7 +4,7 @@ import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:lean_builder/src/element/builder/element_stack.dart';
 import 'package:lean_builder/src/element/element.dart';
 import 'package:lean_builder/src/graph/assets_graph.dart';
-import 'package:lean_builder/src/graph/identifier_ref.dart';
+import 'package:lean_builder/src/graph/declaration_ref.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/resolvers/constant/const_evaluator.dart';
 import 'package:lean_builder/src/resolvers/constant/constant.dart';
@@ -63,7 +63,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
     _resolveInterfaceTypeRefs(extensionTypeElement, implementsClause: node.implementsClause);
     extensionTypeElement.thisType = InterfaceTypeImpl(
       extensionTypeElement.name,
-      library.buildDeclarationRef(extensionTypeElement.name, SymbolType.$class),
+      library.buildDeclarationRef(extensionTypeElement.name, ReferenceType.$class),
       resolver,
     );
 
@@ -108,6 +108,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
     }
   }
 
+  /// Registers a lazy metadata resolver for the given element.
   void registerMetadataResolver(ElementImpl elm, NodeList<Annotation> meta) {
     elm.metadataResolveCallback = () {
       visitElementScoped(elm, () => meta.accept(this));
@@ -241,7 +242,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
 
     classElement.thisType = InterfaceTypeImpl(
       classElement.name,
-      library.buildDeclarationRef(classElement.name, SymbolType.$class),
+      library.buildDeclarationRef(classElement.name, ReferenceType.$class),
       resolver,
       typeArguments: classElement.typeParameters,
       element: classElement,
@@ -282,7 +283,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
     });
     mixinElement.thisType = InterfaceTypeImpl(
       mixinElement.name,
-      libraryElement.buildDeclarationRef(mixinElement.name, SymbolType.$mixin),
+      libraryElement.buildDeclarationRef(mixinElement.name, ReferenceType.$mixin),
       resolver,
       typeArguments: mixinElement.typeParameters,
       element: mixinElement,
@@ -309,7 +310,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
     enumElement.setNameRange(node.name.offset, node.name.length);
     enumElement.thisType = InterfaceTypeImpl(
       enumElement.name,
-      library.buildDeclarationRef(enumElement.name, SymbolType.$enum),
+      library.buildDeclarationRef(enumElement.name, ReferenceType.$enum),
       resolver,
       element: enumElement,
     );
@@ -383,6 +384,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
     element.addTypeParameter(TypeParameterType(node.name.lexeme, bound: boundType));
   }
 
+  /// Resolves a type reference in the context of the given enclosing element.
   DartType resolveTypeRef(TypeAnnotation? typeAnno, Element enclosingEle) {
     if (typeAnno == null) {
       return DartType.invalidType;
@@ -404,6 +406,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
     return DartType.invalidType;
   }
 
+  /// Builds a parameter element from the given formal parameter node.
   FunctionType resolveFunctionTypeRef(GenericFunctionType typeAnnotation, FunctionElement funcElement) {
     visitElementScoped(funcElement, () {
       typeAnnotation.typeParameters?.visitChildren(this);
@@ -417,6 +420,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
     );
   }
 
+  /// Resolves a record type reference in the context of the given enclosing element.
   RecordType resolveRecordTypeRef(RecordTypeAnnotation typeAnnotation, Element enclosingEle) {
     final List<RecordTypePositionalField> positionalTypes = <RecordTypePositionalField>[];
     for (final RecordTypeAnnotationPositionalField field in typeAnnotation.positionalFields) {
@@ -435,6 +439,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
     );
   }
 
+  /// Resolves a named type reference in the context of the given enclosing element.
   DartType resolveNamedType(NamedType annotation, Element enclosingEle) {
     final String typename = annotation.name2.lexeme;
     if (typename == DartType.voidType.name) return DartType.voidType;
@@ -452,7 +457,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
       enclosingEle.library.src,
       importPrefix: importPrefix?.name.lexeme,
     );
-    if (declarationRef.type == SymbolType.$typeAlias) {
+    if (declarationRef.type == ReferenceType.$typeAlias) {
       return TypeAliasTypeImpl(
         typename,
         declarationRef,

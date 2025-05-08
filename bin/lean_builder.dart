@@ -1,15 +1,23 @@
 import 'dart:io' show File, Directory, exit, Platform, Process, ProcessStartMode;
 import 'dart:isolate' show Isolate;
 
+import 'package:args/args.dart';
 import 'package:lean_builder/src/build_script/compile.dart';
-import 'package:lean_builder/src/build_script/paths.dart';
+import 'package:lean_builder/src/build_script/paths.dart' as paths;
 import 'package:lean_builder/src/logger.dart';
 import 'package:lean_builder/src/runner/command/utils.dart';
 import 'package:path/path.dart' as p;
 
 void main(List<String> args) async {
-  final bool isDevMode = args.contains('--dev');
-  final bool isWatchMode = args.contains('watch');
+  final ArgResults argResults = _createArgParser().parse(args);
+  final bool isCleanMode = argResults['clean'] != null;
+
+  if (isCleanMode) {
+    exit(await _clean());
+  }
+
+  final bool isDevMode = argResults.flag('dev');
+  final bool isWatchMode = argResults['watch'] != null;
 
   Uri? runnerExePath = Isolate.resolvePackageUriSync(Uri.parse('package:lean_builder/bin/runner.aot'));
   if (runnerExePath == null) {
@@ -33,7 +41,7 @@ void main(List<String> args) async {
     exit(exitCode);
   }
 
-  final String scriptAbsPath = p.join(p.current, scriptOutput);
+  final String scriptAbsPath = p.join(p.current, paths.scriptOutput);
 
   if (isDevMode) {
     invalidateExecutable();
@@ -71,4 +79,29 @@ String _getRuntimePath() {
   final String dartExecutable = Platform.resolvedExecutable;
   final String dartSdkDir = Directory(dartExecutable).parent.path;
   return '$dartSdkDir${Platform.pathSeparator}dartaotruntime';
+}
+
+ArgParser _createArgParser() {
+  final ArgParser parser = ArgParser();
+  parser.addFlag('dev', abbr: 'd', help: 'Run in development mode (JIT).');
+  parser.addCommand('watch');
+  parser.addCommand('clean');
+  return parser;
+}
+
+Future<int> _clean() async {
+  try {
+    final String cachePath = p.join(p.current, paths.cacheDir);
+    final Directory cacheDirectory = Directory(cachePath);
+    if (await cacheDirectory.exists()) {
+      await cacheDirectory.delete(recursive: true);
+      Logger.info('Cleaned build artifacts at $cachePath');
+    } else {
+      Logger.info('No build artifacts found at $cachePath');
+    }
+    return 0;
+  } catch (e) {
+    Logger.error('Error cleaning build artifacts: $e');
+    return 1;
+  }
 }

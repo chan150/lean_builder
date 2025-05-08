@@ -28,7 +28,7 @@ import 'package:lean_builder/src/element/builder/directives_builder.dart';
 import 'package:lean_builder/src/element/builder/element_builder.dart';
 import 'package:lean_builder/src/element/element.dart';
 import 'package:lean_builder/src/graph/assets_graph.dart';
-import 'package:lean_builder/src/graph/identifier_ref.dart';
+import 'package:lean_builder/src/graph/declaration_ref.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/resolvers/source_based_cache.dart';
 import 'package:collection/collection.dart' show IterableExtension;
@@ -430,7 +430,7 @@ class ResolverImpl extends Resolver {
     }
     if (declarationRef.type.representsInterfaceType) {
       return InterfaceTypeImpl(name, declarationRef, this);
-    } else if (declarationRef.type == SymbolType.$typeAlias) {
+    } else if (declarationRef.type == ReferenceType.$typeAlias) {
       return TypeAliasTypeImpl(name, declarationRef, this);
     } else {
       throw Exception('$name does not refer to a named type');
@@ -541,7 +541,7 @@ class ResolverImpl extends Resolver {
     final LibraryElementImpl library = libraryFor(assetFile);
     final CompilationUnit compilationUnit = library.compilationUnit;
 
-    if (declarationRef.type == SymbolType.$variable) {
+    if (declarationRef.type == ReferenceType.$variable) {
       final TopLevelVariableDeclaration unit = compilationUnit.declarations
           .whereType<TopLevelVariableDeclaration>()
           .firstWhere(
@@ -550,13 +550,13 @@ class ResolverImpl extends Resolver {
             orElse: () => throw Exception('Identifier  ${declarationRef.identifier} not found in $srcUri'),
           );
       return _resolvedUnitsCache.cacheKey(cacheKey, (library, unit, declarationRef));
-    } else if (declarationRef.type == SymbolType.$function) {
+    } else if (declarationRef.type == ReferenceType.$function) {
       final FunctionDeclaration unit = compilationUnit.declarations.whereType<FunctionDeclaration>().firstWhere(
         (FunctionDeclaration e) => e.name.lexeme == declarationRef.identifier,
         orElse: () => throw Exception('Identifier  ${declarationRef.identifier} not found in $srcUri'),
       );
       return _resolvedUnitsCache.cacheKey(cacheKey, (library, unit, declarationRef));
-    } else if (declarationRef.type == SymbolType.$typeAlias) {
+    } else if (declarationRef.type == ReferenceType.$typeAlias) {
       final TypeAlias unit = compilationUnit.declarations.whereType<TypeAlias>().firstWhere(
         (TypeAlias e) => e.name.lexeme == declarationRef.identifier,
         orElse: () => throw Exception('Identifier  ${declarationRef.identifier} not found in $srcUri'),

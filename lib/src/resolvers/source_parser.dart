@@ -50,7 +50,7 @@ class SourceParser {
     if (_cache.containsKey(key)) {
       return _cache[key]!;
     }
-    final unit = parseString(content: content(), throwIfDiagnostics: throwIfDiagnostics).unit;
+    final CompilationUnit unit = parseString(content: content(), throwIfDiagnostics: throwIfDiagnostics).unit;
     _cache[key] = unit;
     return unit;
   }

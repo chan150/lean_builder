@@ -1,7 +1,7 @@
 import 'package:analyzer/dart/ast/ast.dart' show Expression, ArgumentList, NamedExpression;
 import 'package:collection/collection.dart';
 import 'package:lean_builder/element.dart';
-import 'package:lean_builder/src/graph/identifier_ref.dart';
+import 'package:lean_builder/src/graph/declaration_ref.dart';
 import 'package:lean_builder/src/type/type.dart';
 
 import 'const_evaluator.dart';
@@ -391,10 +391,11 @@ class ConstFunctionReferenceImpl extends ConstFunctionReference {
           type == other.type &&
           name == other.name &&
           declaration == other.declaration &&
-          const ListEquality().equals(_typeArguments, other._typeArguments);
+          const ListEquality<DartType>().equals(_typeArguments, other._typeArguments);
 
   @override
-  int get hashCode => type.hashCode ^ name.hashCode ^ declaration.hashCode ^ const ListEquality().hash(_typeArguments);
+  int get hashCode =>
+      type.hashCode ^ name.hashCode ^ declaration.hashCode ^ const ListEquality<DartType>().hash(_typeArguments);
 
   @override
   Object? get literalValue => null;
@@ -420,7 +421,9 @@ class ConstList extends ConstLiteral<List<Constant>> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is ConstList && runtimeType == other.runtimeType && const ListEquality<Constant>().equals(value, other.value);
+      other is ConstList &&
+          runtimeType == other.runtimeType &&
+          const ListEquality<Constant>().equals(value, other.value);
 
   @override
   int get hashCode => const ListEquality<Constant>().hash(value);
@@ -449,14 +452,16 @@ class ConstMap extends ConstLiteral<Map<Constant, Constant>> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is ConstMap && runtimeType == other.runtimeType && const MapEquality().equals(value, other.value);
+      other is ConstMap &&
+          runtimeType == other.runtimeType &&
+          const MapEquality<Constant, Constant>().equals(value, other.value);
 
   @override
-  int get hashCode => const MapEquality().hash(value);
+  int get hashCode => const MapEquality<Constant, Constant>().hash(value);
 
   @override
   Map<dynamic, dynamic> get literalValue =>
-      value.map((Constant k, Constant v) => MapEntry(k.literalValue, v.literalValue));
+      value.map((Constant k, Constant v) => MapEntry<dynamic, dynamic>(k.literalValue, v.literalValue));
 }
 
 /// {@template const_set}
@@ -479,10 +484,10 @@ class ConstSet extends ConstLiteral<Set<Constant>> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is ConstSet && runtimeType == other.runtimeType && const SetEquality().equals(value, other.value);
+      other is ConstSet && runtimeType == other.runtimeType && const SetEquality<Constant>().equals(value, other.value);
 
   @override
-  int get hashCode => const SetEquality().hash(value);
+  int get hashCode => const SetEquality<Constant>().hash(value);
 
   @override
   Set<dynamic> get literalValue => value.map((Constant e) => e.literalValue).toSet();

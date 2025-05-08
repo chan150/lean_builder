@@ -540,7 +540,7 @@ class FunctionType extends TypeImpl {
 /// {@template type_parameter_type}
 /// Represents a type parameter in a generic class or method.
 ///
-/// For example, in `class List<T>`, `T` is a type parameter.
+/// For example, in `class List&lt;T&gt;`, `T` is a type parameter.
 /// {@endtemplate}
 class TypeParameterType extends TypeImpl {
   /// The bound of this type parameter.

@@ -87,7 +87,7 @@ class DirectivesBuilder extends ElementBuilder {
     final String? stringUri = node.uri.stringValue;
     if (stringUri == null) return;
     final LibraryElementImpl library = currentLibrary();
-    final List directive = _getCorrespondingDirective(library, stringUri, DirectiveStatement.part);
+    final List<dynamic> directive = _getCorrespondingDirective(library, stringUri, DirectiveStatement.part);
     final PartElement element = PartElement(
       library: library,
       stringUri: stringUri,
@@ -134,7 +134,7 @@ class DirectivesBuilder extends ElementBuilder {
     final String? name = node.name2?.name;
     if (name == null) return;
     final LibraryElementImpl library = currentLibrary();
-    final List? asset = resolver.graph.assets[library.src.id];
+    final List<dynamic>? asset = resolver.graph.assets[library.src.id];
     assert(
       asset?.elementAtOrNull(GraphIndex.assetLibraryName) == name,
       'Library name mismatch: ${asset?.elementAtOrNull(GraphIndex.assetLibraryName)} != $name',

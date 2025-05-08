@@ -49,7 +49,7 @@ class StringAsset implements Asset {
 
   @override
   Map<String, dynamic> toJson() {
-    return {'id': id, 'shortUri': shortUri.toString(), 'uri': uri.toString(), 'content': content};
+    return <String, dynamic>{'id': id, 'shortUri': shortUri.toString(), 'uri': uri.toString(), 'content': content};
   }
 
   @override

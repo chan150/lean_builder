@@ -13,6 +13,11 @@ class CoreTypeSource {
 
   /// {@macro coreLibPath}
   ///
+  /// Represents the `dart:core` library.
+  static const String core = 'dart:core/core.dart';
+
+  /// {@macro coreLibPath}
+  ///
   /// Represents the `bool` type.
   static const String coreBool = 'dart:core/bool.dart';
 

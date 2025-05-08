@@ -54,7 +54,7 @@ import 'package:lean_builder/src/element/builder/element_builder.dart';
 import 'package:lean_builder/src/element/builder/element_stack.dart';
 import 'package:lean_builder/src/element/element.dart';
 import 'package:lean_builder/src/graph/assets_graph.dart';
-import 'package:lean_builder/src/graph/identifier_ref.dart';
+import 'package:lean_builder/src/graph/declaration_ref.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:collection/collection.dart' show IterableExtension;
@@ -177,7 +177,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
     final String interfaceName = interfaceDec.name.lexeme;
     final InterfaceTypeImpl type = InterfaceTypeImpl(
       interfaceName,
-      _library.buildDeclarationRef(interfaceName, SymbolType.$class),
+      _library.buildDeclarationRef(interfaceName, ReferenceType.$class),
       _resolver,
     );
     return ConstObjectImpl(values, type, positionalNames: positionalNames);
@@ -205,11 +205,11 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
 
   @override
   Constant? visitBinaryExpression(BinaryExpression node) {
-    var leftOperand = _valueOf(node.leftOperand.accept(this));
+    dynamic leftOperand = _valueOf(node.leftOperand.accept(this));
     if (identical(leftOperand, Constant.invalid)) {
       return leftOperand;
     }
-    var rightOperand = _valueOf(node.rightOperand.accept(this));
+    dynamic rightOperand = _valueOf(node.rightOperand.accept(this));
     if (identical(rightOperand, Constant.invalid)) {
       return rightOperand;
     }
@@ -431,7 +431,7 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
 
   @override
   Constant? visitPrefixExpression(PrefixExpression node) {
-    var operand = _valueOf(node.operand.accept(this));
+    dynamic operand = _valueOf(node.operand.accept(this));
     if (identical(operand, Constant.invalid)) {
       return operand;
     }

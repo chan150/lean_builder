@@ -1,4 +1,5 @@
-import 'dart:math';
+import 'dart:math' as math show max;
+import 'dart:typed_data';
 
 // ignore: implementation_imports
 import 'package:_fe_analyzer_shared/src/scanner/scanner.dart' as fasta;
@@ -11,17 +12,45 @@ import 'package:lean_builder/src/logger.dart';
 
 import 'directive_statement.dart';
 
+/// {@template references_scanner}
+/// A scanner that parses Dart source files to find declarations and directives.
+///
+/// The [ReferencesScanner] reads and analyzes Dart source code to:
+/// - Identify top-level declarations (classes, functions, extensions, etc.)
+/// - Detect import, export, part, and library directives
+/// - Track annotations (including builder annotations)
+///
+/// It uses a lightweight token-based approach rather than a full AST parser
+///
+/// The results of this scanner are used to build a reference graph of the
+/// Dart codebase, which can later be used for resolving references and dependencies.
+/// {@endtemplate}
 class ReferencesScanner {
+  /// The results collector that will store discovered references
   final ScanResults results;
+
+  /// The file resolver used to resolve file references
   final PackageFileResolver fileResolver;
 
+  /// {@macro references_scanner}
   ReferencesScanner(this.results, this.fileResolver);
 
+  /// {@template references_scanner.scan}
+  /// Scans a Dart source file to identify declarations and directives.
+  ///
+  /// This method:
+  /// 1. Tokenizes the source file
+  /// 2. Analyzes tokens to find declarations and directives
+  /// 3. Records results in the [ScanResults] collector
+  ///
+  /// [asset] The asset to scan
+  /// [forceOverride] When true, re-scans the asset even if it has been visited before
+  /// {@endtemplate}
   void scan(Asset asset, {bool forceOverride = false}) {
     try {
       if (results.isVisited(asset.id) && !forceOverride) return;
 
-      final bytes = asset.readAsBytesSync();
+      final Uint8List bytes = asset.readAsBytesSync();
 
       results.addAsset(asset);
 
@@ -51,18 +80,18 @@ class ReferencesScanner {
             token = nextToken;
             continue;
           }
-          final type = token.type;
-          final nextLexeme = nextToken.lexeme;
+          final TokenType type = token.type;
+          final String nextLexeme = nextToken.lexeme;
           switch (type) {
             case Keyword.LIBRARY:
-              final (nextT, name) = _tryParseLibraryDirective(nextToken);
+              final (fasta.Token? nextT, String? name) = _tryParseLibraryDirective(nextToken);
               libraryName = name;
               nextToken = nextT ?? nextToken;
               break;
             case Keyword.IMPORT:
             case Keyword.EXPORT:
             case Keyword.PART:
-              final (nextT, direcitve) = _tryParseDirective(type, nextToken, asset);
+              final (fasta.Token? nextT, DirectiveStatement? direcitve) = _tryParseDirective(type, nextToken, asset);
               nextToken = nextT ?? nextToken;
               if (direcitve != null) {
                 results.addDirective(asset, direcitve);
@@ -72,18 +101,18 @@ class ReferencesScanner {
               nextToken = parseTypeDef(nextToken, asset) ?? nextToken;
               break;
             case Keyword.CLASS:
-              results.addDeclaration(nextLexeme, asset, SymbolType.$class);
-              nextToken = _skipUntilAny(token, {TokenType.OPEN_CURLY_BRACKET, TokenType.SEMICOLON});
+              results.addDeclaration(nextLexeme, asset, ReferenceType.$class);
+              nextToken = _skipUntilAny(token, <TokenType>{TokenType.OPEN_CURLY_BRACKET, TokenType.SEMICOLON});
               break;
             case Keyword.MIXIN:
               if (nextToken.type == Keyword.CLASS) {
                 break;
               }
-              results.addDeclaration(nextLexeme, asset, SymbolType.$mixin);
+              results.addDeclaration(nextLexeme, asset, ReferenceType.$mixin);
               nextToken = _skipUntil(token, TokenType.OPEN_CURLY_BRACKET);
               break;
             case Keyword.ENUM:
-              results.addDeclaration(nextLexeme, asset, SymbolType.$enum);
+              results.addDeclaration(nextLexeme, asset, ReferenceType.$enum);
               nextToken = _skipUntil(token, TokenType.OPEN_CURLY_BRACKET);
               break;
             case Keyword.EXTENSION:
@@ -97,12 +126,12 @@ class ReferencesScanner {
                   extName = current.lexeme;
                 }
               }
-              results.addDeclaration(extName, asset, SymbolType.$extension);
+              results.addDeclaration(extName, asset, ReferenceType.$extension);
 
               nextToken = _skipUntil(nextToken, TokenType.OPEN_CURLY_BRACKET);
               break;
           }
-        } else if ({Keyword.CONST, Keyword.FINAL, Keyword.VAR, Keyword.LATE}.contains(token.type) &&
+        } else if (<fasta.Keyword>{Keyword.CONST, Keyword.FINAL, Keyword.VAR, Keyword.LATE}.contains(token.type) &&
             nextToken.isIdentifier) {
           if (token.type == Keyword.CONST) {
             _tryParseConstVar(nextToken, asset);
@@ -115,12 +144,21 @@ class ReferencesScanner {
         token = nextToken;
       }
 
-      results.updateAssetInfo(asset, content: bytes, annotationFlag: annotationFlag, libraryName: libraryName);
+      results.updateAssetInfo(asset, content: bytes, tlmFlag: annotationFlag, libraryName: libraryName);
     } catch (e, stack) {
       Logger.error('Error scanning asset ${asset.uri} ${e.toString()}', stackTrace: stack);
     }
   }
 
+  /// {@template references_scanner._try_parse_library_directive}
+  /// Attempts to parse a library directive and extract the library name.
+  ///
+  /// [nextToken] Token following the 'library' keyword
+  ///
+  /// Returns a tuple containing:
+  /// - The next token to continue scanning from
+  /// - The parsed library name (or null if no name was found)
+  /// {@endtemplate}
   (Token?, String?) _tryParseLibraryDirective(fasta.Token nextToken) {
     if (nextToken.type == TokenType.SEMICOLON) {
       nextToken = nextToken.next!;
@@ -135,6 +173,17 @@ class ReferencesScanner {
     return (nameToken?.next, name);
   }
 
+  /// {@template references_scanner._try_parse_function}
+  /// Attempts to parse a function declaration.
+  ///
+  /// This method identifies standalone functions and methods, recording them
+  /// in the results collector.
+  ///
+  /// [token] The token that might be a function identifier
+  /// [asset] The asset containing the function
+  ///
+  /// Returns the next token to continue scanning from
+  /// {@endtemplate}
   Token? _tryParseFunction(Token token, Asset asset) {
     Token? current = _skipLTGT(token);
     current = _skipParenthesis(current);
@@ -146,7 +195,7 @@ class ReferencesScanner {
     } else if (next != null && _skipLTGT(next).type == TokenType.OPEN_PAREN) {
       funcFound = true;
       if (_isValidName(current?.lexeme)) {
-        results.addDeclaration(current!.lexeme, asset, SymbolType.$function);
+        results.addDeclaration(current!.lexeme, asset, ReferenceType.$function);
       }
     } else if (next != null && next.type == TokenType.LT) {
       return _skipLTGT(next);
@@ -173,14 +222,23 @@ class ReferencesScanner {
     return current;
   }
 
+  /// {@template references_scanner._try_parse_const_var}
+  /// Attempts to parse a constant variable declaration.
+  ///
+  /// This method identifies top-level const variables and records them in
+  /// the results collector.
+  ///
+  /// [nextToken] Token following the 'const' keyword
+  /// [asset] The asset containing the variable
+  /// {@endtemplate}
   void _tryParseConstVar(Token nextToken, Asset asset) {
     Token? currentToken = nextToken;
     // Skip type information to get to the variable name
     while (currentToken != null && currentToken.type != TokenType.SEMICOLON) {
       if (currentToken.isIdentifier) {
-        var afterIdentifier = currentToken.next;
+        fasta.Token? afterIdentifier = currentToken.next;
         if (afterIdentifier != null && (afterIdentifier.type == TokenType.EQ)) {
-          results.addDeclaration(currentToken.lexeme, asset, SymbolType.$variable);
+          results.addDeclaration(currentToken.lexeme, asset, ReferenceType.$variable);
           break;
         }
       }
@@ -188,6 +246,23 @@ class ReferencesScanner {
     }
   }
 
+  /// {@template references_scanner._try_parse_directive}
+  /// Attempts to parse an import, export, or part directive.
+  ///
+  /// This method extracts all relevant information from a directive, including:
+  /// - The URI string
+  /// - Show/hide clauses
+  /// - Import prefixes
+  /// - Deferred status
+  ///
+  /// [keyword] The directive keyword (import, export, part)
+  /// [next] The token following the keyword
+  /// [enclosingAsset] The asset containing the directive
+  ///
+  /// Returns a tuple containing:
+  /// - The next token to continue scanning from
+  /// - The parsed directive (or null if parsing failed)
+  /// {@endtemplate}
   (Token?, DirectiveStatement?) _tryParseDirective(TokenType keyword, Token next, Asset enclosingAsset) {
     bool isPartOf = keyword == Keyword.PART && next.type == Keyword.OF;
     String stringUri = '';
@@ -218,20 +293,20 @@ class ReferencesScanner {
 
     // remove quotes
     stringUri = stringUri.substring(1, stringUri.length - 1);
-    final uri = Uri.parse(stringUri);
+    final Uri uri = Uri.parse(stringUri);
 
     // skip private package imports
     if (uri.scheme == 'package' && uri.path.isNotEmpty && uri.path[0] == '_') {
       return (_skipUntil(next, TokenType.SEMICOLON), null);
     }
 
-    final asset = fileResolver.assetForUri(uri, relativeTo: enclosingAsset);
+    final Asset asset = fileResolver.assetForUri(uri, relativeTo: enclosingAsset);
 
-    final show = <String>[];
-    final hide = <String>[];
+    final List<String> show = <String>[];
+    final List<String> hide = <String>[];
     String? prefix;
-    var deferred = false;
-    var showMode = true;
+    bool deferred = false;
+    bool showMode = true;
     for (current; current != null && !current.isEof; current = current.next) {
       if (current.type == TokenType.AS) {
         if (current.previous?.type == Keyword.DEFERRED) {
@@ -255,14 +330,14 @@ class ReferencesScanner {
       if (current.type == TokenType.SEMICOLON) break;
     }
 
-    final type = switch (keyword) {
+    final int type = switch (keyword) {
       Keyword.IMPORT => DirectiveStatement.import,
       Keyword.EXPORT => DirectiveStatement.export,
       Keyword.PART => isPartOf ? DirectiveStatement.partOf : DirectiveStatement.part,
       _ => throw UnimplementedError('Unknown directive type: $keyword'),
     };
 
-    final directive = DirectiveStatement(
+    final DirectiveStatement directive = DirectiveStatement(
       type: type,
       stringUri: stringUri,
       asset: asset,
@@ -274,8 +349,18 @@ class ReferencesScanner {
     return (current, directive);
   }
 
+  /// {@template references_scanner.parse_type_def}
+  /// Parses a typedef declaration to extract the type alias name.
+  ///
+  /// This handles both function typedefs and type alias declarations.
+  ///
+  /// [token] Token following the 'typedef' keyword
+  /// [asset] The asset containing the typedef
+  ///
+  /// Returns the next token to continue scanning from
+  /// {@endtemplate}
   Token? parseTypeDef(Token? token, Asset asset) {
-    final identifiers = <Token>[];
+    final List<fasta.Token> identifiers = <Token>[];
     int scopeTracker = 0;
     while (token != null && token.type != TokenType.EOF) {
       token = _skipLTGT(token);
@@ -290,19 +375,28 @@ class ReferencesScanner {
       token = token?.next;
     }
 
-    final eqIndex = identifiers.indexWhere((e) => e.type == TokenType.EQ);
-    final nameLexeme = eqIndex > 0 ? identifiers[eqIndex - 1].lexeme : identifiers.lastOrNull?.lexeme;
+    final int eqIndex = identifiers.indexWhere((fasta.Token e) => e.type == TokenType.EQ);
+    final String? nameLexeme = eqIndex > 0 ? identifiers[eqIndex - 1].lexeme : identifiers.lastOrNull?.lexeme;
     if (_isValidName(nameLexeme)) {
-      results.addDeclaration(nameLexeme!, asset, SymbolType.$typeAlias);
+      results.addDeclaration(nameLexeme!, asset, ReferenceType.$typeAlias);
     }
 
     return token;
   }
 
+  /// Checks if the given identifier is a valid name.
   bool _isValidName(String? identifier) {
     return identifier != null && identifier.isNotEmpty;
   }
 
+  /// {@template references_scanner._skip_until}
+  /// Skips tokens until a specific token type is encountered.
+  ///
+  /// [current] The token to start from
+  /// [until] The token type to stop at
+  ///
+  /// Returns the first token that matches the specified type
+  /// {@endtemplate}
   Token _skipUntil(Token current, TokenType until) {
     while (current.type != until && !current.isEof) {
       current = current.next!;
@@ -310,6 +404,14 @@ class ReferencesScanner {
     return current;
   }
 
+  /// {@template references_scanner._skip_until_any}
+  /// Skips tokens until any of the specified token types is encountered.
+  ///
+  /// [current] The token to start from
+  /// [until] A set of token types to stop at
+  ///
+  /// Returns the first token that matches any of the specified types
+  /// {@endtemplate}
   Token _skipUntilAny(Token current, Set<TokenType> until) {
     while (!current.isEof && !until.contains(current.type)) {
       current = current.next!;
@@ -317,6 +419,15 @@ class ReferencesScanner {
     return current;
   }
 
+  /// {@template references_scanner._skip_curly_brackets}
+  /// Skips tokens between matching curly brackets.
+  ///
+  /// This handles nested brackets correctly by tracking scope depth.
+  ///
+  /// [token] The opening curly bracket token
+  ///
+  /// Returns the token after the matching closing bracket
+  /// {@endtemplate}
   Token _skipCurlyBrackets(Token token) {
     if (token.type != TokenType.OPEN_CURLY_BRACKET) {
       return token;
@@ -330,13 +441,23 @@ class ReferencesScanner {
           scopeTracker += 1;
           break;
         case TokenType.CLOSE_CURLY_BRACKET:
-          scopeTracker = max(0, scopeTracker - 1);
+          scopeTracker = math.max(0, scopeTracker - 1);
       }
       current = current.next;
     }
     return current ?? token;
   }
 
+  /// {@template references_scanner._skip_lt_gt}
+  /// Skips tokens between matching angle brackets (< >).
+  ///
+  /// This handles nested angle brackets correctly by tracking scope depth.
+  /// Used for skipping generic type parameters.
+  ///
+  /// [token] The opening angle bracket token
+  ///
+  /// Returns the token after the matching closing angle bracket
+  /// {@endtemplate}
   Token _skipLTGT(Token token) {
     if (token.type != TokenType.LT) {
       return token;
@@ -352,13 +473,13 @@ class ReferencesScanner {
           scopeTracker += 2;
           break;
         case TokenType.GT:
-          scopeTracker = max(0, scopeTracker - 1);
+          scopeTracker = math.max(0, scopeTracker - 1);
           break;
         case TokenType.GT_GT:
-          scopeTracker = max(0, scopeTracker - 2);
+          scopeTracker = math.max(0, scopeTracker - 2);
           break;
         case TokenType.GT_GT_GT:
-          scopeTracker = max(0, scopeTracker - 3);
+          scopeTracker = math.max(0, scopeTracker - 3);
           break;
       }
       current = current.next;
@@ -366,6 +487,15 @@ class ReferencesScanner {
     return current ?? token;
   }
 
+  /// {@template references_scanner._skip_parenthesis}
+  /// Skips tokens between matching parentheses.
+  ///
+  /// This handles nested parentheses correctly by tracking scope depth.
+  ///
+  /// [token] The opening parenthesis token
+  ///
+  /// Returns the token after the matching closing parenthesis
+  /// {@endtemplate}
   Token? _skipParenthesis(Token? token) {
     if (token == null) {
       return null;
@@ -381,7 +511,7 @@ class ReferencesScanner {
           scopeTracker += 1;
           break;
         case TokenType.CLOSE_PAREN:
-          scopeTracker = max(0, scopeTracker - 1);
+          scopeTracker = math.max(0, scopeTracker - 1);
       }
       current = current.next;
     }

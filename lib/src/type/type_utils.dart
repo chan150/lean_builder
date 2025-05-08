@@ -1,5 +1,5 @@
 import 'package:lean_builder/element.dart';
-import 'package:lean_builder/src/graph/identifier_ref.dart';
+import 'package:lean_builder/src/graph/declaration_ref.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/type/core_type_source.dart';
@@ -34,7 +34,11 @@ class TypeUtils {
 
   /// {@macro core_type_getter}
   InterfaceType get objectType {
-    final DeclarationRef declarationRef = DeclarationRef.from('Object', CoreTypeSource.coreObject, SymbolType.$class);
+    final DeclarationRef declarationRef = DeclarationRef.from(
+      'Object',
+      CoreTypeSource.coreObject,
+      ReferenceType.$class,
+    );
     return InterfaceTypeImpl('Object', declarationRef, resolver);
   }
 
@@ -42,22 +46,30 @@ class TypeUtils {
   ///
   /// This returns a nullable version of the Object type.
   InterfaceType get objectTypeNullable {
-    final DeclarationRef declarationRef = DeclarationRef.from('Object', CoreTypeSource.coreObject, SymbolType.$class);
+    final DeclarationRef declarationRef = DeclarationRef.from(
+      'Object',
+      CoreTypeSource.coreObject,
+      ReferenceType.$class,
+    );
     return InterfaceTypeImpl('Object?', declarationRef, resolver, isNullable: true);
   }
 
   /// {@macro core_type_getter}
   InterfaceType get nullTypeObject {
-    final DeclarationRef declarationRef = DeclarationRef.from('Null', CoreTypeSource.coreNull, SymbolType.$class);
+    final DeclarationRef declarationRef = DeclarationRef.from('Null', CoreTypeSource.coreNull, ReferenceType.$class);
     return InterfaceTypeImpl('Null', declarationRef, resolver);
   }
 
-  /// Builds a [Future<T>] type with the specified type parameter.
+  /// Builds a [Future&lt;T&gt;] type with the specified type parameter.
   ///
   /// [typeParam] is the type argument for the Future.
   /// [isNullable] specifies whether the Future type itself is nullable.
   InterfaceType buildFutureType(DartType typeParam, {bool isNullable = false}) {
-    final DeclarationRef declarationRef = DeclarationRef.from('Future', CoreTypeSource.asyncFuture, SymbolType.$class);
+    final DeclarationRef declarationRef = DeclarationRef.from(
+      'Future',
+      CoreTypeSource.asyncFuture,
+      ReferenceType.$class,
+    );
     return InterfaceTypeImpl(
       'Future',
       declarationRef,
@@ -73,7 +85,7 @@ class TypeUtils {
   /// - It's explicitly marked as nullable
   /// - It's a special type like dynamic, void, or invalid
   /// - It's the Null type
-  /// - It's a FutureOr<T> where T is nullable
+  /// - It's a FutureOr&lt;T&gt; where T is nullable
   bool isNullable(DartType type) {
     if (type is DynamicType ||
         type is InvalidType ||
@@ -112,11 +124,11 @@ class TypeUtils {
     }
 
     int length = typeParameters1.length;
-    List<TypeParameterType> freshTypeParameters = List.generate(length, (int index) {
+    List<TypeParameterType> freshTypeParameters = List<TypeParameterType>.generate(length, (int index) {
       return typeParameters1[index];
     }, growable: false);
 
-    List<TypeParameterType> freshTypeParameterTypes = List.generate(length, (int index) {
+    List<TypeParameterType> freshTypeParameterTypes = List<TypeParameterType>.generate(length, (int index) {
       return freshTypeParameters[index];
     }, growable: false);
 
@@ -214,7 +226,7 @@ class TypeUtils {
   /// A type accepts a function type if:
   /// - It is a function type
   /// - It is the Function class from dart:core
-  /// - It is FutureOr<T> where T accepts a function type
+  /// - It is FutureOr&lt;T&gt; where T accepts a function type
   bool acceptsFunctionType(DartType? t) {
     if (t == null) return false;
     if (t.isDartAsyncFutureOr) {

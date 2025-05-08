@@ -11,39 +11,80 @@ import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/logger.dart';
 import 'package:collection/collection.dart';
 import 'package:lean_builder/src/resolvers/errors.dart';
+import 'package:lean_builder/src/type/core_type_source.dart';
 import 'package:xxh3/xxh3.dart';
 
-import 'identifier_ref.dart';
+import 'declaration_ref.dart';
 
+/// {@template assets_graph}
+/// A graph of Dart assets and their dependencies.
+///
+/// The [AssetsGraph] tracks all Dart files in the project, their declarations,
+/// and the relationships between them (imports, exports, parts).
+///
+/// It provides methods to:
+/// - Query assets by package
+/// - Look up declarations
+/// - Trace dependencies between files
+/// - Track generated outputs
+/// - Determine which assets need processing
+///
+/// The graph can be persisted to disk to improve build performance across runs.
+/// {@endtemplate}
 class AssetsGraph extends AssetsScanResults {
+  /// File where the assets graph cache is stored
   static final File cacheFile = File('.dart_tool/lean_build/assets_graph.json');
 
+  /// Invalidates the cached graph, forcing a rebuild
   static void invalidateCache() {
     if (cacheFile.existsSync()) {
       cacheFile.deleteSync(recursive: true);
     }
   }
 
+  /// A hash of the build configuration
+  ///
+  /// Used to determine if the cached graph is still valid
   final String hash;
 
+  /// Whether the graph was loaded from cache
   final bool loadedFromCache;
 
+  /// Whether the cached graph should be invalidated
   final bool shouldInvalidate;
 
+  /// Version of the graph format
+  ///
+  /// Used to determine if the cached graph is compatible
   static const String version = '1.0.0';
 
-  late final String _coreImportId = xxh3String(Uint8List.fromList('dart:core/core.dart'.codeUnits));
+  /// ID for the dart:core import
+  late final String _coreImportId = xxh3String(Uint8List.fromList(CoreTypeSource.core.codeUnits));
 
+  /// Representation of an import of dart:core
   late final List<Object?> _coreImport = <Object?>[DirectiveStatement.import, _coreImportId, '', null, null];
 
+  /// {@macro assets_graph}
   AssetsGraph(this.hash) : loadedFromCache = false, shouldInvalidate = false;
 
+  /// Creates a graph from cached data
   AssetsGraph._fromCache(this.hash, {this.shouldInvalidate = false}) : loadedFromCache = true;
 
+  /// {@template assets_graph.init}
+  /// Initialize an assets graph, loading from cache if possible.
+  ///
+  /// If the cache exists, it will be loaded.
+  /// Otherwise, a new graph will be created.
+  ///
+  /// A loaded graph does not mean it doesn't require invalidation.
+  /// [shouldInvalidate] is used to determine if the cached graph is still valid.
+  ///
+  /// [hash] is used to determine if the cached graph is still valid.
+  /// {@endtemplate}
   factory AssetsGraph.init(String hash) {
     if (cacheFile.existsSync()) {
       try {
-        final cachedGraph = jsonDecode(cacheFile.readAsStringSync());
+        final dynamic cachedGraph = jsonDecode(cacheFile.readAsStringSync());
         final AssetsGraph instance = AssetsGraph.fromCache(cachedGraph, hash);
         if (!instance.loadedFromCache || instance.shouldInvalidate) {
           Logger.info('Cache is invalid, rebuilding...');
@@ -58,6 +99,12 @@ class AssetsGraph extends AssetsScanResults {
     return AssetsGraph(hash);
   }
 
+  /// {@template assets_graph.save}
+  /// Saves the graph to disk for future use.
+  ///
+  /// This persists the current state of the graph to improve build performance
+  /// in subsequent runs.
+  /// {@endtemplate}
   Future<void> save() async {
     final File file = AssetsGraph.cacheFile;
     if (!file.existsSync()) {
@@ -66,6 +113,11 @@ class AssetsGraph extends AssetsScanResults {
     await file.writeAsString(jsonEncode(toJson()));
   }
 
+  /// {@template assets_graph.clear_all}
+  /// Clears all data from the graph.
+  ///
+  /// This removes all assets, identifiers, directives, and outputs from the graph.
+  /// {@endtemplate}
   void clearAll() {
     assets.clear();
     identifiers.clear();
@@ -73,9 +125,14 @@ class AssetsGraph extends AssetsScanResults {
     outputs.clear();
   }
 
+  /// {@template assets_graph.get_assets_for_package}
+  /// Returns all assets for a specific package.
+  ///
+  /// [package] is the name of the package to get assets for.
+  /// {@endtemplate}
   List<ScannedAsset> getAssetsForPackage(String package) {
     final List<ScannedAsset> assets = <ScannedAsset>[];
-    for (final MapEntry<String, List> entry in this.assets.entries) {
+    for (final MapEntry<String, List<dynamic>> entry in this.assets.entries) {
       final Uri uri = Uri.parse(entry.value[GraphIndex.assetUri]);
       if (uri.pathSegments.isEmpty) continue;
       if (uri.pathSegments[0] == package) {
@@ -92,8 +149,13 @@ class AssetsGraph extends AssetsScanResults {
     return assets;
   }
 
+  /// {@template assets_graph.invalidate_processed_assets_of}
+  /// Marks all assets from a package as needing to be reprocessed.
+  ///
+  /// [package] is the name of the package to invalidate.
+  /// {@endtemplate}
   void invalidateProcessedAssetsOf(String package) {
-    for (final MapEntry<String, List> entry in assets.entries) {
+    for (final MapEntry<String, List<dynamic>> entry in assets.entries) {
       final Uri uri = Uri.parse(entry.value[GraphIndex.assetUri]);
       if (uri.pathSegments.isEmpty) continue;
       if (uri.pathSegments[0] == package) {
@@ -102,6 +164,18 @@ class AssetsGraph extends AssetsScanResults {
     }
   }
 
+  /// {@template assets_graph.get_declaration_ref}
+  /// Looks up a declaration reference for an identifier.
+  ///
+  /// This method resolves an identifier to its declaration, handling imports,
+  /// exports, and re-exports correctly.
+  ///
+  /// [identifier] is the name of the identifier to look up.
+  /// [importingSrc] is the asset that is importing the identifier.
+  /// [importPrefix] is an optional import prefix (e.g., 'prefix' in 'prefix.identifier').
+  ///
+  /// Throws [IdentifierNotFoundError] if the identifier cannot be resolved.
+  /// {@endtemplate}
   DeclarationRef getDeclarationRef(String identifier, Asset importingSrc, {String? importPrefix}) {
     DeclarationRef buildRef(MapEntry<String, int> srcEntry, {String? providerId}) {
       return DeclarationRef(
@@ -109,7 +183,7 @@ class AssetsGraph extends AssetsScanResults {
         srcId: srcEntry.key,
         srcUri: uriForAsset(srcEntry.key),
         providerId: providerId ?? srcEntry.key,
-        type: SymbolType.fromValue(srcEntry.value),
+        type: ReferenceType.fromValue(srcEntry.value),
         importingLibrary: importingSrc,
         importPrefix: importPrefix,
       );
@@ -169,12 +243,23 @@ class AssetsGraph extends AssetsScanResults {
     throw IdentifierNotFoundError(identifier, importPrefix, importingSrc.shortUri);
   }
 
+  /// {@template assets_graph.lookup_identifier_by_provider}
+  /// Looks up an identifier using its provider source.
+  ///
+  /// This is useful for resolving identifiers when you know which library
+  /// is providing them, such as when dealing with re-exports.
+  ///
+  /// [name] is the identifier name.
+  /// [providerSrc] is the ID of the library providing the identifier.
+  ///
+  /// Returns null if the identifier cannot be found.
+  /// {@endtemplate}
   DeclarationRef? lookupIdentifierByProvider(String name, String providerSrc) {
     if (!assets.containsKey(providerSrc)) return null;
     final Map<String, List<dynamic>> possibleSrcs = Map<String, List<dynamic>>.fromEntries(
       identifiers
           .where((List<dynamic> e) => e[GraphIndex.identifierName] == name)
-          .map((List<dynamic> e) => MapEntry(e[GraphIndex.identifierSrc], e)),
+          .map((List<dynamic> e) => MapEntry<String, List<dynamic>>(e[GraphIndex.identifierSrc], e)),
     );
 
     // First check if the identifier is declared directly in this file
@@ -184,7 +269,7 @@ class AssetsGraph extends AssetsScanResults {
           identifier: name,
           srcId: providerSrc,
           providerId: providerSrc,
-          type: SymbolType.fromValue(entry.value[GraphIndex.identifierType]),
+          type: ReferenceType.fromValue(entry.value[GraphIndex.identifierType]),
           srcUri: uriForAsset(providerSrc),
         );
       }
@@ -197,24 +282,37 @@ class AssetsGraph extends AssetsScanResults {
         identifier: name,
         srcId: src,
         providerId: providerSrc,
-        type: SymbolType.fromValue(possibleSrcs[src]![GraphIndex.identifierType]),
+        type: ReferenceType.fromValue(possibleSrcs[src]![GraphIndex.identifierType]),
         srcUri: uriForAsset(src),
       );
     }
     return null;
   }
 
+  /// {@template assets_graph._trace_exports_of}
+  /// Recursively traces exports to find the source of an identifier.
+  ///
+  /// This method follows export directives to find the original declaration
+  /// of an identifier, handling re-exports and show/hide clauses.
+  ///
+  /// [srcId] is the ID of the library to start from.
+  /// [identifier] is the name of the identifier to look for.
+  /// [possibleSrcs] is a collection of libraries that declare the identifier.
+  /// [visitedSrcs] is used to avoid cycles in export chains.
+  ///
+  /// Returns the ID of the library that declares the identifier, or null if not found.
+  /// {@endtemplate}
   String? _traceExportsOf(String srcId, String identifier, Iterable<String> possibleSrcs, Set<String> visitedSrcs) {
     if (visitedSrcs.contains(srcId)) return null;
     visitedSrcs.add(srcId);
 
-    final List<List> exports = exportsOf(srcId);
+    final List<List<dynamic>> exports = exportsOf(srcId);
     final Set<String> checkableExports = <String>{};
-    for (final List export in exports) {
+    for (final List<dynamic> export in exports) {
       final String exportedFileSrc = export[GraphIndex.directiveSrc] as String;
-      final List hides = export[GraphIndex.directiveHide] as List<dynamic>? ?? const <dynamic>[];
+      final List<dynamic> hides = export[GraphIndex.directiveHide] as List<dynamic>? ?? const <dynamic>[];
       if (hides.contains(identifier)) continue;
-      final List shows = export[GraphIndex.directiveShow] as List<dynamic>? ?? const <dynamic>[];
+      final List<dynamic> shows = export[GraphIndex.directiveShow] as List<dynamic>? ?? const <dynamic>[];
       if (shows.isNotEmpty && !shows.contains(identifier)) continue;
 
       if (possibleSrcs.contains(exportedFileSrc)) {
@@ -236,14 +334,27 @@ class AssetsGraph extends AssetsScanResults {
     return null;
   }
 
+  /// {@template assets_graph.add_output}
+  /// Registers a generated output as being produced by an asset.
+  ///
+  /// This tracks the relationship between source files and their generated outputs.
+  ///
+  /// [asset] is the source asset.
+  /// [output] is the generated output asset.
+  /// {@endtemplate}
   void addOutput(Asset asset, Asset output) {
     assert(assets.containsKey(asset.id), 'Asset not found: ${asset.shortUri}');
     outputs.putIfAbsent(asset.id, () => <String>{}).add(output.id);
   }
 
+  /// {@template assets_graph.identifiers_for_asset}
+  /// Returns all identifiers declared in a specific asset.
+  ///
+  /// [src] is the ID of the asset to get identifiers for.
+  /// {@endtemplate}
   Set<String> identifiersForAsset(String src) {
     final Set<String> identifiers = <String>{};
-    for (final List entry in this.identifiers) {
+    for (final List<dynamic> entry in this.identifiers) {
       if (entry[GraphIndex.identifierSrc] == src) {
         identifiers.add(entry[GraphIndex.identifierName]);
       }
@@ -251,9 +362,18 @@ class AssetsGraph extends AssetsScanResults {
     return identifiers;
   }
 
+  /// {@template assets_graph.get_exposed_identifiers_inside}
+  /// Returns all identifiers exposed within a file through imports.
+  ///
+  /// This includes all identifiers from imported libraries.
+  ///
+  /// [fileHash] is the ID of the file to get exposed identifiers for.
+  ///
+  /// Returns a map of identifier names to the IDs of their source libraries.
+  /// {@endtemplate}
   Map<String, String> getExposedIdentifiersInside(String fileHash) {
     final Map<String, String> identifiers = <String, String>{};
-    for (final List importArr in importsOf(fileHash)) {
+    for (final List<dynamic> importArr in importsOf(fileHash)) {
       final Set<String> importedIdentifiers = identifiersForAsset(importArr[GraphIndex.directiveSrc]);
       for (final String identifier in importedIdentifiers) {
         identifiers[identifier] = importArr[GraphIndex.directiveSrc];
@@ -262,12 +382,24 @@ class AssetsGraph extends AssetsScanResults {
     return identifiers;
   }
 
+  /// {@template assets_graph.to_json}
+  /// Converts the graph to a JSON-serializable map.
+  ///
+  /// Includes version and hash information for cache validation.
+  /// {@endtemplate}
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{...super.toJson(), 'version': version, 'hash': hash};
   }
 
-  // Create from cached data
+  /// {@template assets_graph.from_cache}
+  /// Creates an [AssetsGraph] from cached JSON data.
+  ///
+  /// [json] is the cached JSON data.
+  /// [hash] is the current configuration hash to validate against.
+  ///
+  /// Returns a new [AssetsGraph] populated with data from the cache.
+  /// {@endtemplate}
   factory AssetsGraph.fromCache(Map<String, dynamic> json, String hash) {
     final String? lastUsedHash = json['hash'] as String?;
     final String? version = json['version'] as String?;
@@ -276,21 +408,33 @@ class AssetsGraph extends AssetsScanResults {
     return AssetsScanResults.populate(instance, json);
   }
 
+  /// {@template assets_graph.invalidate_digest}
+  /// Invalidates the digest of an asset, forcing it to be reprocessed.
+  ///
+  /// [assetId] is the ID of the asset to invalidate.
+  /// {@endtemplate}
   void invalidateDigest(String assetId) {
     if (assets.containsKey(assetId)) {
       assets[assetId]![GraphIndex.assetDigest] = null;
     }
   }
 
-  // get any asset that depends on this asset,
-  // either via direct import, part-of or via re-exports
+  /// {@template assets_graph.dependents_of}
+  /// Returns all assets that depend on a specific asset.
+  ///
+  /// This includes assets that import, use as a part, or re-export the asset.
+  ///
+  /// [id] is the ID of the asset to get dependents for.
+  ///
+  /// Returns a map of dependent asset IDs to their data.
+  /// {@endtemplate}
   Map<String, List<dynamic>> dependentsOf(String id) {
     final Set<String> visited = <String>{};
     final Set<String> dependents = _dependentsOf(id, visited);
-    final Map<String, List> assets = <String, List<dynamic>>{};
+    final Map<String, List<dynamic>> assets = <String, List<dynamic>>{};
     for (final String dep in dependents) {
       if (dep == id) continue;
-      final List? arr = this.assets[dep];
+      final List<dynamic>? arr = this.assets[dep];
       if (arr != null) {
         assets[dep] = arr;
       }
@@ -298,13 +442,21 @@ class AssetsGraph extends AssetsScanResults {
     return assets;
   }
 
+  /// {@template assets_graph._dependents_of}
+  /// Recursively collects all assets that depend on a specific asset.
+  ///
+  /// [id] is the ID of the asset to get dependents for.
+  /// [visited] is used to avoid cycles.
+  ///
+  /// Returns a set of dependent asset IDs.
+  /// {@endtemplate}
   Set<String> _dependentsOf(String id, Set<String> visited) {
     if (visited.contains(id)) return <String>{};
     visited.add(id);
     final Set<String> dependents = <String>{};
-    for (final MapEntry<String, List<List>> entry in directives.entries) {
-      for (final List directive in entry.value) {
-        final type = directive[GraphIndex.directiveType];
+    for (final MapEntry<String, List<List<dynamic>>> entry in directives.entries) {
+      for (final List<dynamic> directive in entry.value) {
+        final int type = directive[GraphIndex.directiveType];
         if (directive[GraphIndex.directiveSrc] == id) {
           if (type == DirectiveStatement.export) {
             dependents.addAll(_dependentsOf(entry.key, visited));
@@ -320,6 +472,13 @@ class AssetsGraph extends AssetsScanResults {
     return dependents;
   }
 
+  /// {@template assets_graph.get_generator_of_output}
+  /// Returns the ID of the asset that generated a specific output.
+  ///
+  /// [id] is the ID of the output asset.
+  ///
+  /// Returns null if the asset is not a generated output.
+  /// {@endtemplate}
   String? getGeneratorOfOutput(String id) {
     for (final MapEntry<String, Set<String>> entry in outputs.entries) {
       if (entry.value.contains(id)) {
@@ -329,18 +488,30 @@ class AssetsGraph extends AssetsScanResults {
     return null;
   }
 
+  /// {@template assets_graph.exported_symbols_of}
+  /// Returns all symbols exported by a specific asset.
+  ///
+  /// [id] is the ID of the asset to get exported symbols for.
+  ///
+  /// Returns a list of [ExportedSymbol] objects.
+  /// {@endtemplate}
   List<ExportedSymbol> exportedSymbolsOf(String id) {
     final List<ExportedSymbol> exportedSymbols = <ExportedSymbol>[];
-    for (final List entry in identifiers) {
+    for (final List<dynamic> entry in identifiers) {
       if (entry[GraphIndex.identifierSrc] == id) {
-        final name = entry[GraphIndex.identifierName];
-        final SymbolType type = SymbolType.fromValue(entry[GraphIndex.identifierType]);
+        final String name = entry[GraphIndex.identifierName];
+        final ReferenceType type = ReferenceType.fromValue(entry[GraphIndex.identifierType]);
         exportedSymbols.add(ExportedSymbol(name, type));
       }
     }
     return exportedSymbols;
   }
 
+  /// {@template assets_graph.is_a_generated_source}
+  /// Returns whether an asset is a generated output.
+  ///
+  /// [id] is the ID of the asset to check.
+  /// {@endtemplate}
   bool isAGeneratedSource(String id) {
     for (final MapEntry<String, Set<String>> entry in outputs.entries) {
       if (entry.value.contains(id)) {
@@ -350,6 +521,13 @@ class AssetsGraph extends AssetsScanResults {
     return false;
   }
 
+  /// {@template assets_graph.get_input_of}
+  /// Returns the data for the input asset that generated a specific output.
+  ///
+  /// [id] is the ID of the output asset.
+  ///
+  /// Returns null if the asset is not a generated output.
+  /// {@endtemplate}
   List<dynamic>? getInputOf(String id) {
     for (final MapEntry<String, Set<String>> entry in outputs.entries) {
       if (entry.value.contains(id)) {
@@ -359,6 +537,14 @@ class AssetsGraph extends AssetsScanResults {
     return null;
   }
 
+  /// {@template assets_graph.remove_output}
+  /// Removes an output asset from the graph.
+  ///
+  /// This also updates the outputs map to remove the relationship between
+  /// the input and output assets.
+  ///
+  /// [output] is the ID of the output asset to remove.
+  /// {@endtemplate}
   void removeOutput(String output) {
     for (final MapEntry<String, Set<String>> entry in outputs.entries) {
       if (entry.value.contains(output)) {
@@ -371,9 +557,16 @@ class AssetsGraph extends AssetsScanResults {
     }
   }
 
+  /// {@template assets_graph.get_processable_assets}
+  /// Returns all assets that need to be processed.
+  ///
+  /// [fileResolver] is used to resolve asset IDs to [Asset] objects.
+  ///
+  /// Returns a set of [ProcessableAsset] objects.
+  /// {@endtemplate}
   Set<ProcessableAsset> getProcessableAssets(PackageFileResolver fileResolver) {
     final Set<ProcessableAsset> processableAssets = <ProcessableAsset>{};
-    for (final MapEntry<String, List> entry in assets.entries) {
+    for (final MapEntry<String, List<dynamic>> entry in assets.entries) {
       if (entry.value[GraphIndex.assetState] != AssetState.processed.index) {
         final TLMFlag tlmFlag = TLMFlag.fromIndex(entry.value[GraphIndex.assetTLMFlag] as int);
         final Asset asset = fileResolver.assetForUri(Uri.parse(entry.value[GraphIndex.assetUri]));
@@ -384,9 +577,18 @@ class AssetsGraph extends AssetsScanResults {
     return processableAssets;
   }
 
+  /// {@template assets_graph.get_builder_processable_assets}
+  /// Returns all assets that need to be processed by builders.
+  ///
+  /// This includes only assets that have builder annotations.
+  ///
+  /// [fileResolver] is used to resolve asset IDs to [Asset] objects.
+  ///
+  /// Returns a set of [ProcessableAsset] objects.
+  /// {@endtemplate}
   Set<ProcessableAsset> getBuilderProcessableAssets(PackageFileResolver fileResolver) {
     final Set<ProcessableAsset> processableAssets = <ProcessableAsset>{};
-    for (final MapEntry<String, List> entry in assets.entries) {
+    for (final MapEntry<String, List<dynamic>> entry in assets.entries) {
       final int tlmFlag = entry.value[GraphIndex.assetTLMFlag] as int;
       if (tlmFlag == TLMFlag.builder.index || tlmFlag == TLMFlag.both.index) {
         final Asset asset = fileResolver.assetForUri(Uri.parse(entry.value[GraphIndex.assetUri]));
@@ -397,13 +599,21 @@ class AssetsGraph extends AssetsScanResults {
     return processableAssets;
   }
 
+  /// {@template assets_graph.is_builder_config_asset}
+  /// Returns whether an asset has builder annotations.
+  ///
+  /// [id] is the ID of the asset to check.
+  /// {@endtemplate}
   bool isBuilderConfigAsset(String id) {
-    final tlmFlag = assets[id]?[GraphIndex.assetTLMFlag];
+    final int? tlmFlag = assets[id]?[GraphIndex.assetTLMFlag];
     return tlmFlag == TLMFlag.builder.index || tlmFlag == TLMFlag.both.index;
   }
 
+  /// {@template assets_graph.has_processable_assets}
+  /// Returns whether there are any assets that need to be processed.
+  /// {@endtemplate}
   bool hasProcessableAssets() {
-    for (final List asset in assets.values) {
+    for (final List<dynamic> asset in assets.values) {
       if (asset[GraphIndex.assetState] != AssetState.processed.index) {
         return true;
       }
@@ -412,12 +622,25 @@ class AssetsGraph extends AssetsScanResults {
   }
 }
 
+/// {@template scanned_asset}
+/// Represents an asset that has been scanned by the build system.
+///
+/// Contains information about the asset's URI, digest, and annotations.
+/// {@endtemplate}
 class ScannedAsset {
+  /// {@macro scanned_asset}
   ScannedAsset(this.id, this.uri, this.digest, this.hasTopLevelMetadata);
 
+  /// The URI of the asset
   final Uri uri;
+
+  /// The unique identifier of the asset
   final String id;
+
+  /// The content digest of the asset, or null if not computed
   final String? digest;
+
+  /// Whether the asset has top-level metadata annotations
   final bool hasTopLevelMetadata;
 
   @override
@@ -426,18 +649,43 @@ class ScannedAsset {
   }
 }
 
+/// {@template identifier_ref}
+/// Represents a reference to an identifier in Dart code.
+///
+/// This can be a simple identifier or a prefixed identifier (e.g., 'prefix.name').
+/// It can also include information about import prefixes.
+/// {@endtemplate}
 class IdentifierRef {
+  /// The name of the identifier
   final String name;
+
+  /// The prefix of the identifier (e.g., 'prefix' in 'prefix.name')
   final String? prefix;
+
+  /// The import prefix used to import the library containing this identifier
   final String? importPrefix;
+
+  /// A reference to the declaration of this identifier, if resolved
   final DeclarationRef? declarationRef;
 
+  /// {@macro identifier_ref}
   IdentifierRef(this.name, {this.prefix, this.importPrefix, this.declarationRef});
 
+  /// Whether this identifier has a prefix
   bool get isPrefixed => prefix != null;
 
+  /// The top-level target of this identifier
+  ///
+  /// For a prefixed identifier like 'prefix.name', this returns 'prefix'.
+  /// For a simple identifier, this returns the name.
   String get topLevelTarget => prefix != null ? prefix! : name;
 
+  /// {@template identifier_ref.from}
+  /// Creates an [IdentifierRef] from an [Identifier] AST node.
+  ///
+  /// [identifier] is the AST node.
+  /// [importPrefix] is an optional import prefix.
+  /// {@endtemplate}
   factory IdentifierRef.from(Identifier identifier, {String? importPrefix}) {
     if (identifier is PrefixedIdentifier) {
       return IdentifierRef(identifier.identifier.name, prefix: identifier.prefix.name, importPrefix: importPrefix);
@@ -446,6 +694,11 @@ class IdentifierRef {
     }
   }
 
+  /// {@template identifier_ref.from_type}
+  /// Creates an [IdentifierRef] from a [NamedType] AST node.
+  ///
+  /// [type] is the AST node.
+  /// {@endtemplate}
   factory IdentifierRef.fromType(NamedType type) {
     return IdentifierRef(type.name2.lexeme, importPrefix: type.importPrefix?.name.lexeme);
   }

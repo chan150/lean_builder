@@ -1,19 +1,39 @@
 import 'dart:io' show Platform;
-import 'dart:math';
+import 'dart:math' as math show max, min;
 import 'package:lean_builder/builder.dart';
 import 'package:lean_builder/runner.dart';
 import 'dart:collection';
 
 import 'package:lean_builder/src/graph/references_scan_manager.dart';
 
+/// {@template calculate_chunks}
+/// Distributes a set of processable assets into chunks for parallel processing.
+///
+/// This function:
+/// 1. Determines the optimal number of isolates based on available processors
+/// 2. Splits assets into two groups: those with top-level metadata (TLM) and those without
+/// 3. Distributes both groups evenly across the chunks to balance the workload
+///
+/// The approach ensures that:
+/// - Each isolate gets roughly equal work
+/// - Assets with annotations (which often require more processing) are evenly distributed
+/// - All available CPU cores are efficiently utilized
+///
+/// [assets] The set of processable assets to distribute
+///
+/// Returns a list of sets, where each set contains the assets to be processed by one isolate
+/// {@endtemplate}
 List<Set<ProcessableAsset>> calculateChunks(Set<ProcessableAsset> assets) {
-  final int isolateCount = max(1, Platform.numberOfProcessors - 1);
-  final int actualIsolateCount = min(isolateCount, assets.length);
+  final int isolateCount = math.max(1, Platform.numberOfProcessors - 1);
+  final int actualIsolateCount = math.min(isolateCount, assets.length);
 
   final List<ProcessableAsset> assetsWithTLM = assets.where((ProcessableAsset a) => a.tlmFlag.hasNormal).toList();
   final List<ProcessableAsset> assetsWithoutTLM = assets.where((ProcessableAsset a) => !a.tlmFlag.hasNormal).toList();
 
-  final List<Set<ProcessableAsset>> chunks = List.generate(actualIsolateCount, (_) => <ProcessableAsset>{});
+  final List<Set<ProcessableAsset>> chunks = List<Set<ProcessableAsset>>.generate(
+    actualIsolateCount,
+    (_) => <ProcessableAsset>{},
+  );
 
   // Distribute annotated assets evenly across chunks
   for (int i = 0; i < assetsWithTLM.length; i++) {
@@ -28,6 +48,21 @@ List<Set<ProcessableAsset>> calculateChunks(Set<ProcessableAsset> assets) {
   return chunks;
 }
 
+/// {@template calculate_builder_phases}
+/// Organizes builders into phases for sequential execution.
+///
+/// This function:
+/// 1. Groups SharedPartBuilders into a combined entry for efficiency
+/// 2. Orders builders based on their dependencies (runsBefore)
+/// 3. Places builders into phases, where each phase contains builders that can run in parallel
+///
+/// A builder is placed in a new phase when a builder in the current phase
+/// declares that it should run before that builder.
+///
+/// [entries] The list of builder entries to organize
+///
+/// Returns a list of phases, where each phase is a list of builders that can run in parallel
+/// {@endtemplate}
 List<List<BuilderEntry>> calculateBuilderPhases(List<BuilderEntry> entries) {
   final List<BuilderEntry> effectiveEntries = <BuilderEntry>[];
   final List<BuilderEntryImpl> sharedPartEntries = <BuilderEntryImpl>[];
@@ -74,6 +109,23 @@ List<List<BuilderEntry>> calculateBuilderPhases(List<BuilderEntry> entries) {
   return phases;
 }
 
+/// {@template order_based_on_runs_before}
+/// Performs a topological sort of builders based on their dependency relationships.
+///
+/// This function:
+/// 1. Constructs a directed graph where an edge from A to B means "A runs before B"
+/// 2. Uses Kahn's algorithm to perform a topological sort of the graph
+/// 3. Detects and reports cycles in the dependency graph
+///
+/// The resulting order ensures that each builder runs after all the builders
+/// it depends on have completed.
+///
+/// [entries] The list of builder entries to sort
+///
+/// Returns a list of builder entries in dependency order
+///
+/// Throws a [StateError] if a cycle is detected in the dependency graph
+/// {@endtemplate}
 List<BuilderEntry> orderBasedOnRunsBefore(List<BuilderEntry> entries) {
   final Map<String, BuilderEntry> builderMap = <String, BuilderEntry>{for (BuilderEntry b in entries) b.key: b};
 
@@ -120,10 +172,18 @@ List<BuilderEntry> orderBasedOnRunsBefore(List<BuilderEntry> entries) {
   return sorted;
 }
 
-// validate the following:
-// - shared part builders can not generate to cache
-// - duplicate builder keys
-// - detect output conflicts
+/// {@template validate_builder_entries}
+/// Validates a list of builder entries for potential conflicts and issues.
+///
+/// This function checks for:
+/// 1. SharedPartBuilders that generate to cache (which is not allowed)
+/// 2. Duplicate builder keys (which would cause ambiguity)
+/// 3. Output conflicts (multiple builders generating to the same file extension)
+///
+/// [builderEntries] The list of builder entries to validate
+///
+/// Throws an [Exception] if any validation issues are found
+/// {@endtemplate}
 void validateBuilderEntries(List<BuilderEntry> builderEntries) {
   final HashMap<String, Set<String>> checked = HashMap<String, Set<String>>();
   for (final BuilderEntryImpl entry in builderEntries.whereType<BuilderEntryImpl>()) {
@@ -136,7 +196,7 @@ void validateBuilderEntries(List<BuilderEntry> builderEntries) {
 
     for (final MapEntry<String, Set<String>> checked in checked.entries) {
       for (final String output in entry.builder.outputExtensions) {
-        if (checked.value.contains(output)) {
+        if (entry.builder is! SharedPartBuilder && checked.value.contains(output)) {
           throw Exception(
             'Output conflict detected:\n Both ${entry.key} and ${checked.key} generate to the same output: $output',
           );

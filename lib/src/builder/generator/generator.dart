@@ -85,7 +85,11 @@ abstract class GeneratorForAnnotationBase extends Generator {
       );
     }
     for (AnnotatedElement annotatedElement in annotatedElements) {
-      final rawValue = generateForAnnotatedElement(buildStep, annotatedElement.element, annotatedElement.annotation);
+      final dynamic rawValue = generateForAnnotatedElement(
+        buildStep,
+        annotatedElement.element,
+        annotatedElement.annotation,
+      );
       final Iterable<String> normalized = await normalizeGeneratorOutput(rawValue);
       for (final String value in normalized) {
         if (value.trim().isNotEmpty) {

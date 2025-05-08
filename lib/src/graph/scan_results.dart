@@ -7,100 +7,187 @@ import 'package:xxh3/xxh3.dart';
 
 import 'directive_statement.dart';
 
+/// {@template graph_index}
+/// Constants for accessing data within the graph's data structures.
+///
+/// These constants define the indices used to access specific pieces of
+/// information within the lists and maps that represent the graph's data.
+/// {@endtemplate}
 class GraphIndex {
   const GraphIndex._();
 
-  /// asset
-  static const assetUri = 0;
-  static const assetDigest = 1;
+  /// {@template graph_index.asset}
+  /// Indices for asset-related information.
+  /// {@endtemplate}
+  static const int assetUri = 0;
 
+  /// Represents the values of [Asset.digest].
+  static const int assetDigest = 1;
+
+  /// {@template graph_index.asset_tlm_flag}
+  /// Represents the values of [TLMFlag].
+  ///
   /// 0: no annotation
   /// 1: has regular annotation
   /// 2: has builder annotation
   /// 3: has both
-  /// represents the values of [TLMFlag]
-  static const assetTLMFlag = 2;
+  /// {@endtemplate}
+  static const int assetTLMFlag = 2;
 
-  /// represents the values of [AssetState]
-  static const assetState = 3;
-  static const assetLibraryName = 4;
+  /// {@template graph_index.asset_state}
+  /// Represents the values of [AssetState].
+  /// {@endtemplate}
+  static const int assetState = 3;
 
-  /// identifier
-  static const identifierName = 0;
-  static const identifierSrc = 1;
-  static const identifierType = 2;
+  /// Represents the values of [Asset.libraryName].
+  static const int assetLibraryName = 4;
 
-  /// directive
-  static const directiveType = 0;
-  static const directiveSrc = 1;
-  static const directiveStringUri = 2;
-  static const directiveShow = 3;
-  static const directiveHide = 4;
-  static const directivePrefix = 5;
-  static const directiveDeferred = 6;
+  /// {@template graph_index.identifier}
+  /// Indices for identifier-related information.
+  /// {@endtemplate}
+  static const int identifierName = 0;
+
+  /// Represents the values of [Asset.id].
+  static const int identifierSrc = 1;
+
+  /// Represents the values of [ReferenceType].
+  static const int identifierType = 2;
+
+  /// {@template graph_index.directive}
+  /// Indices for directive-related information.
+  /// {@endtemplate}
+  static const int directiveType = 0;
+
+  /// represents the target asset id the directive is pointing to
+  static const int directiveSrc = 1;
+
+  /// represents the string uri of the directive
+  static const int directiveStringUri = 2;
+
+  /// represents the show combinator of the directive
+  static const int directiveShow = 3;
+
+  /// represents the hide combinator of the directive
+  static const int directiveHide = 4;
+
+  /// represents the prefix of the directive
+  static const int directivePrefix = 5;
+
+  /// represents the deferred flag of the directive
+  static const int directiveDeferred = 6;
 }
 
+/// {@template scan_results}
+/// The `ScanResults` class is an abstract class that defines the structure
+/// and behavior of scan results in this Dart application.
+///
+/// It provides methods to manage and manipulate scan results,
+/// including adding and removing assets,
+/// updating asset information,
+/// and merging results from different scans.
+/// {@endtemplate}
+///
 abstract class ScanResults {
-  HashMap<String, List<dynamic> /*uri, digest, annotation-flag,library-name?*/> get assets;
+  /// Represents the all the assets the scanner has seen.
+  /// including the assets that are not processed yet (directives)
+  HashMap<String, List<dynamic> /*uri, digest, tlm-flag, state,library-name?*/> get assets;
 
+  /// Represents the identifiers that have been found in the scanned assets.
   List<List<dynamic> /*name, src, type*/> get identifiers;
 
+  /// Represents the directives that have been found in the scanned assets.
+  ///
+  /// this is of every asset and it's directives
+  /// it's mainly used to detect relationships between assets
   HashMap<String, List<List<dynamic> /*type, src, stringUri, show, hide, prefix?, deferred?*/>> get directives;
 
+  /// Returns a list of all the exports and parts of a file.
+  ///
+  /// This has an option to include parts because in some contexts of this application
+  /// parts are considered exports as they export their references to the main file.
   List<List<dynamic> /*type, src, stringUri, show, hide*/> exportsOf(String fileId, {bool includeParts = true});
 
+  /// Returns a list of all the parts of a file.
   List<List<dynamic> /*type, src, stringUri*/> partsOf(String fileId);
 
+  /// Returns a the first part-of directive of a file.
   List<dynamic>? /*type, src, stringUri*/ partOfOf(String fileId);
 
+  /// Returns a list of all the imports and parts of a file.
+  ///
+  /// This has an option to include parts because in some contexts of this application
+  /// parts are considered imports as they import from the main file.
   List<List<dynamic> /*type, src, stringUri, show, hide ,prefix? ,deferred?*/> importsOf(
     String fileId, {
     bool includeParts = true,
   });
 
+  /// Returns the parent source of a file.
+  ///
+  /// This is used to get the main file of a part file.
+  /// it returns [fileId] if the file is not a part.
   String getParentSrc(String fileId);
 
   /// the generated outputs sources of a file
   HashMap<String, Set<String>> get outputs;
 
+  /// Returns true if the file has been visited.
+  ///
+  /// Typically we know if asset has been visited by checking if it has a digest of it's content
   bool isVisited(String fileId);
 
+  /// Adds a directive to the asset graph.
   void addDirective(Asset asset, DirectiveStatement statement);
 
+  /// Merges the results of another scan into this one.
   void merge(ScanResults results);
 
+  /// Adds an asset to the asset graph.
   void addAsset(Asset asset);
 
-  void addDeclaration(String identifier, Asset declaringFile, SymbolType type);
+  /// Adds A declaration to the asset graph.
+  void addDeclaration(String identifier, Asset declaringFile, ReferenceType type);
 
+  /// Removes an asset from the asset graph
+  ///
+  /// This will remove all references to the asset from the graph
+  /// including directives, identifiers and outputs
   void removeAsset(String id);
 
-  void updateAssetInfo(Asset asset, {required Uint8List content, int annotationFlag = 0, String? libraryName});
+  /// Updates the asset information in the asset graph.
+  void updateAssetInfo(Asset asset, {required Uint8List content, int tlmFlag = 0, String? libraryName});
 
+  /// Updates the asset state in the asset graph.
   void updateAssetState(String id, AssetState state);
 
-  bool isPart(String id);
-
+  /// Returns all the prefixes of the imports of a file.
+  ///
+  /// if id is a part file, it returns the prefixes of the imports of the main file.
   Set<String> importPrefixesOf(String id);
 
+  /// Adds a library part-of directive to the asset graph.
+  ///
+  /// this is treated differently than the regular part-of directive
+  /// as library part-of do not directly point to an actual file
   void addLibraryPartOf(String uriString, Asset asset);
 }
 
+/// The Default implementation of [ScanResults].
 class AssetsScanResults extends ScanResults {
-  final _listEquals = const ListEquality().equals;
+  final bool Function(List<dynamic>? list1, List<dynamic>? list2) _listEquals = const ListEquality<dynamic>().equals;
 
   @override
-  final HashMap<String, List<dynamic>> assets = HashMap();
+  final HashMap<String, List<dynamic>> assets = HashMap<String, List<dynamic>>();
 
   @override
-  final List<List<dynamic>> identifiers = [];
+  final List<List<dynamic>> identifiers = <List<dynamic>>[];
 
   @override
   List<List<dynamic>> exportsOf(String fileId, {bool includeParts = true}) {
-    final fileDirectives = directives[fileId];
-    if (fileDirectives == null) return [];
-    return List.of(
-      fileDirectives.where((e) {
+    final List<List<dynamic>>? fileDirectives = directives[fileId];
+    if (fileDirectives == null) return <List<dynamic>>[];
+    return List<List<dynamic>>.of(
+      fileDirectives.where((List<dynamic> e) {
         if (e[GraphIndex.directiveType] == DirectiveStatement.export) {
           return true;
         } else if (includeParts && e[GraphIndex.directiveType] == DirectiveStatement.part) {
@@ -113,18 +200,20 @@ class AssetsScanResults extends ScanResults {
 
   @override
   List<List<dynamic>> partsOf(String fileId) {
-    final fileDirectives = directives[fileId];
-    if (fileDirectives == null) return const [];
-    return List.of(fileDirectives.where((e) => e[GraphIndex.directiveType] == DirectiveStatement.part));
+    final List<List<dynamic>>? fileDirectives = directives[fileId];
+    if (fileDirectives == null) return const <List<dynamic>>[];
+    return List<List<dynamic>>.of(
+      fileDirectives.where((List<dynamic> e) => e[GraphIndex.directiveType] == DirectiveStatement.part),
+    );
   }
 
   @override
   List<dynamic>? partOfOf(String fileId) {
-    final fileDirectives = directives[fileId];
+    final List<List<dynamic>>? fileDirectives = directives[fileId];
     if (fileDirectives == null) return null;
     return fileDirectives
         .where(
-          (e) =>
+          (List<dynamic> e) =>
               e[GraphIndex.directiveType] == DirectiveStatement.partOf ||
               e[GraphIndex.directiveType] == DirectiveStatement.partOfLibrary,
         )
@@ -133,10 +222,10 @@ class AssetsScanResults extends ScanResults {
 
   @override
   List<List<dynamic>> importsOf(String fileId, {bool includeParts = true}) {
-    final fileDirectives = directives[getParentSrc(fileId)];
-    if (fileDirectives == null) return const [];
-    return List.of(
-      fileDirectives.where((e) {
+    final List<List<dynamic>>? fileDirectives = directives[getParentSrc(fileId)];
+    if (fileDirectives == null) return const <List<dynamic>>[];
+    return List<List<dynamic>>.of(
+      fileDirectives.where((List<dynamic> e) {
         if (e[GraphIndex.directiveType] == DirectiveStatement.import) {
           return true;
         } else if (includeParts && e[GraphIndex.directiveType] == DirectiveStatement.part) {
@@ -147,6 +236,7 @@ class AssetsScanResults extends ScanResults {
     );
   }
 
+  /// Builds a new [AssetsScanResults] instance.
   AssetsScanResults();
 
   @override
@@ -156,22 +246,22 @@ class AssetsScanResults extends ScanResults {
 
   @override
   void merge(ScanResults results) {
-    for (final asset in results.assets.entries) {
+    for (final MapEntry<String, List<dynamic>> asset in results.assets.entries) {
       if (assets[asset.key]?[GraphIndex.assetDigest] == null) {
         assets[asset.key] = asset.value;
       }
     }
     // [type, src, stringUri, show, hide, prefix?, deferred?]]
-    for (final directive in results.directives.entries) {
+    for (final MapEntry<String, List<List<dynamic>>> directive in results.directives.entries) {
       if (!directives.containsKey(directive.key)) {
         directives[directive.key] = directive.value;
       } else {
-        final newDirectives = directive.value;
-        final allDirections = List.of(directives[directive.key]!);
-        for (final newDir in newDirectives) {
+        final List<List<dynamic>> newDirectives = directive.value;
+        final List<List<dynamic>> allDirections = List<List<dynamic>>.of(directives[directive.key]!);
+        for (final List<dynamic> newDir in newDirectives) {
           bool isDuplicate = false;
-          for (final exDir in allDirections) {
-            final hasNameCombinator =
+          for (final List<dynamic> exDir in allDirections) {
+            final bool hasNameCombinator =
                 (newDir[GraphIndex.directiveType] == DirectiveStatement.export ||
                     newDir[GraphIndex.directiveType] == DirectiveStatement.import);
 
@@ -200,7 +290,7 @@ class AssetsScanResults extends ScanResults {
   @override
   String addAsset(Asset asset) {
     if (!assets.containsKey(asset.id)) {
-      assets[asset.id] = [asset.shortUri.toString(), null, 0, 0];
+      assets[asset.id] = <dynamic>[asset.shortUri.toString(), null, 0, 0];
     }
     return asset.id;
   }
@@ -208,11 +298,11 @@ class AssetsScanResults extends ScanResults {
   @override
   void addDirective(Asset src, DirectiveStatement statement) {
     assert(assets.containsKey(src.id));
-    final directiveSrcId = addAsset(statement.asset);
-    final srcDirectives = directives[src.id] ?? [];
+    final String directiveSrcId = addAsset(statement.asset);
+    final List<List<dynamic>> srcDirectives = directives[src.id] ?? <List<dynamic>>[];
     if (srcDirectives.isNotEmpty) {
-      for (final directive in srcDirectives) {
-        final directiveType = directive[GraphIndex.directiveType];
+      for (final List<dynamic> directive in srcDirectives) {
+        final int directiveType = directive[GraphIndex.directiveType];
 
         /// return early if the directive is already present
         if (directiveType == DirectiveStatement.part &&
@@ -221,9 +311,9 @@ class AssetsScanResults extends ScanResults {
           return;
         }
 
-        final shows = directive[GraphIndex.directiveShow];
-        final hides = directive[GraphIndex.directiveHide];
-        final prefix = directive.elementAtOrNull(GraphIndex.directivePrefix);
+        final List<dynamic>? shows = directive[GraphIndex.directiveShow];
+        final List<dynamic>? hides = directive[GraphIndex.directiveHide];
+        final String? prefix = directive.elementAtOrNull(GraphIndex.directivePrefix);
         if (directive[GraphIndex.directiveSrc] == directiveSrcId &&
             directiveType == statement.type &&
             prefix == statement.prefix &&
@@ -233,7 +323,7 @@ class AssetsScanResults extends ScanResults {
         }
       }
     }
-    srcDirectives.add([
+    srcDirectives.add(<dynamic>[
       statement.type,
       directiveSrcId,
       statement.stringUri,
@@ -246,18 +336,19 @@ class AssetsScanResults extends ScanResults {
   }
 
   @override
-  void addDeclaration(String identifier, Asset declaringFile, SymbolType type) {
+  void addDeclaration(String identifier, Asset declaringFile, ReferenceType type) {
     if (!assets.containsKey(declaringFile.id)) {
       throw Exception('Asset not found: $declaringFile');
     }
-    final entry = lookupIdentifier(identifier, declaringFile.id);
+    final List<dynamic>? entry = lookupIdentifier(identifier, declaringFile.id);
     if (entry == null) {
-      identifiers.add([identifier, declaringFile.id, type.value]);
+      identifiers.add(<dynamic>[identifier, declaringFile.id, type.value]);
     }
   }
 
+  /// Looks up an identifier in the identifiers list.
   List<dynamic>? lookupIdentifier(String identifier, String src) {
-    for (final entry in identifiers) {
+    for (final List<dynamic> entry in identifiers) {
       if (entry[GraphIndex.identifierName] == identifier && entry[GraphIndex.identifierSrc] == src) {
         return entry;
       }
@@ -266,11 +357,11 @@ class AssetsScanResults extends ScanResults {
   }
 
   @override
-  void updateAssetInfo(Asset asset, {required Uint8List content, int annotationFlag = 0, String? libraryName}) {
+  void updateAssetInfo(Asset asset, {required Uint8List content, int tlmFlag = 0, String? libraryName}) {
     assert(assets.containsKey(asset.id), 'Asset not found: $asset');
-    final assetArr = assets[asset.id]!;
+    final List<dynamic> assetArr = assets[asset.id]!;
     assetArr[GraphIndex.assetDigest] = xxh3String(content);
-    assetArr[GraphIndex.assetTLMFlag] = annotationFlag;
+    assetArr[GraphIndex.assetTLMFlag] = tlmFlag;
     assetArr[GraphIndex.assetState] = AssetState.unProcessed.index;
     if (libraryName != null) {
       if (assetArr.length < GraphIndex.assetLibraryName + 1) {
@@ -285,75 +376,80 @@ class AssetsScanResults extends ScanResults {
   void removeAsset(String id) {
     assets.remove(id);
     // remove all directives that reference this asset
-    directives.removeWhere((key, value) {
-      value.removeWhere((element) => element[GraphIndex.directiveSrc] == id);
+    directives.removeWhere((String key, List<List<dynamic>> value) {
+      value.removeWhere((List<dynamic> element) => element[GraphIndex.directiveSrc] == id);
       return value.isEmpty;
     });
     directives.remove(id);
     // remove all identifiers that reference this asset
-    identifiers.removeWhere((element) => element[GraphIndex.identifierSrc] == id);
+    identifiers.removeWhere((List<dynamic> element) => element[GraphIndex.identifierSrc] == id);
 
     // remove all outputs that reference this asset
-    for (final entry in outputs.entries) {
+    for (final MapEntry<String, Set<String>> entry in outputs.entries) {
       entry.value.remove(id);
     }
     outputs.remove(id);
   }
 
+  /// Returns the JSON representation of the scan results.
   Map<String, dynamic> toJson() {
-    return {
+    return <String, dynamic>{
       'assets': assets,
       'identifiers': identifiers,
       'directives': directives,
-      'outputs': outputs.map((key, value) => MapEntry(key, value.toList())),
+      'outputs': outputs.map((String key, Set<String> value) => MapEntry<String, List<String>>(key, value.toList())),
     };
   }
 
+  /// Populates the instance with data from the JSON map.
   static T populate<T extends ScanResults>(T instance, Map<String, dynamic> json) {
     instance.assets.addAll((json['assets'] as Map<String, dynamic>).cast<String, List<dynamic>>());
-    for (final directive in (json['directives'] as Map<String, dynamic>).entries) {
+    for (final MapEntry<String, dynamic> directive in (json['directives'] as Map<String, dynamic>).entries) {
       instance.directives[directive.key] = (directive.value as List<dynamic>).cast<List<dynamic>>();
     }
     instance.identifiers.addAll((json['identifiers'] as List<dynamic>).cast<List<dynamic>>());
-    for (final entry in (json['outputs'] as Map<String, dynamic>).entries) {
+    for (final MapEntry<String, dynamic> entry in (json['outputs'] as Map<String, dynamic>).entries) {
       instance.outputs[entry.key] = (entry.value as List<dynamic>).cast<String>().toSet();
     }
     return instance;
   }
 
+  /// Creates a new instance of [AssetsScanResults] from a JSON map.
   factory AssetsScanResults.fromJson(Map<String, dynamic> json) {
     return populate(AssetsScanResults(), json);
   }
 
   @override
-  final HashMap<String, List<List>> directives = HashMap();
+  final HashMap<String, List<List<dynamic>>> directives = HashMap<String, List<List<dynamic>>>();
 
   @override
-  final HashMap<String, Set<String>> outputs = HashMap();
+  final HashMap<String, Set<String>> outputs = HashMap<String, Set<String>>();
 
   @override
   String toString() {
     return 'AssetsScanResults{assets: $assets, identifiers: $identifiers, directives: $directives} ';
   }
 
+  /// Returns the URI of an asset by its ID.
   Uri uriForAsset(String id) {
-    final uri = uriForAssetOrNull(id);
+    final Uri? uri = uriForAssetOrNull(id);
     assert(uri != null, 'Asset not found: $id');
     return uri!;
   }
 
+  /// Returns the URI of an asset by its ID, or null if not found.
   Uri? uriForAssetOrNull(String id) {
-    final asset = assets[id];
+    final List<dynamic>? asset = assets[id];
     if (asset == null) return null;
     return Uri.parse(asset[GraphIndex.assetUri]);
   }
 
   @override
   Set<String> importPrefixesOf(String id) {
-    final prefixes = <String>{};
+    final Set<String> prefixes = <String>{};
     String targetSrc = getParentSrc(id);
-    for (final import in importsOf(targetSrc, includeParts: false)) {
-      final prefix = import.elementAtOrNull(GraphIndex.directivePrefix);
+    for (final List<dynamic> import in importsOf(targetSrc, includeParts: false)) {
+      final String? prefix = import.elementAtOrNull(GraphIndex.directivePrefix);
       if (prefix != null) {
         prefixes.add(prefix);
       }
@@ -362,41 +458,36 @@ class AssetsScanResults extends ScanResults {
   }
 
   @override
-  bool isPart(String id) {
-    return partOfOf(id) != null;
-  }
-
-  @override
   void addLibraryPartOf(String stringUri, Asset asset) {
-    final fileDirectives = [...?directives[asset.id]];
+    final List<List<dynamic>> fileDirectives = <List<dynamic>>[...?directives[asset.id]];
     if (fileDirectives.isEmpty) {
-      directives[asset.id] = [
-        [DirectiveStatement.partOfLibrary, '', stringUri],
+      directives[asset.id] = <List<dynamic>>[
+        <dynamic>[DirectiveStatement.partOfLibrary, '', stringUri],
       ];
     } else {
       // avoid duplicate entries
-      for (final directive in fileDirectives) {
+      for (final List<dynamic> directive in fileDirectives) {
         if (directive[GraphIndex.directiveType] == DirectiveStatement.partOfLibrary &&
             directive[GraphIndex.directiveStringUri] == stringUri) {
           return;
         }
       }
-      directives[asset.id] = [
+      directives[asset.id] = <List<dynamic>>[
         ...fileDirectives,
-        [DirectiveStatement.partOfLibrary, '', stringUri],
+        <dynamic>[DirectiveStatement.partOfLibrary, '', stringUri],
       ];
     }
   }
 
   @override
   String getParentSrc(String fileId) {
-    final partOf = partOfOf(fileId);
+    final List<dynamic>? partOf = partOfOf(fileId);
     if (partOf == null) return fileId;
-    final type = partOf[GraphIndex.directiveType];
+    final int type = partOf[GraphIndex.directiveType];
     if (type == DirectiveStatement.partOf) {
       return partOf[GraphIndex.directiveSrc];
     } else if (type == DirectiveStatement.partOfLibrary) {
-      for (final asset in assets.entries) {
+      for (final MapEntry<String, List<dynamic>> asset in assets.entries) {
         if (asset.value.length > GraphIndex.assetLibraryName &&
             asset.value[GraphIndex.assetLibraryName] == partOf[GraphIndex.directiveStringUri]) {
           return asset.key;
@@ -417,25 +508,39 @@ class AssetsScanResults extends ScanResults {
   }
 }
 
-enum SymbolType {
+/// An Enumeration representing the type of a reference in the asset graph.
+enum ReferenceType {
+  /// The reference type is unknown.
   unknown(-1),
+
+  /// Represents a class declaration.
   $class(0),
+
+  /// Represents a mixin declaration.
   $mixin(1),
+
+  /// Represents an extension declaration.
   $extension(2),
+
+  /// Represents an enum declaration.
   $enum(3),
+
+  /// Represents a type alias declaration.
   $typeAlias(4),
+
+  /// Represents a function declaration.
   $function(5),
+
+  /// Represents a variable declaration.
   $variable(6);
 
+  /// The value representing the reference type.
   final int value;
 
-  bool get representsInterfaceType {
-    return this == $class || this == $mixin || this == $enum;
-  }
+  const ReferenceType(this.value);
 
-  const SymbolType(this.value);
-
-  static SymbolType fromValue(int value) {
+  /// Creates a [ReferenceType] from an integer value.
+  static ReferenceType fromValue(int value) {
     switch (value) {
       case 0:
         return $class;
@@ -456,14 +561,27 @@ enum SymbolType {
     }
   }
 
-  bool get isInterface => this == $class || this == $mixin || this == $extension || this == $enum || this == $typeAlias;
+  /// Returns true if this reference type represents a class, mixin, or enum.
+  bool get representsInterfaceType {
+    return this == $class || this == $mixin || this == $enum;
+  }
+
+  /// Returns true if this reference type represents a named type.
+  bool get representsANamedType => representsInterfaceType || this == $extension || this == $typeAlias;
 }
 
+/// An Enumeration representing the state of an asset in the asset graph.
 enum AssetState {
+  /// The asset is already processed by builders
   processed,
+
+  /// The asset is not processed yet
   unProcessed,
+
+  /// The asset is deleted
   deleted;
 
+  /// Creates an [AssetState] from an integer index.
   static AssetState fromIndex(int index) {
     return AssetState.values[index];
   }

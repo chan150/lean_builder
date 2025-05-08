@@ -258,7 +258,7 @@ class PackageFileResolverImpl implements PackageFileResolver {
       final List<dynamic> packageConfigJson = json['packages'] as List<dynamic>;
       final String packagesHash = xxh3String(Uint8List.fromList(jsonEncode(packageConfigJson).codeUnits));
       final Map<String, String> packageToPath = <String, String>{};
-      for (var entry in packageConfigJson) {
+      for (dynamic entry in packageConfigJson) {
         String name = entry['name'] as String;
         if (name[0] == '_') continue;
         if (name == _skyEnginePackage) {

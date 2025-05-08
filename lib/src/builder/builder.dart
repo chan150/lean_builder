@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:lean_builder/src/asset/asset.dart';
-import 'package:lean_builder/src/graph/scan_results.dart' show SymbolType;
+import 'package:lean_builder/src/graph/scan_results.dart' show ReferenceType;
 import 'package:path/path.dart' as p;
 
 import 'build_step.dart';
@@ -136,30 +136,30 @@ class BuildCandidate {
   String get extension => p.extension(path);
 
   /// Checks if the asset contains symbols of a specific type.
-  bool _hasType(SymbolType type) {
+  bool _hasType(ReferenceType type) {
     return exportedSymbols.any((ExportedSymbol e) => e.type == type);
   }
 
   /// Whether the asset contains any class definitions.
-  bool get hasClasses => _hasType(SymbolType.$class);
+  bool get hasClasses => _hasType(ReferenceType.$class);
 
   /// Whether the asset contains any function definitions.
-  bool get hasFunctions => _hasType(SymbolType.$function);
+  bool get hasFunctions => _hasType(ReferenceType.$function);
 
   /// Whether the asset contains any mixin definitions.
-  bool get hasMixins => _hasType(SymbolType.$mixin);
+  bool get hasMixins => _hasType(ReferenceType.$mixin);
 
   /// Whether the asset contains any extension definitions.
-  bool get hasExtensions => _hasType(SymbolType.$extension);
+  bool get hasExtensions => _hasType(ReferenceType.$extension);
 
   /// Whether the asset contains any enum definitions.
-  bool get hasEnums => _hasType(SymbolType.$enum);
+  bool get hasEnums => _hasType(ReferenceType.$enum);
 
   /// Whether the asset contains any top-level variable definitions.
-  bool get hasTopLevelVariables => _hasType(SymbolType.$variable);
+  bool get hasTopLevelVariables => _hasType(ReferenceType.$variable);
 
   /// Whether the asset contains any top-level function definitions.
-  bool get hasTopLevelFunctions => _hasType(SymbolType.$function);
+  bool get hasTopLevelFunctions => _hasType(ReferenceType.$function);
 }
 
 /// {@template exported_symbol}
@@ -177,7 +177,7 @@ class ExportedSymbol {
   /// {@template exported_symbol.type}
   /// The type of the exported symbol (class, enum, etc.).
   /// {@endtemplate}
-  final SymbolType type;
+  final ReferenceType type;
 
   /// {@template exported_symbol.constructor}
   /// Creates a new exported symbol with the specified name and type.

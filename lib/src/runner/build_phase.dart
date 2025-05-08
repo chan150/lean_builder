@@ -1,8 +1,8 @@
-import 'dart:collection';
-import 'dart:io';
-import 'dart:isolate';
+import 'dart:collection' show HashMap, HashSet;
+import 'dart:io' show File;
+import 'dart:isolate' show Isolate;
 
-import 'package:lean_builder/builder.dart' show BuildCandidate;
+import 'package:lean_builder/builder.dart';
 import 'package:lean_builder/runner.dart';
 import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
@@ -10,24 +10,57 @@ import 'package:lean_builder/src/graph/assets_graph.dart';
 import 'package:lean_builder/src/graph/references_scan_manager.dart';
 import 'package:lean_builder/src/graph/references_scanner.dart';
 import 'package:lean_builder/src/logger.dart';
-import 'package:lean_builder/src/resolvers/resolver.dart' show ResolverImpl;
+import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/runner/build_utils.dart';
-import 'package:path/path.dart' as p;
+import 'package:path/path.dart' as p show extension;
 
 import 'build_result.dart';
 
+/// {@template build_phase}
+/// Represents a phase in the build process.
+///
+/// A build phase contains a set of [BuilderEntry] instances that can run
+/// in parallel. The phase is responsible for:
+///
+/// - Preparing the builders for execution
+/// - Distributing assets across isolates for parallel processing
+/// - Collecting and consolidating results
+/// - Managing generated outputs
+/// - Cleaning up stale outputs
+///
+/// Build phases execute sequentially, but the builders within a phase
+/// can run in parallel.
+/// {@endtemplate}
 class BuildPhase {
+  /// The resolver used for analyzing Dart code
   final ResolverImpl resolver;
+
+  /// The builders that belong to this phase
   final List<BuilderEntry> builders;
 
+  /// {@macro build_phase}
   BuildPhase(this.resolver, this.builders);
 
+  /// Tracks outputs from previous builds that might need cleaning up
   final Set<String> _oldOutputs = <String>{};
 
+  /// The asset graph used to track dependencies and outputs
   AssetsGraph get graph => resolver.graph;
 
+  /// The file resolver used to resolve file references
   PackageFileResolver get fileResolver => resolver.fileResolver;
 
+  /// {@template build_phase.before_build}
+  /// Prepares the phase for building.
+  ///
+  /// This method:
+  /// 1. Prepares each builder by registering custom type annotations
+  /// 2. Identifies old outputs that might need to be cleaned up
+  /// 3. Removes generated outputs from the list of assets to process
+  ///
+  /// [resolver] The resolver to use for analysis
+  /// [assets] The list of assets to process
+  /// {@endtemplate}
   void beforeBuild(ResolverImpl resolver, List<ProcessableAsset> assets) {
     final HashSet<String> outputExtensions = HashSet<String>();
     for (final BuilderEntry builder in builders) {
@@ -36,7 +69,7 @@ class BuildPhase {
       outputExtensions.addAll(builder.outputExtensions);
     }
 
-    for (final ProcessableAsset entry in List.of(assets)) {
+    for (final ProcessableAsset entry in Set<ProcessableAsset>.of(assets)) {
       final Set<String>? outputs = graph.outputs[entry.asset.id];
       if (outputs != null) {
         for (final String output in outputs) {
@@ -51,12 +84,27 @@ class BuildPhase {
     }
   }
 
+  /// {@template build_phase.build}
+  /// Builds all assets in this phase using the configured builders.
+  ///
+  /// This method:
+  /// 1. Determines whether to use parallel or sequential processing
+  /// 2. Distributes assets across isolates for large builds
+  /// 3. Executes builders on each asset
+  /// 4. Collects and consolidates results
+  /// 5. Finalizes the phase by updating the asset graph
+  ///
+  /// [assets] The set of assets to process
+  ///
+  /// Returns a [PhaseResult] containing information about generated outputs
+  /// and any errors that occurred.
+  /// {@endtemplate}
   Future<PhaseResult> build(Set<ProcessableAsset> assets) async {
     Logger.debug('Running build phase for $builders, assets count: ${assets.length}');
 
     if (assets.length < 15) {
       final BuildResult result = await _buildChunk(assets);
-      return _finalizePhase(result.outputs, result.faildAssets);
+      return _finalizePhase(result.outputs, result.failedAssets);
     }
 
     final List<Set<ProcessableAsset>> chunks = calculateChunks(assets);
@@ -72,12 +120,24 @@ class BuildPhase {
     final List<FailedAsset> failedAssets = <FailedAsset>[];
     for (final BuildResult result in await Future.wait(chunkResults)) {
       phaseOutputs.addAll(result.outputs);
-      failedAssets.addAll(result.faildAssets);
+      failedAssets.addAll(result.failedAssets);
     }
 
     return _finalizePhase(phaseOutputs, failedAssets);
   }
 
+  /// {@template build_phase._finalize_phase}
+  /// Finalizes the build phase by:
+  ///
+  /// 1. Scanning generated Dart files to update the asset graph
+  /// 2. Registering outputs in the asset graph
+  /// 3. Cleaning up any stale outputs
+  ///
+  /// [outputs] Map of source assets to their generated output URIs
+  /// [failedAssets] List of assets that failed to build
+  ///
+  /// Returns a [PhaseResult] containing information about outputs and errors
+  /// {@endtemplate}
   PhaseResult _finalizePhase(Map<Asset, Set<Uri>> outputs, List<FailedAsset> failedAssets) {
     final ReferencesScanner scanner = ReferencesScanner(resolver.graph, resolver.fileResolver);
     final Set<Uri> outputUris = <Uri>{};
@@ -96,6 +156,18 @@ class BuildPhase {
     return PhaseResult(outputs: outputUris, failedAssets: failedAssets, deletedOutputs: deletedOutputs);
   }
 
+  /// {@template build_phase._clean_up}
+  /// Cleans up stale outputs that were not regenerated in this build.
+  ///
+  /// This method:
+  /// 1. Compares old outputs to the newly generated ones
+  /// 2. Deletes files that are no longer needed
+  /// 3. Updates the asset graph to remove references to deleted outputs
+  ///
+  /// [outputUris] The set of newly generated output URIs
+  ///
+  /// Returns a set of URIs representing deleted outputs
+  /// {@endtemplate}
   Set<Uri> _cleanUp(Set<Uri> outputUris) {
     final Set<Uri> deletedOutputs = <Uri>{};
     for (final String oldOutput in _oldOutputs) {

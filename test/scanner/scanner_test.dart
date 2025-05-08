@@ -36,11 +36,11 @@ main() {
     ''');
     scanner.scan(file);
     final List<List<Object>> expected = <List<Object>>[
-      <Object>['_privateConst', file.id, SymbolType.$variable.value],
-      <Object>['kPi', file.id, SymbolType.$variable.value],
-      <Object>['inferredConst', file.id, SymbolType.$variable.value],
-      <Object>['constants', file.id, SymbolType.$variable.value],
-      <Object>['kValue', file.id, SymbolType.$variable.value],
+      <Object>['_privateConst', file.id, ReferenceType.$variable.value],
+      <Object>['kPi', file.id, ReferenceType.$variable.value],
+      <Object>['inferredConst', file.id, ReferenceType.$variable.value],
+      <Object>['constants', file.id, ReferenceType.$variable.value],
+      <Object>['kValue', file.id, ReferenceType.$variable.value],
     ];
     expect(assetsGraph.identifiers, expected);
   });
@@ -80,8 +80,8 @@ main() {
     ''');
     scanner.scan(file);
     final List<List<Object>> expected = <List<Object>>[
-      <Object>['Enum', file.id, SymbolType.$enum.value],
-      <Object>['EnumWithImpl', file.id, SymbolType.$enum.value],
+      <Object>['Enum', file.id, ReferenceType.$enum.value],
+      <Object>['EnumWithImpl', file.id, ReferenceType.$enum.value],
     ];
     expect(assetsGraph.identifiers, expected);
   });
@@ -109,23 +109,23 @@ main() {
     ''');
     scanner.scan(file);
     final List<List<Object>> expected = <List<Object>>[
-      <Object>['JsonMap', file.id, SymbolType.$typeAlias.value],
-      <Object>['Record', file.id, SymbolType.$typeAlias.value],
-      <Object>['Callback', file.id, SymbolType.$typeAlias.value],
-      <Object>['GenericCallback', file.id, SymbolType.$typeAlias.value],
-      <Object>['GenericCallback2', file.id, SymbolType.$typeAlias.value],
-      <Object>['ElementPredicate', file.id, SymbolType.$typeAlias.value],
-      <Object>['TypeName', file.id, SymbolType.$typeAlias.value],
-      <Object>['ConsumerCallback', file.id, SymbolType.$typeAlias.value],
-      <Object>['NullableMap', file.id, SymbolType.$typeAlias.value],
-      <Object>['FunctionFactory', file.id, SymbolType.$typeAlias.value],
-      <Object>['Comparable', file.id, SymbolType.$typeAlias.value],
-      <Object>['ComplexRecord', file.id, SymbolType.$typeAlias.value],
-      <Object>['KeyValuePair', file.id, SymbolType.$typeAlias.value],
-      <Object>['OptionalParams', file.id, SymbolType.$typeAlias.value],
-      <Object>['NamedParams', file.id, SymbolType.$typeAlias.value],
-      <Object>['JsonProcessor', file.id, SymbolType.$typeAlias.value],
-      <Object>['Transformer', file.id, SymbolType.$typeAlias.value],
+      <Object>['JsonMap', file.id, ReferenceType.$typeAlias.value],
+      <Object>['Record', file.id, ReferenceType.$typeAlias.value],
+      <Object>['Callback', file.id, ReferenceType.$typeAlias.value],
+      <Object>['GenericCallback', file.id, ReferenceType.$typeAlias.value],
+      <Object>['GenericCallback2', file.id, ReferenceType.$typeAlias.value],
+      <Object>['ElementPredicate', file.id, ReferenceType.$typeAlias.value],
+      <Object>['TypeName', file.id, ReferenceType.$typeAlias.value],
+      <Object>['ConsumerCallback', file.id, ReferenceType.$typeAlias.value],
+      <Object>['NullableMap', file.id, ReferenceType.$typeAlias.value],
+      <Object>['FunctionFactory', file.id, ReferenceType.$typeAlias.value],
+      <Object>['Comparable', file.id, ReferenceType.$typeAlias.value],
+      <Object>['ComplexRecord', file.id, ReferenceType.$typeAlias.value],
+      <Object>['KeyValuePair', file.id, ReferenceType.$typeAlias.value],
+      <Object>['OptionalParams', file.id, ReferenceType.$typeAlias.value],
+      <Object>['NamedParams', file.id, ReferenceType.$typeAlias.value],
+      <Object>['JsonProcessor', file.id, ReferenceType.$typeAlias.value],
+      <Object>['Transformer', file.id, ReferenceType.$typeAlias.value],
     ];
     expect(assetsGraph.identifiers, expected);
   });
@@ -139,10 +139,10 @@ main() {
     ''');
     scanner.scan(file);
     final List<List<Object>> expected = <List<Object>>[
-      <Object>['StringExt', file.id, SymbolType.$extension.value],
-      <Object>['ListExt', file.id, SymbolType.$extension.value],
-      <Object>['TypeExt', file.id, SymbolType.$extension.value],
-      <Object>['TypeExt2', file.id, SymbolType.$extension.value],
+      <Object>['StringExt', file.id, ReferenceType.$extension.value],
+      <Object>['ListExt', file.id, ReferenceType.$extension.value],
+      <Object>['TypeExt', file.id, ReferenceType.$extension.value],
+      <Object>['TypeExt2', file.id, ReferenceType.$extension.value],
     ];
     expect(assetsGraph.identifiers, expected);
   });
@@ -158,8 +158,8 @@ main() {
     ''');
     scanner.scan(file);
     final List<List<Object>> expected = <List<Object>>[
-      <Object>['Logger', file.id, SymbolType.$mixin.value],
-      <Object>['Logger2', file.id, SymbolType.$mixin.value],
+      <Object>['Logger', file.id, ReferenceType.$mixin.value],
+      <Object>['Logger2', file.id, ReferenceType.$mixin.value],
     ];
     expect(assetsGraph.identifiers, expected);
   });
@@ -182,17 +182,17 @@ main() {
     ''');
     scanner.scan(file);
     final List<List<Object>> expected = <List<Object>>[
-      <Object>['Shape', file.id, SymbolType.$class.value],
-      <Object>['Rectangle', file.id, SymbolType.$class.value],
-      <Object>['Box', file.id, SymbolType.$class.value],
-      <Object>['Boxes', file.id, SymbolType.$class.value],
-      <Object>['AbstractShape', file.id, SymbolType.$class.value],
-      <Object>['FinalShape', file.id, SymbolType.$class.value],
-      <Object>['Shape2', file.id, SymbolType.$class.value],
-      <Object>['Shape3', file.id, SymbolType.$class.value],
-      <Object>['Shape4', file.id, SymbolType.$class.value],
-      <Object>['GenericMixin', file.id, SymbolType.$class.value],
-      <Object>['AliasedClass', file.id, SymbolType.$class.value],
+      <Object>['Shape', file.id, ReferenceType.$class.value],
+      <Object>['Rectangle', file.id, ReferenceType.$class.value],
+      <Object>['Box', file.id, ReferenceType.$class.value],
+      <Object>['Boxes', file.id, ReferenceType.$class.value],
+      <Object>['AbstractShape', file.id, ReferenceType.$class.value],
+      <Object>['FinalShape', file.id, ReferenceType.$class.value],
+      <Object>['Shape2', file.id, ReferenceType.$class.value],
+      <Object>['Shape3', file.id, ReferenceType.$class.value],
+      <Object>['Shape4', file.id, ReferenceType.$class.value],
+      <Object>['GenericMixin', file.id, ReferenceType.$class.value],
+      <Object>['AliasedClass', file.id, ReferenceType.$class.value],
     ];
     expect(assetsGraph.identifiers, expected);
   });
@@ -218,18 +218,18 @@ main() {
 
     scanner.scan(file);
     final List<List<Object>> expected = <List<Object>>[
-      <Object>['noReturn', file.id, SymbolType.$function.value],
-      <Object>['printMsg', file.id, SymbolType.$function.value],
-      <Object>['add', file.id, SymbolType.$function.value],
-      <Object>['configure', file.id, SymbolType.$function.value],
-      <Object>['getRange', file.id, SymbolType.$function.value],
-      <Object>['nestedList', file.id, SymbolType.$function.value],
-      <Object>['identity', file.id, SymbolType.$function.value],
-      <Object>['fetchData', file.id, SymbolType.$function.value],
-      <Object>['countStream', file.id, SymbolType.$function.value],
-      <Object>['runTests', file.id, SymbolType.$function.value],
-      <Object>['codeUnitForDigit', file.id, SymbolType.$function.value],
-      <Object>['processSourceReport', file.id, SymbolType.$function.value],
+      <Object>['noReturn', file.id, ReferenceType.$function.value],
+      <Object>['printMsg', file.id, ReferenceType.$function.value],
+      <Object>['add', file.id, ReferenceType.$function.value],
+      <Object>['configure', file.id, ReferenceType.$function.value],
+      <Object>['getRange', file.id, ReferenceType.$function.value],
+      <Object>['nestedList', file.id, ReferenceType.$function.value],
+      <Object>['identity', file.id, ReferenceType.$function.value],
+      <Object>['fetchData', file.id, ReferenceType.$function.value],
+      <Object>['countStream', file.id, ReferenceType.$function.value],
+      <Object>['runTests', file.id, ReferenceType.$function.value],
+      <Object>['codeUnitForDigit', file.id, ReferenceType.$function.value],
+      <Object>['processSourceReport', file.id, ReferenceType.$function.value],
     ];
     expect(assetsGraph.identifiers, expected);
   });
@@ -254,16 +254,16 @@ main() {
 
     scanner.scan(file);
     final List<List<Object>> expected = <List<Object>>[
-      <Object>['syncGenerator', file.id, SymbolType.$function.value],
-      <Object>['nativeFunction', file.id, SymbolType.$function.value],
-      <Object>['groupBy', file.id, SymbolType.$function.value],
-      <Object>['processComplexData', file.id, SymbolType.$function.value],
-      <Object>['makeAdder', file.id, SymbolType.$function.value],
-      <Object>['operator', file.id, SymbolType.$function.value],
-      <Object>['nullableReturn', file.id, SymbolType.$function.value],
-      <Object>['functionWithRecords', file.id, SymbolType.$function.value],
-      <Object>['returnRecord', file.id, SymbolType.$function.value],
-      <Object>['namedRecord', file.id, SymbolType.$function.value],
+      <Object>['syncGenerator', file.id, ReferenceType.$function.value],
+      <Object>['nativeFunction', file.id, ReferenceType.$function.value],
+      <Object>['groupBy', file.id, ReferenceType.$function.value],
+      <Object>['processComplexData', file.id, ReferenceType.$function.value],
+      <Object>['makeAdder', file.id, ReferenceType.$function.value],
+      <Object>['operator', file.id, ReferenceType.$function.value],
+      <Object>['nullableReturn', file.id, ReferenceType.$function.value],
+      <Object>['functionWithRecords', file.id, ReferenceType.$function.value],
+      <Object>['returnRecord', file.id, ReferenceType.$function.value],
+      <Object>['namedRecord', file.id, ReferenceType.$function.value],
     ];
     expect(assetsGraph.identifiers, expected);
   });
@@ -415,7 +415,7 @@ main() {
       class MyClass {}
     ''');
     scanner.registerAndScan(asset);
-    expect(assetsGraph.identifiers.first, <Object>['MyClass', asset.id, SymbolType.$class.value]);
+    expect(assetsGraph.identifiers.first, <Object>['MyClass', asset.id, ReferenceType.$class.value]);
     expect(assetsGraph.assets[asset.id]?[2], 1);
   });
 
@@ -425,7 +425,7 @@ main() {
       class MyClass {}
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, <Object>['MyClass', file.id, SymbolType.$class.value]);
+    expect(assetsGraph.identifiers.first, <Object>['MyClass', file.id, ReferenceType.$class.value]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
 
@@ -435,7 +435,7 @@ main() {
       class MyClass {}
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, <Object>['MyClass', file.id, SymbolType.$class.value]);
+    expect(assetsGraph.identifiers.first, <Object>['MyClass', file.id, ReferenceType.$class.value]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
 
@@ -445,7 +445,7 @@ main() {
       const myVar = 42;
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, <Object>['myVar', file.id, SymbolType.$variable.value]);
+    expect(assetsGraph.identifiers.first, <Object>['myVar', file.id, ReferenceType.$variable.value]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
 
@@ -455,7 +455,7 @@ main() {
       const myVar = 42;
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, <Object>['myVar', file.id, SymbolType.$variable.value]);
+    expect(assetsGraph.identifiers.first, <Object>['myVar', file.id, ReferenceType.$variable.value]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
 
@@ -466,7 +466,7 @@ main() {
       class MyClass {}
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, <Object>['MyClass', file.id, SymbolType.$class.value]);
+    expect(assetsGraph.identifiers.first, <Object>['MyClass', file.id, ReferenceType.$class.value]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
 
@@ -477,7 +477,7 @@ main() {
       class MyClass {}
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, <Object>['MyClass', file.id, SymbolType.$class.value]);
+    expect(assetsGraph.identifiers.first, <Object>['MyClass', file.id, ReferenceType.$class.value]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
 
@@ -490,7 +490,7 @@ main() {
       void myFunction() {}
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, <Object>['myFunction', file.id, SymbolType.$function.value]);
+    expect(assetsGraph.identifiers.first, <Object>['myFunction', file.id, ReferenceType.$function.value]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
 
@@ -504,7 +504,7 @@ main() {
       }
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, <Object>['MyClass', file.id, SymbolType.$class.value]);
+    expect(assetsGraph.identifiers.first, <Object>['MyClass', file.id, ReferenceType.$class.value]);
     expect(assetsGraph.assets[file.id]?[2], 0);
   });
 
@@ -513,7 +513,7 @@ main() {
       void myFunction(@Annotation() int arg) {}
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, <Object>['myFunction', file.id, SymbolType.$function.value]);
+    expect(assetsGraph.identifiers.first, <Object>['myFunction', file.id, ReferenceType.$function.value]);
     expect(assetsGraph.assets[file.id]?[2], 0);
   });
 }
