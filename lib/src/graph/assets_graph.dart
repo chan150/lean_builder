@@ -59,25 +59,16 @@ class AssetsGraph extends AssetsScanResults {
   static const String version = '1.0.0';
 
   /// ID for the dart:core import
-  late final String _coreImportId = xxh3String(
-    Uint8List.fromList(CoreTypeSource.core.codeUnits),
-  );
+  late final String _coreImportId = xxh3String(Uint8List.fromList(CoreTypeSource.core.codeUnits));
 
   /// Representation of an import of dart:core
-  late final List<Object?> _coreImport = <Object?>[
-    DirectiveStatement.import,
-    _coreImportId,
-    '',
-    null,
-    null,
-  ];
+  late final List<Object?> _coreImport = <Object?>[DirectiveStatement.import, _coreImportId, '', null, null];
 
   /// {@macro assets_graph}
   AssetsGraph(this.hash) : loadedFromCache = false, shouldInvalidate = false;
 
   /// Creates a graph from cached data
-  AssetsGraph._fromCache(this.hash, {this.shouldInvalidate = false})
-    : loadedFromCache = true;
+  AssetsGraph._fromCache(this.hash, {this.shouldInvalidate = false}) : loadedFromCache = true;
 
   /// {@template assets_graph.init}
   /// Initialize an assets graph, loading from cache if possible.
@@ -185,15 +176,8 @@ class AssetsGraph extends AssetsScanResults {
   ///
   /// Throws [IdentifierNotFoundError] if the identifier cannot be resolved.
   /// {@endtemplate}
-  DeclarationRef getDeclarationRef(
-    String identifier,
-    Asset importingSrc, {
-    String? importPrefix,
-  }) {
-    DeclarationRef buildRef(
-      MapEntry<String, int> srcEntry, {
-      String? providerId,
-    }) {
+  DeclarationRef getDeclarationRef(String identifier, Asset importingSrc, {String? importPrefix}) {
+    DeclarationRef buildRef(MapEntry<String, int> srcEntry, {String? providerId}) {
       return DeclarationRef(
         identifier: identifier,
         srcId: srcEntry.key,
@@ -207,15 +191,8 @@ class AssetsGraph extends AssetsScanResults {
 
     final Map<String, int> possibleSrcs = Map<String, int>.fromEntries(
       identifiers
-          .where(
-            (List<dynamic> e) => e[GraphIndex.identifierName] == identifier,
-          )
-          .map(
-            (List<dynamic> e) => MapEntry<String, int>(
-              e[GraphIndex.identifierSrc],
-              e[GraphIndex.identifierType],
-            ),
-          ),
+          .where((List<dynamic> e) => e[GraphIndex.identifierName] == identifier)
+          .map((List<dynamic> e) => MapEntry<String, int>(e[GraphIndex.identifierSrc], e[GraphIndex.identifierType])),
     );
 
     final String actualSrc = getParentSrc(importingSrc.id);
@@ -233,22 +210,16 @@ class AssetsGraph extends AssetsScanResults {
     ];
 
     for (final List<Object?> importEntry in fileImports) {
-      final String importedFileSrc =
-          importEntry[GraphIndex.directiveSrc] as String;
-      final String? prefix =
-          importEntry.elementAtOrNull(GraphIndex.directivePrefix) as String?;
+      final String importedFileSrc = importEntry[GraphIndex.directiveSrc] as String;
+      final String? prefix = importEntry.elementAtOrNull(GraphIndex.directivePrefix) as String?;
       if (importPrefix != null && importPrefix != prefix) continue;
 
       // Skip if the identifier is hidden
-      final List<dynamic> hides =
-          importEntry[GraphIndex.directiveHide] as List<dynamic>? ??
-          const <dynamic>[];
+      final List<dynamic> hides = importEntry[GraphIndex.directiveHide] as List<dynamic>? ?? const <dynamic>[];
       if (hides.contains(identifier)) continue;
 
       // Skip if the identifier is not shown
-      final List<dynamic> shows =
-          importEntry[GraphIndex.directiveShow] as List<dynamic>? ??
-          const <dynamic>[];
+      final List<dynamic> shows = importEntry[GraphIndex.directiveShow] as List<dynamic>? ?? const <dynamic>[];
       if (shows.isNotEmpty && !shows.contains(identifier)) continue;
 
       // Check if the imported file directly declares the identifier
@@ -259,15 +230,9 @@ class AssetsGraph extends AssetsScanResults {
       }
     }
     for (final List<Object?> importEntry in fileImports) {
-      final String importedFileSrc =
-          importEntry[GraphIndex.directiveSrc] as String;
+      final String importedFileSrc = importEntry[GraphIndex.directiveSrc] as String;
       final Set<String> visitedSrcs = <String>{};
-      final String? src = _traceExportsOf(
-        importedFileSrc,
-        identifier,
-        possibleSrcs.keys,
-        visitedSrcs,
-      );
+      final String? src = _traceExportsOf(importedFileSrc, identifier, possibleSrcs.keys, visitedSrcs);
       if (src != null) {
         final MapEntry<String, int> srcEntry = possibleSrcs.entries.firstWhere(
           (MapEntry<String, int> k) => k.key == src,
@@ -275,11 +240,7 @@ class AssetsGraph extends AssetsScanResults {
         return buildRef(srcEntry, providerId: importedFileSrc);
       }
     }
-    throw IdentifierNotFoundError(
-      identifier,
-      importPrefix,
-      importingSrc.shortUri,
-    );
+    throw IdentifierNotFoundError(identifier, importPrefix, importingSrc.shortUri);
   }
 
   /// {@template assets_graph.lookup_identifier_by_provider}
@@ -295,17 +256,11 @@ class AssetsGraph extends AssetsScanResults {
   /// {@endtemplate}
   DeclarationRef? lookupIdentifierByProvider(String name, String providerSrc) {
     if (!assets.containsKey(providerSrc)) return null;
-    final Map<String, List<dynamic>> possibleSrcs =
-        Map<String, List<dynamic>>.fromEntries(
-          identifiers
-              .where((List<dynamic> e) => e[GraphIndex.identifierName] == name)
-              .map(
-                (List<dynamic> e) => MapEntry<String, List<dynamic>>(
-                  e[GraphIndex.identifierSrc],
-                  e,
-                ),
-              ),
-        );
+    final Map<String, List<dynamic>> possibleSrcs = Map<String, List<dynamic>>.fromEntries(
+      identifiers
+          .where((List<dynamic> e) => e[GraphIndex.identifierName] == name)
+          .map((List<dynamic> e) => MapEntry<String, List<dynamic>>(e[GraphIndex.identifierSrc], e)),
+    );
 
     // First check if the identifier is declared directly in this file
     for (final MapEntry<String, List<dynamic>> entry in possibleSrcs.entries) {
@@ -321,20 +276,13 @@ class AssetsGraph extends AssetsScanResults {
     }
     // trace exports
     final Set<String> visitedSrcs = <String>{};
-    final String? src = _traceExportsOf(
-      providerSrc,
-      name,
-      possibleSrcs.keys,
-      visitedSrcs,
-    );
+    final String? src = _traceExportsOf(providerSrc, name, possibleSrcs.keys, visitedSrcs);
     if (src != null) {
       return DeclarationRef(
         identifier: name,
         srcId: src,
         providerId: providerSrc,
-        type: ReferenceType.fromValue(
-          possibleSrcs[src]![GraphIndex.identifierType],
-        ),
+        type: ReferenceType.fromValue(possibleSrcs[src]![GraphIndex.identifierType]),
         srcUri: uriForAsset(src),
       );
     }
@@ -354,12 +302,7 @@ class AssetsGraph extends AssetsScanResults {
   ///
   /// Returns the ID of the library that declares the identifier, or null if not found.
   /// {@endtemplate}
-  String? _traceExportsOf(
-    String srcId,
-    String identifier,
-    Iterable<String> possibleSrcs,
-    Set<String> visitedSrcs,
-  ) {
+  String? _traceExportsOf(String srcId, String identifier, Iterable<String> possibleSrcs, Set<String> visitedSrcs) {
     if (visitedSrcs.contains(srcId)) return null;
     visitedSrcs.add(srcId);
 
@@ -367,13 +310,9 @@ class AssetsGraph extends AssetsScanResults {
     final Set<String> checkableExports = <String>{};
     for (final List<dynamic> export in exports) {
       final String exportedFileSrc = export[GraphIndex.directiveSrc] as String;
-      final List<dynamic> hides =
-          export[GraphIndex.directiveHide] as List<dynamic>? ??
-          const <dynamic>[];
+      final List<dynamic> hides = export[GraphIndex.directiveHide] as List<dynamic>? ?? const <dynamic>[];
       if (hides.contains(identifier)) continue;
-      final List<dynamic> shows =
-          export[GraphIndex.directiveShow] as List<dynamic>? ??
-          const <dynamic>[];
+      final List<dynamic> shows = export[GraphIndex.directiveShow] as List<dynamic>? ?? const <dynamic>[];
       if (shows.isNotEmpty && !shows.contains(identifier)) continue;
 
       if (possibleSrcs.contains(exportedFileSrc)) {
@@ -387,12 +326,7 @@ class AssetsGraph extends AssetsScanResults {
       checkableExports.add(exportedFileSrc);
     }
     for (final String exportedFileHash in checkableExports) {
-      final String? src = _traceExportsOf(
-        exportedFileHash,
-        identifier,
-        possibleSrcs,
-        visitedSrcs,
-      );
+      final String? src = _traceExportsOf(exportedFileHash, identifier, possibleSrcs, visitedSrcs);
       if (src != null) {
         return src;
       }
@@ -440,9 +374,7 @@ class AssetsGraph extends AssetsScanResults {
   Map<String, String> getExposedIdentifiersInside(String fileHash) {
     final Map<String, String> identifiers = <String, String>{};
     for (final List<dynamic> importArr in importsOf(fileHash)) {
-      final Set<String> importedIdentifiers = identifiersForAsset(
-        importArr[GraphIndex.directiveSrc],
-      );
+      final Set<String> importedIdentifiers = identifiersForAsset(importArr[GraphIndex.directiveSrc]);
       for (final String identifier in importedIdentifiers) {
         identifiers[identifier] = importArr[GraphIndex.directiveSrc];
       }
@@ -457,11 +389,7 @@ class AssetsGraph extends AssetsScanResults {
   /// {@endtemplate}
   @override
   Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      ...super.toJson(),
-      'version': version,
-      'hash': hash,
-    };
+    return <String, dynamic>{...super.toJson(), 'version': version, 'hash': hash};
   }
 
   /// {@template assets_graph.from_cache}
@@ -475,12 +403,8 @@ class AssetsGraph extends AssetsScanResults {
   factory AssetsGraph.fromCache(Map<String, dynamic> json, String hash) {
     final String? lastUsedHash = json['hash'] as String?;
     final String? version = json['version'] as String?;
-    final bool shouldInvalidate =
-        lastUsedHash != hash || version != AssetsGraph.version;
-    final AssetsGraph instance = AssetsGraph._fromCache(
-      hash,
-      shouldInvalidate: shouldInvalidate,
-    );
+    final bool shouldInvalidate = lastUsedHash != hash || version != AssetsGraph.version;
+    final AssetsGraph instance = AssetsGraph._fromCache(hash, shouldInvalidate: shouldInvalidate);
     return AssetsScanResults.populate(instance, json);
   }
 
@@ -530,8 +454,7 @@ class AssetsGraph extends AssetsScanResults {
     if (visited.contains(id)) return <String>{};
     visited.add(id);
     final Set<String> dependents = <String>{};
-    for (final MapEntry<String, List<List<dynamic>>> entry
-        in directives.entries) {
+    for (final MapEntry<String, List<List<dynamic>>> entry in directives.entries) {
       for (final List<dynamic> directive in entry.value) {
         final int type = directive[GraphIndex.directiveType];
         if (directive[GraphIndex.directiveSrc] == id) {
@@ -577,9 +500,7 @@ class AssetsGraph extends AssetsScanResults {
     for (final List<dynamic> entry in identifiers) {
       if (entry[GraphIndex.identifierSrc] == id) {
         final String name = entry[GraphIndex.identifierName];
-        final ReferenceType type = ReferenceType.fromValue(
-          entry[GraphIndex.identifierType],
-        );
+        final ReferenceType type = ReferenceType.fromValue(entry[GraphIndex.identifierType]);
         exportedSymbols.add(ExportedSymbol(name, type));
       }
     }
@@ -646,16 +567,11 @@ class AssetsGraph extends AssetsScanResults {
   Set<ProcessableAsset> getProcessableAssets(PackageFileResolver fileResolver) {
     final Set<ProcessableAsset> processableAssets = <ProcessableAsset>{};
     for (final MapEntry<String, List<dynamic>> entry in assets.entries) {
+      if (entry.value[GraphIndex.assetDigest] == null) continue;
       if (entry.value[GraphIndex.assetState] != AssetState.processed.index) {
-        final TLMFlag tlmFlag = TLMFlag.fromIndex(
-          entry.value[GraphIndex.assetTLMFlag] as int,
-        );
-        final Asset asset = fileResolver.assetForUri(
-          Uri.parse(entry.value[GraphIndex.assetUri]),
-        );
-        final AssetState state = AssetState.fromIndex(
-          entry.value[GraphIndex.assetState],
-        );
+        final TLMFlag tlmFlag = TLMFlag.fromIndex(entry.value[GraphIndex.assetTLMFlag] as int);
+        final Asset asset = fileResolver.assetForUri(Uri.parse(entry.value[GraphIndex.assetUri]));
+        final AssetState state = AssetState.fromIndex(entry.value[GraphIndex.assetState]);
         processableAssets.add(ProcessableAsset(asset, state, tlmFlag));
       }
     }
@@ -671,22 +587,14 @@ class AssetsGraph extends AssetsScanResults {
   ///
   /// Returns a set of [ProcessableAsset] objects.
   /// {@endtemplate}
-  Set<ProcessableAsset> getBuilderProcessableAssets(
-    PackageFileResolver fileResolver,
-  ) {
+  Set<ProcessableAsset> getBuilderProcessableAssets(PackageFileResolver fileResolver) {
     final Set<ProcessableAsset> processableAssets = <ProcessableAsset>{};
     for (final MapEntry<String, List<dynamic>> entry in assets.entries) {
       final int tlmFlag = entry.value[GraphIndex.assetTLMFlag] as int;
       if (tlmFlag == TLMFlag.builder.index || tlmFlag == TLMFlag.both.index) {
-        final Asset asset = fileResolver.assetForUri(
-          Uri.parse(entry.value[GraphIndex.assetUri]),
-        );
-        final AssetState state = AssetState.fromIndex(
-          entry.value[GraphIndex.assetState],
-        );
-        processableAssets.add(
-          ProcessableAsset(asset, state, TLMFlag.fromIndex(tlmFlag)),
-        );
+        final Asset asset = fileResolver.assetForUri(Uri.parse(entry.value[GraphIndex.assetUri]));
+        final AssetState state = AssetState.fromIndex(entry.value[GraphIndex.assetState]);
+        processableAssets.add(ProcessableAsset(asset, state, TLMFlag.fromIndex(tlmFlag)));
       }
     }
     return processableAssets;
@@ -762,12 +670,7 @@ class IdentifierRef {
   final DeclarationRef? declarationRef;
 
   /// {@macro identifier_ref}
-  IdentifierRef(
-    this.name, {
-    this.prefix,
-    this.importPrefix,
-    this.declarationRef,
-  });
+  IdentifierRef(this.name, {this.prefix, this.importPrefix, this.declarationRef});
 
   /// Whether this identifier has a prefix
   bool get isPrefixed => prefix != null;
@@ -786,11 +689,7 @@ class IdentifierRef {
   /// {@endtemplate}
   factory IdentifierRef.from(Identifier identifier, {String? importPrefix}) {
     if (identifier is PrefixedIdentifier) {
-      return IdentifierRef(
-        identifier.identifier.name,
-        prefix: identifier.prefix.name,
-        importPrefix: importPrefix,
-      );
+      return IdentifierRef(identifier.identifier.name, prefix: identifier.prefix.name, importPrefix: importPrefix);
     } else {
       return IdentifierRef(identifier.name, importPrefix: importPrefix);
     }
@@ -802,10 +701,7 @@ class IdentifierRef {
   /// [type] is the AST node.
   /// {@endtemplate}
   factory IdentifierRef.fromType(NamedType type) {
-    return IdentifierRef(
-      type.name2.lexeme,
-      importPrefix: type.importPrefix?.name.lexeme,
-    );
+    return IdentifierRef(type.name2.lexeme, importPrefix: type.importPrefix?.name.lexeme);
   }
 
   @override
