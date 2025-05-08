@@ -4,7 +4,9 @@ import 'dart:typed_data' show Uint8List;
 
 import 'package:lean_builder/src/utils.dart';
 import 'package:meta/meta.dart' show visibleForTesting;
-import 'package:path/path.dart' as p show join, joinAll, dirname, normalize, canonicalize, current;
+import 'package:path/path.dart'
+    as p
+    show join, joinAll, dirname, normalize, canonicalize, current;
 import 'package:xxh3/xxh3.dart' show xxh3String;
 import 'asset.dart';
 import 'errors.dart';
@@ -47,7 +49,9 @@ abstract class PackageFileResolver {
   ///
   /// This is derived from the location of the Dart executable.
   /// {@endtemplate}
-  static final Uri dartSdkPath = Uri.file(p.dirname(p.dirname(Platform.resolvedExecutable)));
+  static final Uri dartSdkPath = Uri.file(
+    p.dirname(p.dirname(Platform.resolvedExecutable)),
+  );
 
   /// {@template package_file_resolver.is_dir_supported}
   /// Checks if a given directory scheme is supported by this resolver.
@@ -158,9 +162,14 @@ abstract class PackageFileResolver {
   /// @return A new PackageFileResolver with the restored state
   /// {@endtemplate}
   factory PackageFileResolver.fromJson(Map<String, dynamic> data) {
-    final Map<String, String> packageToPath = (data['packageToPath'] as Map<dynamic, dynamic>).cast<String, String>();
+    final Map<String, String> packageToPath =
+        (data['packageToPath'] as Map<dynamic, dynamic>).cast<String, String>();
 
-    return PackageFileResolverImpl(packageToPath, packagesHash: data['packagesHash'], rootPackage: data['rootPackage']);
+    return PackageFileResolverImpl(
+      packageToPath,
+      packagesHash: data['packagesHash'],
+      rootPackage: data['rootPackage'],
+    );
   }
 
   /// {@template package_file_resolver.root_package}
@@ -212,8 +221,13 @@ class PackageFileResolverImpl implements PackageFileResolver {
   /// @param packagesHash Hash of the package configuration
   /// @param rootPackage Name of the root package
   /// {@endtemplate}
-  PackageFileResolverImpl(this.packageToPath, {required this.packagesHash, required this.rootPackage})
-    : pathToPackage = packageToPath.map((String k, String v) => MapEntry<String, String>(v, k));
+  PackageFileResolverImpl(
+    this.packageToPath, {
+    required this.packagesHash,
+    required this.rootPackage,
+  }) : pathToPackage = packageToPath.map(
+         (String k, String v) => MapEntry<String, String>(v, k),
+       );
 
   @override
   Set<String> get packages => packageToPath.keys.toSet();
@@ -237,7 +251,11 @@ class PackageFileResolverImpl implements PackageFileResolver {
   /// {@endtemplate}
   factory PackageFileResolverImpl.forRoot(String path, String rootPackage) {
     final PackageConfig config = loadPackageConfig(path);
-    return PackageFileResolverImpl(config.packageToPath, packagesHash: config.packagesHash, rootPackage: rootPackage);
+    return PackageFileResolverImpl(
+      config.packageToPath,
+      packagesHash: config.packagesHash,
+      rootPackage: rootPackage,
+    );
   }
 
   /// {@template package_file_resolver_impl.load_package_config}
@@ -256,7 +274,9 @@ class PackageFileResolverImpl implements PackageFileResolver {
     try {
       final dynamic json = jsonDecode(packageConfig.readAsStringSync());
       final List<dynamic> packageConfigJson = json['packages'] as List<dynamic>;
-      final String packagesHash = xxh3String(Uint8List.fromList(jsonEncode(packageConfigJson).codeUnits));
+      final String packagesHash = xxh3String(
+        Uint8List.fromList(jsonEncode(packageConfigJson).codeUnits),
+      );
       final Map<String, String> packageToPath = <String, String>{};
       for (dynamic entry in packageConfigJson) {
         String name = entry['name'] as String;
@@ -268,8 +288,13 @@ class PackageFileResolverImpl implements PackageFileResolver {
         String resolvedPath = packageUri.toString();
         if (!packageUri.hasScheme) {
           Uri absoluteUri = packageUri;
-          absoluteUri = Directory.current.uri.resolve(packageUri.pathSegments.skip(1).join('/'));
-          resolvedPath = absoluteUri.replace(path: p.canonicalize(absoluteUri.path)).toString();
+          absoluteUri = Directory.current.uri.resolve(
+            packageUri.pathSegments.skip(1).join('/'),
+          );
+          resolvedPath =
+              absoluteUri
+                  .replace(path: p.canonicalize(absoluteUri.path))
+                  .toString();
         }
         packageToPath[name] = resolvedPath;
       }
@@ -288,7 +313,11 @@ class PackageFileResolverImpl implements PackageFileResolver {
     if (uri.scheme == 'dart') {
       return PackageFileResolver.dartSdk;
     }
-    final String path = resolveFileUri(uri, relativeTo: relativeTo).replace(scheme: 'file').toString();
+    final String path =
+        resolveFileUri(
+          uri,
+          relativeTo: relativeTo,
+        ).replace(scheme: 'file').toString();
     String? bestMatch;
     int bestMatchLength = 0;
     for (final MapEntry<String, String> entry in pathToPackage.entries) {
@@ -300,7 +329,9 @@ class PackageFileResolverImpl implements PackageFileResolver {
         return packageName;
       }
       // Check if uri starts with this root path
-      if (path.startsWith(rootPath) && (rootPath.endsWith('/') || path.substring(rootPath.length).startsWith('/'))) {
+      if (path.startsWith(rootPath) &&
+          (rootPath.endsWith('/') ||
+              path.substring(rootPath.length).startsWith('/'))) {
         // If this match is longer than our current best match, use it
         if (rootPath.length > bestMatchLength) {
           bestMatch = packageName;
@@ -336,7 +367,10 @@ class PackageFileResolverImpl implements PackageFileResolver {
 
       final String scheme = PackageFileResolver.dirsScheme[dir] ?? 'asset';
       final int dirsToSkip = scheme == 'package' ? 1 : 0;
-      return Uri(scheme: scheme, pathSegments: <String>[packageName, ...segments.skip(dirsToSkip)]);
+      return Uri(
+        scheme: scheme,
+        pathSegments: <String>[packageName, ...segments.skip(dirsToSkip)],
+      );
     }
     return uri;
   }
@@ -373,8 +407,14 @@ class PackageFileResolverImpl implements PackageFileResolver {
     final Uri absoluteUri = resolveFileUri(uri, relativeTo: relativeTo?.uri);
     final Uri shortUri = toShortUri(absoluteUri);
     try {
-      final String id = xxh3String(Uint8List.fromList(shortUri.toString().codeUnits));
-      final Asset asset = Asset(file: File.fromUri(absoluteUri), shortUri: shortUri, id: id);
+      final String id = xxh3String(
+        Uint8List.fromList(shortUri.toString().codeUnits),
+      );
+      final Asset asset = Asset(
+        file: File.fromUri(absoluteUri),
+        shortUri: shortUri,
+        id: id,
+      );
       return _assetCache[reqId] = asset;
     } catch (e) {
       throw AssetUriError(uri.toString(), e.toString());
@@ -405,7 +445,9 @@ class PackageFileResolverImpl implements PackageFileResolver {
     final String package = uri.pathSegments.first;
     final String? packagePath = packageToPath[package];
     if (packagePath != null) {
-      return Uri.parse(p.joinAll(<String>[packagePath, 'lib', ...uri.pathSegments.skip(1)]));
+      return Uri.parse(
+        p.joinAll(<String>[packagePath, 'lib', ...uri.pathSegments.skip(1)]),
+      );
     }
     return uri;
   }
@@ -423,7 +465,9 @@ class PackageFileResolverImpl implements PackageFileResolver {
     final String package = uri.pathSegments.first;
     final String? packagePath = packageToPath[package];
     if (packagePath != null) {
-      return Uri.parse(p.joinAll(<String>[packagePath, ...uri.pathSegments.skip(1)]));
+      return Uri.parse(
+        p.joinAll(<String>[packagePath, ...uri.pathSegments.skip(1)]),
+      );
     }
     return uri;
   }
@@ -451,13 +495,17 @@ class PackageFileResolverImpl implements PackageFileResolver {
     }
     // The SDK libraries are typically located at sdk_path/lib/library_name/library_name.dart
     // First try the standard pattern
-    final Uri absoluteUri = Uri.parse(p.joinAll(<String>[sdkPath, 'lib', libraryName, '$libraryName.dart']));
+    final Uri absoluteUri = Uri.parse(
+      p.joinAll(<String>[sdkPath, 'lib', libraryName, '$libraryName.dart']),
+    );
     if (File.fromUri(absoluteUri).existsSync()) {
       return absoluteUri;
     }
 
     // Some libraries might be directly in the lib directory
-    final Uri directUri = Uri.parse(p.joinAll(<String>[sdkPath, 'lib', ...uri.pathSegments]));
+    final Uri directUri = Uri.parse(
+      p.joinAll(<String>[sdkPath, 'lib', ...uri.pathSegments]),
+    );
     if (File.fromUri(directUri).existsSync()) {
       return directUri;
     }
@@ -467,7 +515,9 @@ class PackageFileResolverImpl implements PackageFileResolver {
       final List<String> segments = uri.pathSegments;
       final String baseLib = segments.first;
       final List<String> fileSegments = segments.sublist(1);
-      final Uri libPath = Uri.parse(p.joinAll(<String>[sdkPath, 'lib', baseLib, ...fileSegments]));
+      final Uri libPath = Uri.parse(
+        p.joinAll(<String>[sdkPath, 'lib', baseLib, ...fileSegments]),
+      );
       if (File.fromUri(libPath).existsSync()) {
         return libPath;
       }
@@ -493,7 +543,8 @@ class PackageFileResolverImpl implements PackageFileResolver {
       throw InvalidPathError('Relative URI requires a base URI');
     }
     final String baseDir = p.dirname(relativeTo.path);
-    final String uriPath = uri.path.startsWith('/') ? uri.path.substring(1) : uri.path;
+    final String uriPath =
+        uri.path.startsWith('/') ? uri.path.substring(1) : uri.path;
     try {
       final String normalized = p.normalize(p.join(baseDir, uriPath));
       return Uri(scheme: 'file', path: normalized);
@@ -504,7 +555,11 @@ class PackageFileResolverImpl implements PackageFileResolver {
 
   @override
   Map<String, dynamic> toJson() {
-    return <String, dynamic>{'packageToPath': packageToPath, 'packagesHash': packagesHash, 'rootPackage': rootPackage};
+    return <String, dynamic>{
+      'packageToPath': packageToPath,
+      'packagesHash': packagesHash,
+      'rootPackage': rootPackage,
+    };
   }
 }
 

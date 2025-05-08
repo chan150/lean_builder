@@ -46,7 +46,10 @@ void main() {
     final ClassElementImpl? classElement = library.getClass('Foo');
 
     expect(classElement, isNotNull);
-    expect(classElement!.getField('a')!.constantValue, isA<ConstInt>().having((ConstInt c) => c.value, 'value', 1));
+    expect(
+      classElement!.getField('a')!.constantValue,
+      isA<ConstInt>().having((ConstInt c) => c.value, 'value', 1),
+    );
     expect(
       classElement.getField('b')!.constantValue,
       isA<ConstDouble>().having((ConstDouble c) => c.value, 'value', 2.0),
@@ -55,13 +58,20 @@ void main() {
       classElement.getField('c')!.constantValue,
       isA<ConstString>().having((ConstString c) => c.value, 'value', 'hello'),
     );
-    expect(classElement.getField('d')!.constantValue, isA<ConstBool>().having((ConstBool c) => c.value, 'value', true));
+    expect(
+      classElement.getField('d')!.constantValue,
+      isA<ConstBool>().having((ConstBool c) => c.value, 'value', true),
+    );
     expect(classElement.getField('g')!.constantValue, isA<ConstType>());
     expect(classElement.getField('n')!.constantValue, isNull);
 
     expect(
       classElement.getField('e')!.constantValue,
-      isA<ConstList>().having((ConstList c) => c.value, 'value', <ConstInt>[ConstInt(1), ConstInt(2), ConstInt(3)]),
+      isA<ConstList>().having((ConstList c) => c.value, 'value', <ConstInt>[
+        ConstInt(1),
+        ConstInt(2),
+        ConstInt(3),
+      ]),
     );
     expect(
       classElement.getField('i')!.constantValue,
@@ -74,17 +84,25 @@ void main() {
 
     expect(
       classElement.getField('f')!.constantValue,
-      isA<ConstMap>().having((ConstMap c) => c.value, 'value', <ConstString, ConstInt>{
-        ConstString('one'): ConstInt(1),
-        ConstString('two'): ConstInt(2),
-      }),
+      isA<ConstMap>().having(
+        (ConstMap c) => c.value,
+        'value',
+        <ConstString, ConstInt>{
+          ConstString('one'): ConstInt(1),
+          ConstString('two'): ConstInt(2),
+        },
+      ),
     );
 
     expect(
       classElement.getField('h')!.constantValue,
       isA<ConstEnumValue>()
           .having((ConstEnumValue c) => c.value, 'value', 'enum2')
-          .having((ConstEnumValue c) => c.literalValue, 'literalValue', 'Enum.enum2')
+          .having(
+            (ConstEnumValue c) => c.literalValue,
+            'literalValue',
+            'Enum.enum2',
+          )
           .having((ConstEnumValue c) => c.index, 'index', 1),
     );
     expect(

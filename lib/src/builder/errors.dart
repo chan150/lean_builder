@@ -29,7 +29,12 @@ class InvalidGenerationSourceError implements Exception {
   final AstNode? node;
 
   /// Creates an [InvalidGenerationSourceError] with the given arguments.
-  InvalidGenerationSourceError(this.message, {this.todo = '', this.element, this.node});
+  InvalidGenerationSourceError(
+    this.message, {
+    this.todo = '',
+    this.element,
+    this.node,
+  });
 
   @override
   String toString() {

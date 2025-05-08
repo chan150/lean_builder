@@ -20,7 +20,8 @@ import 'constant.dart';
 /// A visitor that evaluates constant expressions
 ///
 /// some implementations of this class is borrowed from analyzer package
-class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementStack<Constant> {
+class ConstantEvaluator extends GeneralizingAstVisitor<Constant>
+    with ElementStack<Constant> {
   final ResolverImpl _resolver;
 
   final ElementBuilder _elementBuilder;
@@ -28,7 +29,11 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
   LibraryElement get _library => currentLibrary();
 
   /// Creates a new instance of [ConstantEvaluator].
-  ConstantEvaluator(this._resolver, LibraryElement library, this._elementBuilder) {
+  ConstantEvaluator(
+    this._resolver,
+    LibraryElement library,
+    this._elementBuilder,
+  ) {
     pushElement(library);
   }
 
@@ -37,7 +42,10 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
   /// If the node is not a constant expression, it returns [Constant.invalid].
   /// it also caches the evaluated constant in the [evaluatedConstantsCache].
   Constant? evaluate(AstNode node) {
-    final CompoundKey key = _resolver.evaluatedConstantsCache.keyFor(_library.src.id, '${node.hashCode}');
+    final CompoundKey key = _resolver.evaluatedConstantsCache.keyFor(
+      _library.src.id,
+      '${node.hashCode}',
+    );
     if (_resolver.evaluatedConstantsCache.contains(key)) {
       return _resolver.evaluatedConstantsCache[key];
     }
@@ -54,23 +62,28 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
     final ConstructorName? redirectConstructor = node.redirectedConstructor;
     if (redirectConstructor != null) {
       final NamedType redType = redirectConstructor.type;
-      final IdentifierRef identifierRef = _resolver.resolveIdentifier(_library, <String>[
-        if (redType.importPrefix != null) redType.importPrefix!.name.lexeme,
-        redType.name2.lexeme,
-      ]);
-      final (LibraryElementImpl redirectLib, AstNode redirectConstroctor, _) = _resolver.astNodeFor(
-        identifierRef,
-        _library,
-      );
+      final IdentifierRef identifierRef = _resolver
+          .resolveIdentifier(_library, <String>[
+            if (redType.importPrefix != null) redType.importPrefix!.name.lexeme,
+            redType.name2.lexeme,
+          ]);
+      final (
+        LibraryElementImpl redirectLib,
+        AstNode redirectConstroctor,
+        _,
+      ) = _resolver.astNodeFor(identifierRef, _library);
       if (redirectConstroctor is! ConstructorDeclaration) {
-        throw Exception('Expected ConstructorDeclaration, but got ${redirectConstroctor.runtimeType}');
+        throw Exception(
+          'Expected ConstructorDeclaration, but got ${redirectConstroctor.runtimeType}',
+        );
       }
       return visitElementScoped(redirectLib, () {
         return evaluate(redirectConstroctor);
       });
     }
 
-    final NamedCompilationUnitMember interfaceDec = node.parent as NamedCompilationUnitMember;
+    final NamedCompilationUnitMember interfaceDec =
+        node.parent as NamedCompilationUnitMember;
     assert(interfaceDec is ClassDeclaration || interfaceDec is EnumDeclaration);
     ConstObjectImpl? superConstObj;
     final NodeList<ConstructorInitializer> initializers = node.initializers;
@@ -79,38 +92,54 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
       if (superClass != null) {
         final Iterable<SuperConstructorInvocation> superConstInvocations =
             initializers.whereType<SuperConstructorInvocation>();
-        final String? superConstName = superConstInvocations.firstOrNull?.constructorName?.name;
+        final String? superConstName =
+            superConstInvocations.firstOrNull?.constructorName?.name;
         final (
           LibraryElementImpl superLib,
           ClassDeclaration superNode as ClassDeclaration,
           DeclarationRef loc,
         ) = _resolver.astNodeFor(IdentifierRef.fromType(superClass), _library);
         visitElementScoped(superLib, () {
-          final Iterable<ConstructorDeclaration> constructors = superNode.members.whereType<ConstructorDeclaration>();
+          final Iterable<ConstructorDeclaration> constructors =
+              superNode.members.whereType<ConstructorDeclaration>();
           final ConstructorDeclaration superConstructor =
-              constructors.where((ConstructorDeclaration c) => c.name?.lexeme == superConstName).single;
+              constructors
+                  .where(
+                    (ConstructorDeclaration c) =>
+                        c.name?.lexeme == superConstName,
+                  )
+                  .single;
           superConstObj = evaluate(superConstructor) as ConstObjectImpl?;
         });
       }
     }
 
-    final Iterable<FieldDeclaration> fields = interfaceDec.childEntities.whereType<FieldDeclaration>();
+    final Iterable<FieldDeclaration> fields =
+        interfaceDec.childEntities.whereType<FieldDeclaration>();
     final NodeList<FormalParameter> params = node.parameters.parameters;
     final Map<String, Constant?> values = <String, Constant?>{};
     final Map<int, String> positionalNames = <int, String>{};
 
     for (final ConstructorInitializer initializer in initializers) {
       if (initializer is ConstructorFieldInitializer) {
-        values[initializer.fieldName.name] = initializer.expression.accept(this);
+        values[initializer.fieldName.name] = initializer.expression.accept(
+          this,
+        );
       } else if (initializer is SuperConstructorInvocation) {
         final String? constructorName = initializer.constructorName?.name;
-        superConstObj = superConstObj?.construct(initializer.argumentList, this, constructorName);
+        superConstObj = superConstObj?.construct(
+          initializer.argumentList,
+          this,
+          constructorName,
+        );
       }
     }
     if (superConstObj != null) {
       values.addAll(superConstObj!.props);
     }
-    for (final FieldDeclaration field in fields.where((FieldDeclaration f) => !f.isStatic)) {
+    for (final FieldDeclaration field in fields.where(
+      (FieldDeclaration f) => !f.isStatic,
+    )) {
       for (final VariableDeclaration variable in field.fields.variables) {
         if (variable.initializer != null) {
           values[variable.name.lexeme] = variable.initializer!.accept(this);
@@ -228,7 +257,12 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
         }
       } else if (node.operator.type == TokenType.GT_GT_GT) {
         if (leftOperand is int && rightOperand is int) {
-          return ConstInt(rightOperand >= 64 ? 0 : (leftOperand >> rightOperand) & ((1 << (64 - rightOperand)) - 1));
+          return ConstInt(
+            rightOperand >= 64
+                ? 0
+                : (leftOperand >> rightOperand) &
+                    ((1 << (64 - rightOperand)) - 1),
+          );
         }
       } else if (node.operator.type == TokenType.LT) {
         // numeric or {@code null}
@@ -289,12 +323,16 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
   Constant? visitDoubleLiteral(DoubleLiteral node) => ConstDouble(node.value);
 
   @override
-  Constant? visitIntegerLiteral(IntegerLiteral node) => node.value == null ? null : ConstInt(node.value!);
+  Constant? visitIntegerLiteral(IntegerLiteral node) =>
+      node.value == null ? null : ConstInt(node.value!);
 
   @override
   Constant? visitInterpolationExpression(InterpolationExpression node) {
     Constant? value = node.expression.accept(this);
-    if (value == null || value is ConstBool || value is ConstString || value is ConstNum) {
+    if (value == null ||
+        value is ConstBool ||
+        value is ConstString ||
+        value is ConstNum) {
       return value;
     }
     return Constant.invalid;
@@ -304,7 +342,8 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
   Constant? visitBooleanLiteral(BooleanLiteral node) => ConstBool(node.value);
 
   @override
-  Constant? visitInterpolationString(InterpolationString node) => ConstString(node.value);
+  Constant? visitInterpolationString(InterpolationString node) =>
+      ConstString(node.value);
 
   @override
   Constant? visitListLiteral(ListLiteral node) {
@@ -330,20 +369,29 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
     final Expression? target = node.target;
     final List<String> parts = <String>[
       if (target is SimpleIdentifier) target.name,
-      if (target is PrefixedIdentifier) ...<String>[target.prefix.name, target.identifier.name],
+      if (target is PrefixedIdentifier) ...<String>[
+        target.prefix.name,
+        target.identifier.name,
+      ],
       node.methodName.name,
     ];
     if (parts.length < 3) {
       parts.add('');
     }
-    final IdentifierRef identifierRef = _resolver.resolveIdentifier(_library, parts);
-    final (LibraryElementImpl lib, AstNode constructorNode, DeclarationRef loc) = _resolver.astNodeFor(
-      identifierRef,
+    final IdentifierRef identifierRef = _resolver.resolveIdentifier(
       _library,
+      parts,
     );
+    final (
+      LibraryElementImpl lib,
+      AstNode constructorNode,
+      DeclarationRef loc,
+    ) = _resolver.astNodeFor(identifierRef, _library);
 
     if (constructorNode is! ConstructorDeclaration) {
-      throw Exception('Expected ConstructorDeclaration, but got ${constructorNode.runtimeType}');
+      throw Exception(
+        'Expected ConstructorDeclaration, but got ${constructorNode.runtimeType}',
+      );
     }
     final Constant? constant = visitElementScoped(lib, () {
       return evaluate(constructorNode);
@@ -351,7 +399,11 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
 
     if (constant is ConstObjectImpl) {
       return visitElementScoped(_library, () {
-        return constant.construct(node.argumentList, this, constructorNode.name?.lexeme);
+        return constant.construct(
+          node.argumentList,
+          this,
+          constructorNode.name?.lexeme,
+        );
       });
     }
     return Constant.invalid;
@@ -364,14 +416,19 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
   Constant? visitNullLiteral(NullLiteral node) => null;
 
   @override
-  Constant? visitParenthesizedExpression(ParenthesizedExpression node) => node.expression.accept(this);
+  Constant? visitParenthesizedExpression(ParenthesizedExpression node) =>
+      node.expression.accept(this);
 
   @override
   Constant? visitPropertyAccess(PropertyAccess node) {
     final Expression target = node.realTarget;
     if (target is PrefixedIdentifier) {
       return _getConstantValue(
-        IdentifierRef(node.propertyName.name, prefix: target.identifier.name, importPrefix: target.prefix.name),
+        IdentifierRef(
+          node.propertyName.name,
+          prefix: target.identifier.name,
+          importPrefix: target.prefix.name,
+        ),
         _library,
       );
     }
@@ -437,7 +494,9 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
       if (element is MapLiteralEntry) {
         Constant? key = element.key.accept(this);
         Constant? value = element.value.accept(this);
-        if (key != null && value != null && !identical(value, Constant.invalid)) {
+        if (key != null &&
+            value != null &&
+            !identical(value, Constant.invalid)) {
           map[key] = value;
         } else {
           return Constant.invalid;
@@ -453,14 +512,19 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
 
   @override
   Constant? visitSimpleIdentifier(SimpleIdentifier node) {
-    final NamedCompilationUnitMember? namedUnit = node.thisOrAncestorOfType<NamedCompilationUnitMember>();
+    final NamedCompilationUnitMember? namedUnit =
+        node.thisOrAncestorOfType<NamedCompilationUnitMember>();
     String? prefix;
     if (namedUnit != null) {
-      bool isMember = namedUnit.childEntities.whereType<ClassMember>().any((ClassMember m) {
+      bool isMember = namedUnit.childEntities.whereType<ClassMember>().any((
+        ClassMember m,
+      ) {
         if (m is MethodDeclaration) {
           return m.name.lexeme == node.name;
         } else if (m is FieldDeclaration) {
-          return m.fields.variables.any((VariableDeclaration v) => v.name.lexeme == node.name);
+          return m.fields.variables.any(
+            (VariableDeclaration v) => v.name.lexeme == node.name,
+          );
         }
         return false;
       });
@@ -468,15 +532,23 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
         prefix = namedUnit.name.lexeme;
       }
     }
-    return _getConstantValue(IdentifierRef(node.name, prefix: prefix), _library);
+    return _getConstantValue(
+      IdentifierRef(node.name, prefix: prefix),
+      _library,
+    );
   }
 
   @override
   Constant? visitFunctionReference(FunctionReference node) {
     final Constant? value = node.function.accept(this);
     if (value is ConstFunctionReferenceImpl) {
-      for (final TypeAnnotation typeArg in <TypeAnnotation>[...?node.typeArguments?.arguments]) {
-        final DartType type = _elementBuilder.resolveTypeRef((typeArg), _library);
+      for (final TypeAnnotation typeArg in <TypeAnnotation>[
+        ...?node.typeArguments?.arguments,
+      ]) {
+        final DartType type = _elementBuilder.resolveTypeRef(
+          (typeArg),
+          _library,
+        );
         value.addTypeArgument(type);
       }
     }
@@ -484,7 +556,8 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
   }
 
   @override
-  Constant? visitSimpleStringLiteral(SimpleStringLiteral node) => ConstString(node.value);
+  Constant? visitSimpleStringLiteral(SimpleStringLiteral node) =>
+      ConstString(node.value);
 
   @override
   Constant? visitStringInterpolation(StringInterpolation node) {
@@ -514,12 +587,17 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
   /// Return the constant value of the static constant represented by the given
   /// [objectArg].
   Constant _getConstantValue(IdentifierRef ref, LibraryElement library) {
-    final (LibraryElementImpl lib, AstNode node, DeclarationRef loc) = _resolver.astNodeFor(ref, library);
+    final (LibraryElementImpl lib, AstNode node, DeclarationRef loc) = _resolver
+        .astNodeFor(ref, library);
 
     if (node is TopLevelVariableDeclaration) {
       final VariableDeclaration variable = node.variables.variables.firstWhere(
         (VariableDeclaration e) => e.name.lexeme == ref.topLevelTarget,
-        orElse: () => throw Exception('Identifier ${ref.topLevelTarget} not found in ${lib.src.uri}'),
+        orElse:
+            () =>
+                throw Exception(
+                  'Identifier ${ref.topLevelTarget} not found in ${lib.src.uri}',
+                ),
       );
       final Expression? initializer = variable.initializer;
       if (initializer != null) {
@@ -532,44 +610,81 @@ class ConstantEvaluator extends GeneralizingAstVisitor<Constant> with ElementSta
       _elementBuilder.visitFunctionDeclaration(node);
       final Element? function = lib.getElement(node.name.lexeme);
       if (function is FunctionElement) {
-        return ConstFunctionReferenceImpl(name: node.name.lexeme, element: function, declaration: loc);
+        return ConstFunctionReferenceImpl(
+          name: node.name.lexeme,
+          element: function,
+          declaration: loc,
+        );
       } else {
-        throw Exception('Function ${node.name.lexeme} not found in ${lib.src.uri}');
+        throw Exception(
+          'Function ${node.name.lexeme} not found in ${lib.src.uri}',
+        );
       }
     } else if (node is NamedCompilationUnitMember) {
-      final InterfaceTypeImpl type = InterfaceTypeImpl(node.name.lexeme, loc, _resolver);
+      final InterfaceTypeImpl type = InterfaceTypeImpl(
+        node.name.lexeme,
+        loc,
+        _resolver,
+      );
       return ConstType(type);
     } else if (node is MethodDeclaration) {
-      assert(node.isStatic, 'Methods reference in constant context should be static');
+      assert(
+        node.isStatic,
+        'Methods reference in constant context should be static',
+      );
 
       final MethodElement? method = _elementBuilder.visitElementScoped(lib, () {
-        final NamedCompilationUnitMember parent = node.parent as NamedCompilationUnitMember;
+        final NamedCompilationUnitMember parent =
+            node.parent as NamedCompilationUnitMember;
         parent.accept(_elementBuilder);
         final Element? interfaceElement = lib.getElement(parent.name.lexeme);
         if (interfaceElement is! InterfaceElement) {
-          throw Exception('Expected InterfaceElement, but got ${interfaceElement.runtimeType}');
+          throw Exception(
+            'Expected InterfaceElement, but got ${interfaceElement.runtimeType}',
+          );
         }
         _elementBuilder.visitElementScoped(interfaceElement, () {
           _elementBuilder.visitMethodDeclaration(node);
         });
-        final MethodElement? method = interfaceElement.getMethod(node.name.lexeme);
+        final MethodElement? method = interfaceElement.getMethod(
+          node.name.lexeme,
+        );
         if (method == null) {
-          throw Exception('Method ${node.name.lexeme} not found in ${lib.src.uri}');
+          throw Exception(
+            'Method ${node.name.lexeme} not found in ${lib.src.uri}',
+          );
         }
         return method;
       });
-      return ConstFunctionReferenceImpl(name: method!.name, element: method, declaration: loc);
+      return ConstFunctionReferenceImpl(
+        name: method!.name,
+        element: method,
+        declaration: loc,
+      );
     } else if (node is EnumConstantDeclaration) {
       final String name = node.name.lexeme;
       final EnumDeclaration enumDeclaration = node.parent as EnumDeclaration;
-      final int index = enumDeclaration.constants.indexWhere((EnumConstantDeclaration e) => e.name.lexeme == name);
-      final InterfaceTypeImpl enumType = InterfaceTypeImpl(enumDeclaration.name.lexeme, loc, _resolver);
+      final int index = enumDeclaration.constants.indexWhere(
+        (EnumConstantDeclaration e) => e.name.lexeme == name,
+      );
+      final InterfaceTypeImpl enumType = InterfaceTypeImpl(
+        enumDeclaration.name.lexeme,
+        loc,
+        _resolver,
+      );
       return ConstEnumValue(node.name.lexeme, index, enumType);
     } else if (node is FieldDeclaration) {
-      assert(node.isStatic, 'Fields reference in constant context should be static');
+      assert(
+        node.isStatic,
+        'Fields reference in constant context should be static',
+      );
       final VariableDeclaration variable = node.fields.variables.firstWhere(
         (VariableDeclaration e) => e.name.lexeme == ref.name,
-        orElse: () => throw Exception('Identifier ${ref.name} not found in ${lib.src.uri}'),
+        orElse:
+            () =>
+                throw Exception(
+                  'Identifier ${ref.name} not found in ${lib.src.uri}',
+                ),
       );
       final Expression? initializer = variable.initializer;
       if (initializer != null) {

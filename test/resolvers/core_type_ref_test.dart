@@ -1,4 +1,5 @@
-import 'package:lean_builder/src/asset/package_file_resolver.dart' show PackageFileResolver;
+import 'package:lean_builder/src/asset/package_file_resolver.dart'
+    show PackageFileResolver;
 import 'package:lean_builder/src/element/element.dart';
 import 'package:lean_builder/src/graph/assets_graph.dart';
 import 'package:lean_builder/src/graph/references_scanner.dart';
@@ -65,17 +66,32 @@ void main() {
     expect(classElement.getField('listField')!.type.isDartCoreList, isTrue);
     expect(classElement.getField('mapField')!.type.isDartCoreMap, isTrue);
     expect(classElement.getField('setField')!.type.isDartCoreSet, isTrue);
-    expect(classElement.getField('functionField')!.type.isDartCoreFunction, isTrue);
+    expect(
+      classElement.getField('functionField')!.type.isDartCoreFunction,
+      isTrue,
+    );
     expect(classElement.getField('objectField')!.type.isDartCoreObject, isTrue);
     expect(classElement.getField('numField')!.type.isDartCoreNum, isTrue);
     expect(classElement.getField('typeField')!.type.isDartCoreType, isTrue);
-    expect(classElement.getField('dateTimeField')!.type.isDartCoreDateTime, isTrue);
+    expect(
+      classElement.getField('dateTimeField')!.type.isDartCoreDateTime,
+      isTrue,
+    );
     expect(classElement.getField('noTypeField')!.type.isInvalid, isTrue);
     expect(classElement.getField('dynamicField')!.type.isDynamic, isTrue);
     expect(classElement.getMethod('voidMethod')!.returnType.isVoid, isTrue);
     expect(classElement.getMethod('neverMethod')!.returnType.isNever, isTrue);
-    expect(classElement.getField('futureField')!.type.isDartAsyncFuture, isTrue);
-    expect(classElement.getField('futureOrField')!.type.isDartAsyncFutureOr, isTrue);
-    expect(classElement.getField('streamField')!.type.isDartAsyncStream, isTrue);
+    expect(
+      classElement.getField('futureField')!.type.isDartAsyncFuture,
+      isTrue,
+    );
+    expect(
+      classElement.getField('futureOrField')!.type.isDartAsyncFutureOr,
+      isTrue,
+    );
+    expect(
+      classElement.getField('streamField')!.type.isDartAsyncStream,
+      isTrue,
+    );
   });
 }

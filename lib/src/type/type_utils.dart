@@ -51,12 +51,21 @@ class TypeUtils {
       CoreTypeSource.coreObject,
       ReferenceType.$class,
     );
-    return InterfaceTypeImpl('Object?', declarationRef, resolver, isNullable: true);
+    return InterfaceTypeImpl(
+      'Object?',
+      declarationRef,
+      resolver,
+      isNullable: true,
+    );
   }
 
   /// {@macro core_type_getter}
   InterfaceType get nullTypeObject {
-    final DeclarationRef declarationRef = DeclarationRef.from('Null', CoreTypeSource.coreNull, ReferenceType.$class);
+    final DeclarationRef declarationRef = DeclarationRef.from(
+      'Null',
+      CoreTypeSource.coreNull,
+      ReferenceType.$class,
+    );
     return InterfaceTypeImpl('Null', declarationRef, resolver);
   }
 
@@ -124,16 +133,24 @@ class TypeUtils {
     }
 
     int length = typeParameters1.length;
-    List<TypeParameterType> freshTypeParameters = List<TypeParameterType>.generate(length, (int index) {
-      return typeParameters1[index];
-    }, growable: false);
+    List<TypeParameterType> freshTypeParameters =
+        List<TypeParameterType>.generate(length, (int index) {
+          return typeParameters1[index];
+        }, growable: false);
 
-    List<TypeParameterType> freshTypeParameterTypes = List<TypeParameterType>.generate(length, (int index) {
-      return freshTypeParameters[index];
-    }, growable: false);
+    List<TypeParameterType> freshTypeParameterTypes =
+        List<TypeParameterType>.generate(length, (int index) {
+          return freshTypeParameters[index];
+        }, growable: false);
 
-    Substitution substitution1 = Substitution.fromPairs(typeParameters1, freshTypeParameterTypes);
-    Substitution substitution2 = Substitution.fromPairs(typeParameters2, freshTypeParameterTypes);
+    Substitution substitution1 = Substitution.fromPairs(
+      typeParameters1,
+      freshTypeParameterTypes,
+    );
+    Substitution substitution2 = Substitution.fromPairs(
+      typeParameters2,
+      freshTypeParameterTypes,
+    );
 
     for (int i = 0; i < typeParameters1.length; i++) {
       DartType bound1 = typeParameters1[i].bound;
@@ -147,11 +164,18 @@ class TypeUtils {
 
       if (bound1 is! DynamicType) {
         final TypeParameterType old = freshTypeParameters[i];
-        freshTypeParameters[i] = TypeParameterType(old.name, bound: bound1, isNullable: old.isNullable);
+        freshTypeParameters[i] = TypeParameterType(
+          old.name,
+          bound: bound1,
+          isNullable: old.isNullable,
+        );
       }
     }
 
-    return RelatedTypeParameters._(freshTypeParameters, freshTypeParameterTypes);
+    return RelatedTypeParameters._(
+      freshTypeParameters,
+      freshTypeParameterTypes,
+    );
   }
 
   /// Checks if two types are exactly equal.
@@ -184,7 +208,9 @@ class TypeUtils {
     }
 
     // A 'call' method tearoff.
-    if (fromType is InterfaceType && !isNullable(fromType) && acceptsFunctionType(toType)) {
+    if (fromType is InterfaceType &&
+        !isNullable(fromType) &&
+        acceptsFunctionType(toType)) {
       FunctionType? callMethodType = getCallMethodType(fromType);
       if (callMethodType != null && isAssignableTo(callMethodType, toType)) {
         return true;

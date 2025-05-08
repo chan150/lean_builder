@@ -70,7 +70,11 @@ class FileAssetReader {
   /// Recursively collects assets from a directory.
   ///
   /// Adds found assets to the [assets] list, optionally filtering by [matcher].
-  void _collectAssets(Directory directory, List<Asset> assets, {Glob? matcher}) {
+  void _collectAssets(
+    Directory directory,
+    List<Asset> assets, {
+    Glob? matcher,
+  }) {
     for (final FileSystemEntity entity in directory.listSync()) {
       if (entity is Directory) {
         _collectAssets(entity, assets, matcher: matcher);

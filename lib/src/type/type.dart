@@ -1,6 +1,8 @@
-import 'package:collection/collection.dart' show IterableExtension, ListEquality;
+import 'package:collection/collection.dart'
+    show IterableExtension, ListEquality;
 import 'package:lean_builder/src/element/element.dart';
-import 'package:lean_builder/src/graph/declaration_ref.dart' show DeclarationRef;
+import 'package:lean_builder/src/graph/declaration_ref.dart'
+    show DeclarationRef;
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/type/substitution.dart';
 
@@ -49,7 +51,8 @@ abstract class DartType {
   static const InvalidType invalidType = InvalidType.instance;
 
   /// {@macro core_type_constant}
-  static const UnknownInferredType unknownInferredType = UnknownInferredType.instance;
+  static const UnknownInferredType unknownInferredType =
+      UnknownInferredType.instance;
 
   /// Return `true` if this type represents the type 'void'
   bool get isVoid;
@@ -266,7 +269,9 @@ abstract class TypeImpl extends DartType {
   bool get isInvalid => false;
 
   @override
-  bool operator ==(Object other) => identical(this, other) || other is TypeImpl && runtimeType == other.runtimeType;
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TypeImpl && runtimeType == other.runtimeType;
 
   @override
   int get hashCode => 0;
@@ -297,7 +302,10 @@ abstract class NonElementType extends TypeImpl {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || other is NonElementType && runtimeType == other.runtimeType && name == other.name;
+      identical(this, other) ||
+      other is NonElementType &&
+          runtimeType == other.runtimeType &&
+          name == other.name;
 
   @override
   int get hashCode => name.hashCode;

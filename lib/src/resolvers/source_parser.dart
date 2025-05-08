@@ -32,7 +32,11 @@ class SourceParser {
   /// @return The parsed compilation unit
   /// {@endtemplate}
   CompilationUnit parse(Asset src, {bool allowSyntaxErrors = false}) {
-    return parseContent(src.readAsStringSync, key: src.id, throwIfDiagnostics: !allowSyntaxErrors);
+    return parseContent(
+      src.readAsStringSync,
+      key: src.id,
+      throwIfDiagnostics: !allowSyntaxErrors,
+    );
   }
 
   /// {@template source_parser.parse_content}
@@ -46,11 +50,19 @@ class SourceParser {
   /// @param throwIfDiagnostics Whether to throw an exception if diagnostics are present
   /// @return The parsed compilation unit
   /// {@endtemplate}
-  CompilationUnit parseContent(String Function() content, {required String key, bool throwIfDiagnostics = false}) {
+  CompilationUnit parseContent(
+    String Function() content, {
+    required String key,
+    bool throwIfDiagnostics = false,
+  }) {
     if (_cache.containsKey(key)) {
       return _cache[key]!;
     }
-    final CompilationUnit unit = parseString(content: content(), throwIfDiagnostics: throwIfDiagnostics).unit;
+    final CompilationUnit unit =
+        parseString(
+          content: content(),
+          throwIfDiagnostics: throwIfDiagnostics,
+        ).unit;
     _cache[key] = unit;
     return unit;
   }

@@ -11,8 +11,12 @@ class Substitution {
 
   /// Creates a substitution that maps the given type parameters to the
   /// corresponding type arguments.
-  factory Substitution.fromPairs(List<TypeParameterType> typeParameters, List<DartType> typeArguments) {
-    final Map<TypeParameterType, DartType> map = <TypeParameterType, DartType>{};
+  factory Substitution.fromPairs(
+    List<TypeParameterType> typeParameters,
+    List<DartType> typeArguments,
+  ) {
+    final Map<TypeParameterType, DartType> map =
+        <TypeParameterType, DartType>{};
     for (int i = 0; i < typeParameters.length; i++) {
       if (i >= typeArguments.length) {
         map[typeParameters[i]] = DartType.dynamicType;
@@ -34,7 +38,9 @@ class Substitution {
         return type;
       }
       final List<DartType> substitutedTypeArgs =
-          type.typeArguments.map((DartType typeArg) => substituteType(typeArg)).toList();
+          type.typeArguments
+              .map((DartType typeArg) => substituteType(typeArg))
+              .toList();
       return InterfaceTypeImpl(
         type.name,
         type.declarationRef,
@@ -47,7 +53,9 @@ class Substitution {
         return type;
       }
       final List<DartType> substitutedTypeArgs =
-          type.typeArguments.map((DartType typeArg) => substituteType(typeArg)).toList();
+          type.typeArguments
+              .map((DartType typeArg) => substituteType(typeArg))
+              .toList();
       return TypeAliasTypeImpl(
         type.name,
         type.declarationRef,
@@ -71,15 +79,24 @@ class Substitution {
         isNullable: isNullable,
       );
     } else if (type is RecordType) {
-      final List<RecordTypePositionalField> positionalFields = <RecordTypePositionalField>[];
+      final List<RecordTypePositionalField> positionalFields =
+          <RecordTypePositionalField>[];
       for (final RecordTypePositionalField field in type.positionalFields) {
-        positionalFields.add(RecordTypePositionalField(substituteType(field.type)));
+        positionalFields.add(
+          RecordTypePositionalField(substituteType(field.type)),
+        );
       }
       final List<RecordTypeNamedField> namedFields = <RecordTypeNamedField>[];
       for (final RecordTypeNamedField field in type.namedFields) {
-        namedFields.add(RecordTypeNamedField(field.name, substituteType(field.type)));
+        namedFields.add(
+          RecordTypeNamedField(field.name, substituteType(field.type)),
+        );
       }
-      return RecordType(positionalFields: positionalFields, namedFields: namedFields, isNullable: isNullable);
+      return RecordType(
+        positionalFields: positionalFields,
+        namedFields: namedFields,
+        isNullable: isNullable,
+      );
     }
     return type.withNullability(isNullable);
   }

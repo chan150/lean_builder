@@ -40,7 +40,9 @@ void main() {
     final LibraryElement library = resolver!.resolveLibrary(asset);
     final EnumElementImpl? enumElement = library.getEnum('Foo');
     expect(enumElement, isNotNull);
-    expect(enumElement!.interfaces, <InterfaceType>[library.getClass('Bar')!.thisType]);
+    expect(enumElement!.interfaces, <InterfaceType>[
+      library.getClass('Bar')!.thisType,
+    ]);
   });
 
   test('should resolve enum with mixin clause', () {
@@ -52,7 +54,9 @@ void main() {
     final LibraryElement library = resolver!.resolveLibrary(asset);
     final EnumElementImpl? enumElement = library.getEnum('Foo');
     expect(enumElement, isNotNull);
-    expect(enumElement!.mixins, <InterfaceType>[library.getClass('Bar')!.thisType]);
+    expect(enumElement!.mixins, <InterfaceType>[
+      library.getClass('Bar')!.thisType,
+    ]);
   });
 
   test('should resolve enum with mixin and implements clause', () {
@@ -65,8 +69,12 @@ void main() {
     final LibraryElement library = resolver!.resolveLibrary(asset);
     final EnumElementImpl? enumElement = library.getEnum('Foo');
     expect(enumElement, isNotNull);
-    expect(enumElement!.interfaces, <InterfaceType>[library.getClass('Bar')!.thisType]);
-    expect(enumElement.mixins, <InterfaceType>[library.getMixin('Baz')!.thisType]);
+    expect(enumElement!.interfaces, <InterfaceType>[
+      library.getClass('Bar')!.thisType,
+    ]);
+    expect(enumElement.mixins, <InterfaceType>[
+      library.getMixin('Baz')!.thisType,
+    ]);
   });
 
   test('should resolve enum with annotations', () {
@@ -87,11 +95,16 @@ void main() {
     scanner!.scan(annotationAsset);
     scanner!.scan(asset);
     final LibraryElement library = resolver!.resolveLibrary(asset);
-    final LibraryElement annotationLibrary = resolver!.resolveLibrary(annotationAsset);
+    final LibraryElement annotationLibrary = resolver!.resolveLibrary(
+      annotationAsset,
+    );
     final EnumElementImpl? enumElement = library.getEnum('Foo');
     expect(enumElement, isNotNull);
     expect(enumElement!.metadata.length, 1);
-    expect(enumElement.metadata[0].type, annotationLibrary.getClass('Bar')!.thisType);
+    expect(
+      enumElement.metadata[0].type,
+      annotationLibrary.getClass('Bar')!.thisType,
+    );
   });
 
   test('should resolve enum with fields', () {
@@ -139,7 +152,9 @@ void main() {
     );
     final Constant? constantObj = constantFields.first.constantValue;
     expect(constantObj, isA<ConstObject>());
-    expect((constantObj as ConstObject).props, <String, ConstInt>{'value': ConstInt(1)});
+    expect((constantObj as ConstObject).props, <String, ConstInt>{
+      'value': ConstInt(1),
+    });
   });
 
   test('should resolve enum with named and optional positional arguments', () {
@@ -163,6 +178,9 @@ void main() {
     expect(constantFields.length, 1);
     final Constant? constantObj = constantFields.first.constantValue;
     expect(constantObj, isA<ConstObject>());
-    expect((constantObj as ConstObject).props, <String, Constant>{'value': ConstInt(2), 'name': ConstString('name')});
+    expect((constantObj as ConstObject).props, <String, Constant>{
+      'value': ConstInt(2),
+      'name': ConstString('name'),
+    });
   });
 }

@@ -19,7 +19,11 @@ class IdentifierNotFoundError extends ResolverError {
   final Uri importingLibrary;
 
   /// Creates a new [IdentifierNotFoundError] with the given details.
-  IdentifierNotFoundError(this.identifier, this.importPrefix, this.importingLibrary);
+  IdentifierNotFoundError(
+    this.identifier,
+    this.importPrefix,
+    this.importingLibrary,
+  );
 
   @override
   String toString() =>

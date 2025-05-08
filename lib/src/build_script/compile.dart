@@ -12,7 +12,11 @@ import 'paths.dart' as paths;
 /// @param scriptPath The path to the Dart script to be compiled
 void compileScript(String scriptPath) {
   final String execPath = getExecutablePath();
-  final ProcessResult result = Process.runSync('dart', <String>['compile', 'aot-snapshot', scriptPath]);
+  final ProcessResult result = Process.runSync('dart', <String>[
+    'compile',
+    'aot-snapshot',
+    scriptPath,
+  ]);
   if (!Platform.isWindows) {
     Process.runSync('chmod', <String>['+x', execPath]);
   }

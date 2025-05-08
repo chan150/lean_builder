@@ -107,7 +107,10 @@ mixin ElementStack<E> on AstVisitor<E> {
   /// @return The result of the callback
   /// @throws AssertionError if the element stack is empty
   /// {@endtemplate}
-  R? visitWithHolder<R>(LibraryElement library, R Function(ElementImpl element) callback) {
+  R? visitWithHolder<R>(
+    LibraryElement library,
+    R Function(ElementImpl element) callback,
+  ) {
     assert(_elementStack.isNotEmpty, 'Element stack is empty');
     final _HolderElement holder = _HolderElement(library);
     pushElement(holder);

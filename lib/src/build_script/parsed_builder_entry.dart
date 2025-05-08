@@ -1,4 +1,5 @@
-import 'package:collection/collection.dart' show SetEquality, MapEquality, ListEquality;
+import 'package:collection/collection.dart'
+    show SetEquality, MapEquality, ListEquality;
 
 /// Represents a runtime type entry used for registering type annotations.
 ///
@@ -141,8 +142,14 @@ class BuilderDefinitionEntry {
           allowSyntaxErrors == other.allowSyntaxErrors &&
           const SetEquality<String>().equals(runsBefore, other.runsBefore) &&
           const SetEquality<String>().equals(generateFor, other.generateFor) &&
-          const SetEquality<String>().equals(outputExtensions, other.outputExtensions) &&
-          const ListEquality<RuntimeTypeRegisterEntry>().equals(registeredTypes, other.registeredTypes) &&
+          const SetEquality<String>().equals(
+            outputExtensions,
+            other.outputExtensions,
+          ) &&
+          const ListEquality<RuntimeTypeRegisterEntry>().equals(
+            registeredTypes,
+            other.registeredTypes,
+          ) &&
           const MapEquality<String, dynamic>().equals(options, other.options);
 
   @override
@@ -188,7 +195,12 @@ final class BuilderOverride {
   /// @param options Optional configuration options to override
   /// @param generateFor Optional file patterns to override
   /// @param runsBefore Optional dependencies to override
-  const BuilderOverride({required this.key, this.options, this.generateFor, this.runsBefore});
+  const BuilderOverride({
+    required this.key,
+    this.options,
+    this.generateFor,
+    this.runsBefore,
+  });
 
   @override
   bool operator ==(Object other) =>

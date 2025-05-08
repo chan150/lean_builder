@@ -27,7 +27,8 @@ abstract class Generator {
   /// @param buildStep The build step providing context for generation
   /// @return Generated code as a string, or null if nothing to generate
   /// {@endtemplate}
-  FutureOr<String?> generate(LibraryElement library, BuildStep buildStep) => null;
+  FutureOr<String?> generate(LibraryElement library, BuildStep buildStep) =>
+      null;
 
   @override
   String toString() => runtimeType.toString();
@@ -77,7 +78,9 @@ abstract class GeneratorForAnnotationBase extends Generator {
   FutureOr<String> generate(LibraryElement library, BuildStep buildStep) async {
     final TypeChecker typeChecker = getTypeChecker(buildStep);
     final Set<String> values = <String>{};
-    final Iterable<AnnotatedElement> annotatedElements = library.annotatedWith(typeChecker);
+    final Iterable<AnnotatedElement> annotatedElements = library.annotatedWith(
+      typeChecker,
+    );
     if (annotatedElements.isEmpty && throwOnUnresolved) {
       throw ArgumentError(
         'No elements found with annotation $typeChecker in ${library.src.uri}. '
@@ -90,7 +93,9 @@ abstract class GeneratorForAnnotationBase extends Generator {
         annotatedElement.element,
         annotatedElement.annotation,
       );
-      final Iterable<String> normalized = await normalizeGeneratorOutput(rawValue);
+      final Iterable<String> normalized = await normalizeGeneratorOutput(
+        rawValue,
+      );
       for (final String value in normalized) {
         if (value.trim().isNotEmpty) {
           values.add(value);
@@ -122,7 +127,11 @@ abstract class GeneratorForAnnotationBase extends Generator {
   /// @param annotation The annotation instance on the element
   /// @return Generated code as a string, or null if nothing to generate
   /// {@endtemplate}
-  dynamic generateForAnnotatedElement(BuildStep buildStep, Element element, ElementAnnotation annotation);
+  dynamic generateForAnnotatedElement(
+    BuildStep buildStep,
+    Element element,
+    ElementAnnotation annotation,
+  );
 }
 
 /// {@template generator_for_annotation}
@@ -157,7 +166,11 @@ abstract class GeneratorForAnnotatedClass<T> extends GeneratorForAnnotation<T> {
   }
 
   @override
-  dynamic generateForAnnotatedElement(BuildStep buildStep, Element element, ElementAnnotation annotation) {
+  dynamic generateForAnnotatedElement(
+    BuildStep buildStep,
+    Element element,
+    ElementAnnotation annotation,
+  ) {
     if (element is! ClassElement) {
       throw InvalidGenerationSourceError(
         'Expected a class element but found ${element.runtimeType}.',
@@ -178,7 +191,11 @@ abstract class GeneratorForAnnotatedClass<T> extends GeneratorForAnnotation<T> {
   /// @param annotation The annotation instance on the class
   /// @return Generated code as a string, or null if nothing to generate
   /// {@endtemplate}
-  dynamic generateForClass(BuildStep buildStep, ClassElement element, ElementAnnotation annotation);
+  dynamic generateForClass(
+    BuildStep buildStep,
+    ClassElement element,
+    ElementAnnotation annotation,
+  );
 }
 
 /// {@template generator_for_annotated_enum}
@@ -197,7 +214,11 @@ abstract class GeneratorForAnnotatedEnum<T> extends GeneratorForAnnotation<T> {
   }
 
   @override
-  dynamic generateForAnnotatedElement(BuildStep buildStep, Element element, ElementAnnotation annotation) {
+  dynamic generateForAnnotatedElement(
+    BuildStep buildStep,
+    Element element,
+    ElementAnnotation annotation,
+  ) {
     if (element is! EnumElement) {
       throw InvalidGenerationSourceError(
         'Expected an enum element but found ${element.runtimeType}.',
@@ -218,7 +239,11 @@ abstract class GeneratorForAnnotatedEnum<T> extends GeneratorForAnnotation<T> {
   /// @param annotation The annotation instance on the enum
   /// @return Generated code as a string, or null if nothing to generate
   /// {@endtemplate}
-  dynamic generateForEnum(BuildStep buildStep, EnumElement element, ElementAnnotation annotation);
+  dynamic generateForEnum(
+    BuildStep buildStep,
+    EnumElement element,
+    ElementAnnotation annotation,
+  );
 }
 
 /// {@template generator_for_annotated_function}
@@ -227,7 +252,8 @@ abstract class GeneratorForAnnotatedEnum<T> extends GeneratorForAnnotation<T> {
 /// This specialized generator only targets function elements and automatically
 /// handles filtering out non-function elements.
 /// {@endtemplate}
-abstract class GeneratorForAnnotatedFunction<T> extends GeneratorForAnnotation<T> {
+abstract class GeneratorForAnnotatedFunction<T>
+    extends GeneratorForAnnotation<T> {
   /// {@macro generator_for_annotation_base.constructor}
   const GeneratorForAnnotatedFunction({super.throwOnUnresolved});
 
@@ -237,7 +263,11 @@ abstract class GeneratorForAnnotatedFunction<T> extends GeneratorForAnnotation<T
   }
 
   @override
-  dynamic generateForAnnotatedElement(BuildStep buildStep, Element element, ElementAnnotation annotation) {
+  dynamic generateForAnnotatedElement(
+    BuildStep buildStep,
+    Element element,
+    ElementAnnotation annotation,
+  ) {
     if (element is! FunctionElement) {
       throw InvalidGenerationSourceError(
         'Expected a function element but found ${element.runtimeType}.',
@@ -258,7 +288,11 @@ abstract class GeneratorForAnnotatedFunction<T> extends GeneratorForAnnotation<T
   /// @param annotation The annotation instance on the function
   /// @return Generated code as a string, or null if nothing to generate
   /// {@endtemplate}
-  dynamic generateForFunction(BuildStep buildStep, FunctionElement element, ElementAnnotation annotation);
+  dynamic generateForFunction(
+    BuildStep buildStep,
+    FunctionElement element,
+    ElementAnnotation annotation,
+  );
 }
 
 /// {@template normalize_generator_output}

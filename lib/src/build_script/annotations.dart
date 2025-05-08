@@ -2,7 +2,11 @@ import 'package:lean_builder/builder.dart';
 import 'package:meta/meta_meta.dart' show TargetKind, Target;
 
 /// A collection of annotation names used by the lean_builder package.
-const Set<String> kBuilderAnnotationNames = <String>{'LeanBuilder', 'LeanGenerator', 'LeanBuilderOverrides'};
+const Set<String> kBuilderAnnotationNames = <String>{
+  'LeanBuilder',
+  'LeanGenerator',
+  'LeanBuilderOverrides',
+};
 
 /// Annotation for defining a build-time builder.
 ///

@@ -5,9 +5,11 @@ import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
 
 import 'build_command.dart';
-import 'package:watcher/watcher.dart' show WatchEvent, ChangeType, DirectoryWatcher;
+import 'package:watcher/watcher.dart'
+    show WatchEvent, ChangeType, DirectoryWatcher;
 import 'package:path/path.dart' as p show relative;
-import 'package:hotreloader/hotreloader.dart' show HotReloader, AfterReloadContext;
+import 'package:hotreloader/hotreloader.dart'
+    show HotReloader, AfterReloadContext;
 import 'dart:async' show StreamSubscription;
 import 'dart:io' show ProcessSignal, exit;
 
@@ -82,14 +84,22 @@ class WatchCommand extends BuildCommand {
         debounceInterval: Duration.zero,
         onAfterReload: (AfterReloadContext ctx) async {
           Logger.info('Hot reload triggered');
-          final Set<ProcessableAsset> builderConfigAssets = graph.getBuilderProcessableAssets(fileResolver);
-          if (builderConfigAssets.any((ProcessableAsset e) => e.state != AssetState.processed)) {
+          final Set<ProcessableAsset> builderConfigAssets = graph
+              .getBuilderProcessableAssets(fileResolver);
+          if (builderConfigAssets.any(
+            (ProcessableAsset e) => e.state != AssetState.processed,
+          )) {
             graph.invalidateProcessedAssetsOf(fileResolver.rootPackage);
-            for (final ProcessableAsset entry in graph.getProcessableAssets(fileResolver)) {
+            for (final ProcessableAsset entry in graph.getProcessableAssets(
+              fileResolver,
+            )) {
               resolver.invalidateAssetCache(entry.asset);
             }
           }
-          await processAssets(graph.getProcessableAssets(fileResolver), resolver);
+          await processAssets(
+            graph.getProcessableAssets(fileResolver),
+            resolver,
+          );
         },
       );
     }
@@ -103,15 +113,19 @@ class WatchCommand extends BuildCommand {
     final String rootDir = fileResolver.pathFor(fileResolver.rootPackage);
     final Uri rootUri = Uri.parse(rootDir);
 
-    final Stream<WatchEvent> watchStream = DirectoryWatcher(rootUri.path).events;
+    final Stream<WatchEvent> watchStream =
+        DirectoryWatcher(rootUri.path).events;
     final Debouncer debouncer = Debouncer(const Duration(milliseconds: 150));
-    final StreamSubscription<WatchEvent> watchSub = watchStream.listen((WatchEvent event) async {
+    final StreamSubscription<WatchEvent> watchSub = watchStream.listen((
+      WatchEvent event,
+    ) async {
       final String relative = p.relative(event.path, from: rootUri.path);
       final String? subDir = relative.split('/').firstOrNull;
       if (!PackageFileResolver.isDirSupported(subDir)) return;
       final Asset asset = fileResolver.assetForUri(Uri.file(event.path));
 
-      if (graph.isAGeneratedSource(asset.id) && event.type != ChangeType.REMOVE) {
+      if (graph.isAGeneratedSource(asset.id) &&
+          event.type != ChangeType.REMOVE) {
         // ignore generated sources changes
         return;
       }
@@ -134,16 +148,21 @@ class WatchCommand extends BuildCommand {
           // triggering a hot reload will process pending assets
           hotReloader.reloadCode();
         } else {
-          final Set<ProcessableAsset> assetsToProcess = graph.getProcessableAssets(fileResolver);
+          final Set<ProcessableAsset> assetsToProcess = graph
+              .getProcessableAssets(fileResolver);
           if (assetsToProcess.isEmpty) return;
-          Logger.info('Starting build for ${assetsToProcess.length} effected assets');
+          Logger.info(
+            'Starting build for ${assetsToProcess.length} effected assets',
+          );
           await processAssets(assetsToProcess, resolver);
         }
       });
     });
 
     StreamSubscription<ProcessSignal>? sigintSub;
-    sigintSub = ProcessSignal.sigint.watch().listen((ProcessSignal signal) async {
+    sigintSub = ProcessSignal.sigint.watch().listen((
+      ProcessSignal signal,
+    ) async {
       debouncer.cancel();
       await watchSub.cancel();
       await hotReloader?.stop();

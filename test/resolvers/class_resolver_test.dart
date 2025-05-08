@@ -237,6 +237,9 @@ void main() {
     final LibraryElement library = resolver!.resolveLibrary(asset);
     final ClassElementImpl? classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
-    expect(classElement!.mixins, <InterfaceType>[library.getMixin('Bar')!.thisType, library.getMixin('Baz')!.thisType]);
+    expect(classElement!.mixins, <InterfaceType>[
+      library.getMixin('Bar')!.thisType,
+      library.getMixin('Baz')!.thisType,
+    ]);
   });
 }

@@ -186,7 +186,8 @@ abstract class TypeAliasElement implements TypeParameterizedElement {
 /// {@template instance_element}
 /// Represents an element that is an instance of a class.
 /// {@endtemplate}
-abstract class InstanceElement extends Element implements TypeParameterizedElement {
+abstract class InstanceElement extends Element
+    implements TypeParameterizedElement {
   /// The accessors of this element.
   List<PropertyAccessorElement> get accessors;
 
@@ -205,7 +206,8 @@ abstract class InstanceElement extends Element implements TypeParameterizedEleme
 ///
 /// This includes classes, enums, and mixins.
 /// {@endtemplate}
-abstract class InterfaceElement extends InstanceElement with TypeParameterizedElementMixin {
+abstract class InterfaceElement extends InstanceElement
+    with TypeParameterizedElementMixin {
   /// The supertype of this element, or `null` if this element does not have a supertype.
   NamedDartType? get superType;
 
@@ -359,7 +361,8 @@ abstract class ClassMemberElement extends Element {
 /// {@template field_element}
 /// Represents a field element in the Dart language.
 /// {@endtemplate}
-abstract class FieldElement extends ClassMemberElement implements VariableElement {
+abstract class FieldElement extends ClassMemberElement
+    implements VariableElement {
   /// Whether the field is abstract.
   bool get isAbstract;
 

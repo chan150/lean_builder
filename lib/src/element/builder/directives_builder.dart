@@ -27,7 +27,11 @@ class DirectivesBuilder extends ElementBuilder {
     final String? stringUri = node.uri.stringValue;
     if (stringUri == null) return;
     final LibraryElementImpl library = currentLibrary();
-    final List<dynamic> directive = _getCorrespondingDirective(library, stringUri, DirectiveStatement.import);
+    final List<dynamic> directive = _getCorrespondingDirective(
+      library,
+      stringUri,
+      DirectiveStatement.import,
+    );
     final List<String> showNames = <String>[];
     final List<String> hideNames = <String>[];
     for (final Combinator comb in node.combinators) {
@@ -63,7 +67,11 @@ class DirectivesBuilder extends ElementBuilder {
     final String? stringUri = node.uri.stringValue;
     if (stringUri == null) return;
     final LibraryElementImpl library = currentLibrary();
-    final List<dynamic> directive = _getCorrespondingDirective(library, stringUri, DirectiveStatement.export);
+    final List<dynamic> directive = _getCorrespondingDirective(
+      library,
+      stringUri,
+      DirectiveStatement.export,
+    );
     final List<String> showNames = <String>[];
     final List<String> hideNames = <String>[];
     for (final Combinator comb in node.combinators) {
@@ -97,7 +105,11 @@ class DirectivesBuilder extends ElementBuilder {
     final String? stringUri = node.uri.stringValue;
     if (stringUri == null) return;
     final LibraryElementImpl library = currentLibrary();
-    final List<dynamic> directive = _getCorrespondingDirective(library, stringUri, DirectiveStatement.part);
+    final List<dynamic> directive = _getCorrespondingDirective(
+      library,
+      stringUri,
+      DirectiveStatement.part,
+    );
     final PartElement element = PartElement(
       library: library,
       stringUri: stringUri,
@@ -121,7 +133,9 @@ class DirectivesBuilder extends ElementBuilder {
     final LibraryElementImpl library = currentLibrary();
     final String thisSrc = library.src.id;
     final List<dynamic>? partOf = resolver.graph.partOfOf(thisSrc);
-    assert(partOf != null && partOf[GraphIndex.directiveStringUri] == stringUri);
+    assert(
+      partOf != null && partOf[GraphIndex.directiveStringUri] == stringUri,
+    );
     final String actualSrc = partOf![GraphIndex.directiveSrc];
     final PartOfElement element = PartOfElement(
       referencesLibraryDirective: true,
@@ -157,7 +171,10 @@ class DirectivesBuilder extends ElementBuilder {
     );
 
     setCodeRange(element, node);
-    element.setNameRange(node.name2?.offset ?? node.offset, node.name2?.length ?? node.length);
+    element.setNameRange(
+      node.name2?.offset ?? node.offset,
+      node.name2?.length ?? node.length,
+    );
 
     visitElementScoped(element, () {
       node.documentationComment?.accept(this);
@@ -166,15 +183,25 @@ class DirectivesBuilder extends ElementBuilder {
     registerMetadataResolver(element, node.metadata);
   }
 
-  List<dynamic> _getCorrespondingDirective(LibraryElementImpl library, String stringUri, int type) {
-    final List<List<dynamic>>? fileDirectives = resolver.graph.directives[library.src.id];
+  List<dynamic> _getCorrespondingDirective(
+    LibraryElementImpl library,
+    String stringUri,
+    int type,
+  ) {
+    final List<List<dynamic>>? fileDirectives =
+        resolver.graph.directives[library.src.id];
     if (fileDirectives == null) {
       throw StateError('No directives found for ${library.src.shortUri}');
     }
     final List<dynamic> directive = fileDirectives.firstWhere(
       (List<dynamic> element) =>
-          element[GraphIndex.directiveStringUri] == stringUri && element[GraphIndex.directiveType] == type,
-      orElse: () => throw StateError('No export directive found for $stringUri in ${library.src.shortUri}'),
+          element[GraphIndex.directiveStringUri] == stringUri &&
+          element[GraphIndex.directiveType] == type,
+      orElse:
+          () =>
+              throw StateError(
+                'No export directive found for $stringUri in ${library.src.shortUri}',
+              ),
     );
     return directive;
   }

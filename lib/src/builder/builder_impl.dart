@@ -21,8 +21,9 @@ final bool _isDevMode = Zone.current[#isDevMode] == true;
 /// Default formatter function for generated Dart code.
 ///
 /// Uses the latest language version supported by the formatter.
-String _defaultFormatOutput(String code) =>
-    DartFormatter(languageVersion: DartFormatter.latestLanguageVersion).format(code);
+String _defaultFormatOutput(String code) => DartFormatter(
+  languageVersion: DartFormatter.latestLanguageVersion,
+).format(code);
 
 /// Line of asterisks used as a separator in generated files.
 final String _headerLine = '// '.padRight(77, '*');
@@ -128,7 +129,11 @@ abstract class _Builder extends Builder {
   /// @param buildStep The build step providing context for generation
   /// @return A stream of generated outputs from each generator
   /// {@endtemplate}
-  Stream<GeneratedOutput> _generate(LibraryElement library, List<Generator> generators, BuildStep buildStep) async* {
+  Stream<GeneratedOutput> _generate(
+    LibraryElement library,
+    List<Generator> generators,
+    BuildStep buildStep,
+  ) async* {
     for (int i = 0; i < generators.length; i++) {
       final Generator gen = generators[i];
       String msg = 'Running $gen';
@@ -159,8 +164,12 @@ abstract class _Builder extends Builder {
   /// @param library The library to generate code for
   /// @param buildStep The build step providing context for generation
   /// {@endtemplate}
-  Future<void> generateForLibrary(LibraryElement library, BuildStep buildStep) async {
-    final List<GeneratedOutput> generatedOutputs = await _generate(library, _generators, buildStep).toList();
+  Future<void> generateForLibrary(
+    LibraryElement library,
+    BuildStep buildStep,
+  ) async {
+    final List<GeneratedOutput> generatedOutputs =
+        await _generate(library, _generators, buildStep).toList();
     if (generatedOutputs.isEmpty) return;
 
     final StringBuffer contentBuffer = StringBuffer();
@@ -174,7 +183,11 @@ abstract class _Builder extends Builder {
         contentBuffer
           ..writeln()
           ..writeln(_headerLine)
-          ..writeAll(LineSplitter.split(item.generatorDescription).map((String line) => '// $line\n'))
+          ..writeAll(
+            LineSplitter.split(
+              item.generatorDescription,
+            ).map((String line) => '// $line\n'),
+          )
           ..writeln(_headerLine)
           ..writeln();
       }
@@ -196,7 +209,11 @@ abstract class _Builder extends Builder {
   /// @param content The content to format and write
   /// @param extension The file extension to use for the output
   /// {@endtemplate}
-  FutureOr<void> writeOutput(BuildStep buildStep, String content, String extension) {
+  FutureOr<void> writeOutput(
+    BuildStep buildStep,
+    String content,
+    String extension,
+  ) {
     try {
       content = formatOutput(content);
     } catch (e, stack) {
@@ -215,7 +232,8 @@ This may indicate an issue in the generator, the input source code, or in the so
   }
 
   @override
-  String toString() => 'Generating $outputExtensions: ${_generators.join(', ')}';
+  String toString() =>
+      'Generating $outputExtensions: ${_generators.join(', ')}';
 }
 
 /// {@template library_builder}
@@ -247,10 +265,14 @@ class LibraryBuilder extends _Builder {
   }) : super(<Generator>[generator]) {
     for (final String ext in outputExtensions) {
       if (ext == SharedPartBuilder.extension) {
-        throw ArgumentError('The LibraryBuilder cannot be used with the shared part extension');
+        throw ArgumentError(
+          'The LibraryBuilder cannot be used with the shared part extension',
+        );
       }
       if (!ext.endsWith('.dart')) {
-        throw ArgumentError('LibraryBuilder output extensions must end with .dart');
+        throw ArgumentError(
+          'LibraryBuilder output extensions must end with .dart',
+        );
       }
     }
   }
@@ -286,8 +308,13 @@ class SharedPartBuilder extends _Builder {
   }) : super(outputExtensions: <String>{extension}, header: '');
 
   @override
-  FutureOr<void> writeOutput(BuildStep buildStep, String content, String extension) {
-    if (outputExtensions.length != 1 || outputExtensions.first != SharedPartBuilder.extension) {
+  FutureOr<void> writeOutput(
+    BuildStep buildStep,
+    String content,
+    String extension,
+  ) {
+    if (outputExtensions.length != 1 ||
+        outputExtensions.first != SharedPartBuilder.extension) {
       throw ArgumentError(
         'The output extension must be ${SharedPartBuilder.extension} '
         'but was ${outputExtensions.join(', ')}',
@@ -299,7 +326,10 @@ class SharedPartBuilder extends _Builder {
     }
     if (!buildStep.hasValidPartDirectiveFor(extension)) {
       final Uri outputUri = buildStep.asset.uriWithExtension(extension);
-      final String part = p.relative(outputUri.path, from: p.dirname(buildStep.asset.uri.path));
+      final String part = p.relative(
+        outputUri.path,
+        from: p.dirname(buildStep.asset.uri.path),
+      );
       throw ArgumentError(
         'The input library must have a part directive for the generated part\n'
         'file. Please add a part directive (part \'$part\';) to the input library ${buildStep.asset.shortUri}',

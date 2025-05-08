@@ -84,14 +84,20 @@ class ReferencesScanner {
           final String nextLexeme = nextToken.lexeme;
           switch (type) {
             case Keyword.LIBRARY:
-              final (fasta.Token? nextT, String? name) = _tryParseLibraryDirective(nextToken);
+              final (
+                fasta.Token? nextT,
+                String? name,
+              ) = _tryParseLibraryDirective(nextToken);
               libraryName = name;
               nextToken = nextT ?? nextToken;
               break;
             case Keyword.IMPORT:
             case Keyword.EXPORT:
             case Keyword.PART:
-              final (fasta.Token? nextT, DirectiveStatement? direcitve) = _tryParseDirective(type, nextToken, asset);
+              final (
+                fasta.Token? nextT,
+                DirectiveStatement? direcitve,
+              ) = _tryParseDirective(type, nextToken, asset);
               nextToken = nextT ?? nextToken;
               if (direcitve != null) {
                 results.addDirective(asset, direcitve);
@@ -102,7 +108,10 @@ class ReferencesScanner {
               break;
             case Keyword.CLASS:
               results.addDeclaration(nextLexeme, asset, ReferenceType.$class);
-              nextToken = _skipUntilAny(token, <TokenType>{TokenType.OPEN_CURLY_BRACKET, TokenType.SEMICOLON});
+              nextToken = _skipUntilAny(token, <TokenType>{
+                TokenType.OPEN_CURLY_BRACKET,
+                TokenType.SEMICOLON,
+              });
               break;
             case Keyword.MIXIN:
               if (nextToken.type == Keyword.CLASS) {
@@ -131,7 +140,12 @@ class ReferencesScanner {
               nextToken = _skipUntil(nextToken, TokenType.OPEN_CURLY_BRACKET);
               break;
           }
-        } else if (<fasta.Keyword>{Keyword.CONST, Keyword.FINAL, Keyword.VAR, Keyword.LATE}.contains(token.type) &&
+        } else if (<fasta.Keyword>{
+              Keyword.CONST,
+              Keyword.FINAL,
+              Keyword.VAR,
+              Keyword.LATE,
+            }.contains(token.type) &&
             nextToken.isIdentifier) {
           if (token.type == Keyword.CONST) {
             _tryParseConstVar(nextToken, asset);
@@ -144,9 +158,17 @@ class ReferencesScanner {
         token = nextToken;
       }
 
-      results.updateAssetInfo(asset, content: bytes, tlmFlag: annotationFlag, libraryName: libraryName);
+      results.updateAssetInfo(
+        asset,
+        content: bytes,
+        tlmFlag: annotationFlag,
+        libraryName: libraryName,
+      );
     } catch (e, stack) {
-      Logger.error('Error scanning asset ${asset.uri} ${e.toString()}', stackTrace: stack);
+      Logger.error(
+        'Error scanning asset ${asset.uri} ${e.toString()}',
+        stackTrace: stack,
+      );
     }
   }
 
@@ -166,7 +188,9 @@ class ReferencesScanner {
     }
     String name = '';
     Token? nameToken = nextToken;
-    while (nameToken != null && nameToken.type != TokenType.SEMICOLON && !nameToken.isEof) {
+    while (nameToken != null &&
+        nameToken.type != TokenType.SEMICOLON &&
+        !nameToken.isEof) {
       name += nameToken.lexeme;
       nameToken = nameToken.next;
     }
@@ -238,7 +262,11 @@ class ReferencesScanner {
       if (currentToken.isIdentifier) {
         fasta.Token? afterIdentifier = currentToken.next;
         if (afterIdentifier != null && (afterIdentifier.type == TokenType.EQ)) {
-          results.addDeclaration(currentToken.lexeme, asset, ReferenceType.$variable);
+          results.addDeclaration(
+            currentToken.lexeme,
+            asset,
+            ReferenceType.$variable,
+          );
           break;
         }
       }
@@ -263,7 +291,11 @@ class ReferencesScanner {
   /// - The next token to continue scanning from
   /// - The parsed directive (or null if parsing failed)
   /// {@endtemplate}
-  (Token?, DirectiveStatement?) _tryParseDirective(TokenType keyword, Token next, Asset enclosingAsset) {
+  (Token?, DirectiveStatement?) _tryParseDirective(
+    TokenType keyword,
+    Token next,
+    Asset enclosingAsset,
+  ) {
     bool isPartOf = keyword == Keyword.PART && next.type == Keyword.OF;
     String stringUri = '';
 
@@ -274,7 +306,9 @@ class ReferencesScanner {
       if (current?.type == TokenType.STRING) {
         stringUri = current!.lexeme;
       } else {
-        while (current != null && !current.isEof && current.type != TokenType.SEMICOLON) {
+        while (current != null &&
+            !current.isEof &&
+            current.type != TokenType.SEMICOLON) {
           stringUri += current.lexeme;
           current = current.next;
         }
@@ -300,7 +334,10 @@ class ReferencesScanner {
       return (_skipUntil(next, TokenType.SEMICOLON), null);
     }
 
-    final Asset asset = fileResolver.assetForUri(uri, relativeTo: enclosingAsset);
+    final Asset asset = fileResolver.assetForUri(
+      uri,
+      relativeTo: enclosingAsset,
+    );
 
     final List<String> show = <String>[];
     final List<String> hide = <String>[];
@@ -333,7 +370,8 @@ class ReferencesScanner {
     final int type = switch (keyword) {
       Keyword.IMPORT => DirectiveStatement.import,
       Keyword.EXPORT => DirectiveStatement.export,
-      Keyword.PART => isPartOf ? DirectiveStatement.partOf : DirectiveStatement.part,
+      Keyword.PART =>
+        isPartOf ? DirectiveStatement.partOf : DirectiveStatement.part,
       _ => throw UnimplementedError('Unknown directive type: $keyword'),
     };
 
@@ -365,7 +403,9 @@ class ReferencesScanner {
     while (token != null && token.type != TokenType.EOF) {
       token = _skipLTGT(token);
       token = _skipParenthesis(token);
-      if (scopeTracker == 0 && (token != null && token.isIdentifier || token?.type == TokenType.EQ)) {
+      if (scopeTracker == 0 &&
+          (token != null && token.isIdentifier ||
+              token?.type == TokenType.EQ)) {
         identifiers.add(token!);
       }
       if (token?.type == TokenType.SEMICOLON) {
@@ -375,8 +415,13 @@ class ReferencesScanner {
       token = token?.next;
     }
 
-    final int eqIndex = identifiers.indexWhere((fasta.Token e) => e.type == TokenType.EQ);
-    final String? nameLexeme = eqIndex > 0 ? identifiers[eqIndex - 1].lexeme : identifiers.lastOrNull?.lexeme;
+    final int eqIndex = identifiers.indexWhere(
+      (fasta.Token e) => e.type == TokenType.EQ,
+    );
+    final String? nameLexeme =
+        eqIndex > 0
+            ? identifiers[eqIndex - 1].lexeme
+            : identifiers.lastOrNull?.lexeme;
     if (_isValidName(nameLexeme)) {
       results.addDeclaration(nameLexeme!, asset, ReferenceType.$typeAlias);
     }

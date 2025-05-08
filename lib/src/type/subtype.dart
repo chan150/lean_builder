@@ -34,12 +34,14 @@ class SubtypeHelper {
     }
 
     // // `_` is treated as a top and a bottom type during inference.
-    if (identical(t0, _unknownInferredType) || identical(t1, _unknownInferredType)) {
+    if (identical(t0, _unknownInferredType) ||
+        identical(t1, _unknownInferredType)) {
       return true;
     }
 
     // `InvalidType` is treated as a top and a bottom type.
-    if (identical(t0, DartType.invalidType) || identical(t1, DartType.invalidType)) {
+    if (identical(t0, DartType.invalidType) ||
+        identical(t1, DartType.invalidType)) {
       return true;
     }
 
@@ -54,7 +56,9 @@ class SubtypeHelper {
 
     // Left Top: if `T0` is `dynamic` or `void`,
     //   then `T0 <: T1` if `Object? <: T1`.
-    if (identical(t0, _dynamicType) || identical(t0, _invalidType) || identical(t0, _voidType)) {
+    if (identical(t0, _dynamicType) ||
+        identical(t0, _invalidType) ||
+        identical(t0, _voidType)) {
       if (isSubtypeOf(_objectQuestion, t1)) {
         return true;
       }
@@ -162,7 +166,11 @@ class SubtypeHelper {
     if (t1 is TypeParameterType) {
       DartType? t1PromotedBound = t1.promotedBound;
       if (t1PromotedBound != null) {
-        TypeParameterType x1 = TypeParameterType(t1.name, isNullable: t1.isNullable, bound: DartType.dynamicType);
+        TypeParameterType x1 = TypeParameterType(
+          t1.name,
+          isNullable: t1.isNullable,
+          bound: DartType.dynamicType,
+        );
         return isSubtypeOf(t0, x1) && isSubtypeOf(t0, t1PromotedBound);
       }
     }
@@ -270,7 +278,11 @@ class SubtypeHelper {
     return false;
   }
 
-  bool _interfaceArguments(InterfaceElement element, InterfaceType subType, InterfaceType superType) {
+  bool _interfaceArguments(
+    InterfaceElement element,
+    InterfaceType subType,
+    InterfaceType superType,
+  ) {
     List<TypeParameterType> parameters = element.typeParameters;
     List<DartType> subArguments = subType.typeArguments;
     List<DartType> superArguments = superType.typeArguments;
@@ -294,7 +306,8 @@ class SubtypeHelper {
           return false;
         }
       } else if (variance.isInvariant) {
-        if (!isSubtypeOf(subArgument, superArgument) || !isSubtypeOf(superArgument, subArgument)) {
+        if (!isSubtypeOf(subArgument, superArgument) ||
+            !isSubtypeOf(superArgument, subArgument)) {
           return false;
         }
       } else {
@@ -309,7 +322,10 @@ class SubtypeHelper {
 
   /// Check that [f] is a subtype of [g].
   bool _isFunctionSubtypeOf(FunctionType f, FunctionType g) {
-    RelatedTypeParameters? fresh = _typeUtils.relateTypeParameters(f.typeParameters, g.typeParameters);
+    RelatedTypeParameters? fresh = _typeUtils.relateTypeParameters(
+      f.typeParameters,
+      g.typeParameters,
+    );
     if (fresh == null) {
       return false;
     }
@@ -425,9 +441,17 @@ class SubtypeHelper {
     for (InterfaceType interface in subElement.allSupertypes) {
       if (interface.element == superElement) {
         if (subType.typeArguments.isNotEmpty) {
-          Substitution substitution = Substitution.fromPairs(subType.element.typeParameters, subType.typeArguments);
-          InterfaceType substitutedInterface = substitution.substituteType(interface) as InterfaceType;
-          return _interfaceArguments(superElement, substitutedInterface, superType);
+          Substitution substitution = Substitution.fromPairs(
+            subType.element.typeParameters,
+            subType.typeArguments,
+          );
+          InterfaceType substitutedInterface =
+              substitution.substituteType(interface) as InterfaceType;
+          return _interfaceArguments(
+            superElement,
+            substitutedInterface,
+            superType,
+          );
         } else {
           _interfaceArguments(superElement, interface, superType);
         }
@@ -439,8 +463,10 @@ class SubtypeHelper {
 
   /// Check that [subType] is a subtype of [superType].
   bool _isRecordSubtypeOf(RecordType subType, RecordType superType) {
-    final List<RecordTypePositionalField> subPositional = subType.positionalFields;
-    final List<RecordTypePositionalField> superPositional = superType.positionalFields;
+    final List<RecordTypePositionalField> subPositional =
+        subType.positionalFields;
+    final List<RecordTypePositionalField> superPositional =
+        superType.positionalFields;
     if (subPositional.length != superPositional.length) {
       return false;
     }

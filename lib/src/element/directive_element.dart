@@ -66,7 +66,12 @@ class DirectiveElementImpl extends ElementImpl implements DirectiveElement {
   /// @param srcId Source identifier for tracking references
   /// @param stringUri Original string representation of the URI
   /// {@endtemplate}
-  DirectiveElementImpl({required this.library, required this.uri, required this.srcId, required this.stringUri});
+  DirectiveElementImpl({
+    required this.library,
+    required this.uri,
+    required this.srcId,
+    required this.stringUri,
+  });
 
   @override
   Element? get enclosingElement => library;
@@ -200,7 +205,12 @@ class PartElement extends DirectiveElementImpl {
   /// @param srcId Source identifier for tracking references
   /// @param stringUri Original string representation of the URI
   /// {@endtemplate}
-  PartElement({required super.library, required super.uri, required super.srcId, required super.stringUri});
+  PartElement({
+    required super.library,
+    required super.uri,
+    required super.srcId,
+    required super.stringUri,
+  });
 }
 
 /// {@template part_of_element}
@@ -252,7 +262,12 @@ class LibraryDirectiveElement extends DirectiveElementImpl {
   /// @param srcId Source identifier for tracking references
   /// @param stringUri Original string representation of the library name
   /// {@endtemplate}
-  LibraryDirectiveElement({required super.library, required super.uri, required super.srcId, required super.stringUri});
+  LibraryDirectiveElement({
+    required super.library,
+    required super.uri,
+    required super.srcId,
+    required super.stringUri,
+  });
 
   @override
   String get name => stringUri;

@@ -27,13 +27,16 @@ List<Set<ProcessableAsset>> calculateChunks(Set<ProcessableAsset> assets) {
   final int isolateCount = math.max(1, Platform.numberOfProcessors - 1);
   final int actualIsolateCount = math.min(isolateCount, assets.length);
 
-  final List<ProcessableAsset> assetsWithTLM = assets.where((ProcessableAsset a) => a.tlmFlag.hasNormal).toList();
-  final List<ProcessableAsset> assetsWithoutTLM = assets.where((ProcessableAsset a) => !a.tlmFlag.hasNormal).toList();
+  final List<ProcessableAsset> assetsWithTLM =
+      assets.where((ProcessableAsset a) => a.tlmFlag.hasNormal).toList();
+  final List<ProcessableAsset> assetsWithoutTLM =
+      assets.where((ProcessableAsset a) => !a.tlmFlag.hasNormal).toList();
 
-  final List<Set<ProcessableAsset>> chunks = List<Set<ProcessableAsset>>.generate(
-    actualIsolateCount,
-    (_) => <ProcessableAsset>{},
-  );
+  final List<Set<ProcessableAsset>> chunks =
+      List<Set<ProcessableAsset>>.generate(
+        actualIsolateCount,
+        (_) => <ProcessableAsset>{},
+      );
 
   // Distribute annotated assets evenly across chunks
   for (int i = 0; i < assetsWithTLM.length; i++) {
@@ -75,7 +78,8 @@ List<List<BuilderEntry>> calculateBuilderPhases(List<BuilderEntry> entries) {
     }
   }
   if (sharedPartEntries.isNotEmpty) {
-    final CombiningBuilderEntry combiningEntry = CombiningBuilderEntry.fromEntries(sharedPartEntries);
+    final CombiningBuilderEntry combiningEntry =
+        CombiningBuilderEntry.fromEntries(sharedPartEntries);
     for (final BuilderEntry entry in effectiveEntries) {
       for (final String dep in Set<String>.of(entry.runsBefore)) {
         if (sharedPartEntries.any((BuilderEntryImpl e) => e.key == dep)) {
@@ -87,15 +91,21 @@ List<List<BuilderEntry>> calculateBuilderPhases(List<BuilderEntry> entries) {
     effectiveEntries.add(combiningEntry);
   }
 
-  final List<BuilderEntry> orderedEntries = orderBasedOnRunsBefore(effectiveEntries);
+  final List<BuilderEntry> orderedEntries = orderBasedOnRunsBefore(
+    effectiveEntries,
+  );
 
-  final List<List<BuilderEntry>> phases = <List<BuilderEntry>>[<BuilderEntry>[]];
+  final List<List<BuilderEntry>> phases = <List<BuilderEntry>>[
+    <BuilderEntry>[],
+  ];
   for (final BuilderEntry builder in orderedEntries) {
     if (phases.last.isEmpty) {
       phases.last.add(builder);
     } else {
       final List<BuilderEntry> currentPhase = phases.last;
-      if (currentPhase.any((BuilderEntry b) => b.runsBefore.contains(builder.key))) {
+      if (currentPhase.any(
+        (BuilderEntry b) => b.runsBefore.contains(builder.key),
+      )) {
         // If the current phase has a builder that runs before the current builder,
         // create a new phase
         phases.add(<BuilderEntry>[builder]);
@@ -127,7 +137,9 @@ List<List<BuilderEntry>> calculateBuilderPhases(List<BuilderEntry> entries) {
 /// Throws a [StateError] if a cycle is detected in the dependency graph
 /// {@endtemplate}
 List<BuilderEntry> orderBasedOnRunsBefore(List<BuilderEntry> entries) {
-  final Map<String, BuilderEntry> builderMap = <String, BuilderEntry>{for (BuilderEntry b in entries) b.key: b};
+  final Map<String, BuilderEntry> builderMap = <String, BuilderEntry>{
+    for (BuilderEntry b in entries) b.key: b,
+  };
 
   final Map<String, Set<String>> graph = <String, Set<String>>{};
   final Map<String, int> inDegree = <String, int>{};
@@ -186,7 +198,8 @@ List<BuilderEntry> orderBasedOnRunsBefore(List<BuilderEntry> entries) {
 /// {@endtemplate}
 void validateBuilderEntries(List<BuilderEntry> builderEntries) {
   final HashMap<String, Set<String>> checked = HashMap<String, Set<String>>();
-  for (final BuilderEntryImpl entry in builderEntries.whereType<BuilderEntryImpl>()) {
+  for (final BuilderEntryImpl entry
+      in builderEntries.whereType<BuilderEntryImpl>()) {
     if (entry.builder is SharedPartBuilder && entry.generateToCache) {
       throw Exception('Shared builders can not generate to cache');
     }
@@ -196,7 +209,8 @@ void validateBuilderEntries(List<BuilderEntry> builderEntries) {
 
     for (final MapEntry<String, Set<String>> checked in checked.entries) {
       for (final String output in entry.builder.outputExtensions) {
-        if (entry.builder is! SharedPartBuilder && checked.value.contains(output)) {
+        if (entry.builder is! SharedPartBuilder &&
+            checked.value.contains(output)) {
           throw Exception(
             'Output conflict detected:\n Both ${entry.key} and ${checked.key} generate to the same output: $output',
           );

@@ -19,13 +19,17 @@ void main() {
   });
 
   test('PackageFileResolver should resolve package for package uri', () {
-    final Uri uri = Uri.parse('package:lean_builder/src/resolvers/package_file_resolver.dart');
+    final Uri uri = Uri.parse(
+      'package:lean_builder/src/resolvers/package_file_resolver.dart',
+    );
     final String package = fileResolver.packageFor(uri);
     expect(package, 'lean_builder');
   });
 
   test('PackageFileResolver should resolve package for package uri', () {
-    final Uri uri = Uri.parse('package:git/src/resolvers/package_file_resolver.dart');
+    final Uri uri = Uri.parse(
+      'package:git/src/resolvers/package_file_resolver.dart',
+    );
     final String package = fileResolver.packageFor(uri);
     expect(package, 'git');
   });
@@ -42,55 +46,103 @@ void main() {
 
   test('PackageFileResolver should resolve uri for package', () {
     final Uri uri = fileResolver.resolveFileUri(
-      Uri.parse('package:lean_builder/src/resolvers/package_file_resolver.dart'),
+      Uri.parse(
+        'package:lean_builder/src/resolvers/package_file_resolver.dart',
+      ),
     );
-    expect(uri, Uri.parse('file:///root/lean_builder-1.0.0/lib/src/resolvers/package_file_resolver.dart'));
+    expect(
+      uri,
+      Uri.parse(
+        'file:///root/lean_builder-1.0.0/lib/src/resolvers/package_file_resolver.dart',
+      ),
+    );
   });
 
   test('PackageFileResolver should resolve relative uri', () {
     final Uri uri = fileResolver.resolveFileUri(
       Uri.parse('file_asset.dart'),
-      relativeTo: Uri.parse('file:///root/lean_builder-1.0.0/lib/src/resolvers/package_file_resolver.dart'),
+      relativeTo: Uri.parse(
+        'file:///root/lean_builder-1.0.0/lib/src/resolvers/package_file_resolver.dart',
+      ),
     );
-    expect(uri, Uri.parse('file:///root/lean_builder-1.0.0/lib/src/resolvers/file_asset.dart'));
+    expect(
+      uri,
+      Uri.parse(
+        'file:///root/lean_builder-1.0.0/lib/src/resolvers/file_asset.dart',
+      ),
+    );
   });
 
   test('PackageFileResolver should resolve relative uri when back roots', () {
     final Uri uri = fileResolver.resolveFileUri(
       Uri.parse('./file_asset.dart'),
-      relativeTo: Uri.parse('file:///root/lean_builder-1.0.0/lib/src/resolvers/'),
+      relativeTo: Uri.parse(
+        'file:///root/lean_builder-1.0.0/lib/src/resolvers/',
+      ),
     );
-    expect(uri, Uri.parse('file:///root/lean_builder-1.0.0/lib/src/file_asset.dart'));
+    expect(
+      uri,
+      Uri.parse('file:///root/lean_builder-1.0.0/lib/src/file_asset.dart'),
+    );
   });
 
-  test('PackageFileResolver should resolve relative uri with leading slash', () {
-    final Uri uri = fileResolver.resolveFileUri(
-      Uri.parse('/file_asset.dart'),
-      relativeTo: Uri.parse('file:///root/lean_builder-1.0.0/lib/src/resolvers/'),
-    );
-    expect(uri, Uri.parse('file:///root/lean_builder-1.0.0/lib/src/file_asset.dart'));
-  });
+  test(
+    'PackageFileResolver should resolve relative uri with leading slash',
+    () {
+      final Uri uri = fileResolver.resolveFileUri(
+        Uri.parse('/file_asset.dart'),
+        relativeTo: Uri.parse(
+          'file:///root/lean_builder-1.0.0/lib/src/resolvers/',
+        ),
+      );
+      expect(
+        uri,
+        Uri.parse('file:///root/lean_builder-1.0.0/lib/src/file_asset.dart'),
+      );
+    },
+  );
 
   test('PackageFileResolver should resolve asset uri', () {
-    final Uri uri = fileResolver.resolveFileUri(Uri.parse('asset:lean_builder/test/resolvers/file_asset.dart'));
-    expect(uri, Uri.parse('file:///root/lean_builder-1.0.0/test/resolvers/file_asset.dart'));
+    final Uri uri = fileResolver.resolveFileUri(
+      Uri.parse('asset:lean_builder/test/resolvers/file_asset.dart'),
+    );
+    expect(
+      uri,
+      Uri.parse(
+        'file:///root/lean_builder-1.0.0/test/resolvers/file_asset.dart',
+      ),
+    );
   });
 
   test('PackageFileResolver should resolve dart uri', () {
-    final Uri uri = fileResolver.resolveFileUri(Uri.parse('dart:core/bool.dart'));
+    final Uri uri = fileResolver.resolveFileUri(
+      Uri.parse('dart:core/bool.dart'),
+    );
     expect(uri, Uri.parse('file:///sdk-path/lib/core/bool.dart'));
   });
 
   test('PackageFileResolver should resolve short uri', () {
-    final Uri uri = Uri.parse('file:///root/lean_builder-1.0.0/lib/src/resolvers/package_file_resolver.dart');
+    final Uri uri = Uri.parse(
+      'file:///root/lean_builder-1.0.0/lib/src/resolvers/package_file_resolver.dart',
+    );
     final Uri shortUri = fileResolver.toShortUri(uri);
-    expect(shortUri, Uri.parse('package:lean_builder/src/resolvers/package_file_resolver.dart'));
+    expect(
+      shortUri,
+      Uri.parse(
+        'package:lean_builder/src/resolvers/package_file_resolver.dart',
+      ),
+    );
   });
 
   test('PackageFileResolver should resolve short path for asset', () {
-    final Uri uri = Uri.parse('file:///root/lean_builder-1.0.0/test/resolvers/file_asset.dart');
+    final Uri uri = Uri.parse(
+      'file:///root/lean_builder-1.0.0/test/resolvers/file_asset.dart',
+    );
     final Uri shortUri = fileResolver.toShortUri(uri);
-    expect(shortUri, Uri.parse('asset:lean_builder/test/resolvers/file_asset.dart'));
+    expect(
+      shortUri,
+      Uri.parse('asset:lean_builder/test/resolvers/file_asset.dart'),
+    );
   });
 
   test('PackageFileResolver should resolve dart uri for dart:core', () {
@@ -102,30 +154,58 @@ void main() {
   // test exceptions
   test('PackageFileResolver should throw exception for unknown package', () {
     expect(
-      () => fileResolver.packageFor(Uri.parse('package:unknown_package/src/resolvers/package_file_resolver.dart')),
+      () => fileResolver.packageFor(
+        Uri.parse(
+          'package:unknown_package/src/resolvers/package_file_resolver.dart',
+        ),
+      ),
       throwsA(isA<PackageNotFoundError>()),
     );
   });
 
   test('PackageFileResolver should throw exception for unknown path', () {
-    expect(() => fileResolver.pathFor('unknown_package'), throwsA(isA<PackageNotFoundError>()));
+    expect(
+      () => fileResolver.pathFor('unknown_package'),
+      throwsA(isA<PackageNotFoundError>()),
+    );
   });
 
-  test('Building relative uri without passing a relativeTo uri should throw', () {
-    expect(() => fileResolver.assetForUri(Uri.parse('path')), throwsA(isA<InvalidPathError>()));
-  });
+  test(
+    'Building relative uri without passing a relativeTo uri should throw',
+    () {
+      expect(
+        () => fileResolver.assetForUri(Uri.parse('path')),
+        throwsA(isA<InvalidPathError>()),
+      );
+    },
+  );
 
   test('Building asset uri with invalid file path should throw', () {
-    expect(() => fileResolver.assetForUri(Uri.parse('invalid:io')), throwsA(isA<AssetUriError>()));
+    expect(
+      () => fileResolver.assetForUri(Uri.parse('invalid:io')),
+      throwsA(isA<AssetUriError>()),
+    );
   });
 
-  test('PackageFileResolver should throw exception for non-existing package config path', () {
-    expect(() => PackageFileResolverImpl.forRoot('non_existing_path', 'root'), throwsA(isA<PackageConfigNotFound>()));
-  });
+  test(
+    'PackageFileResolver should throw exception for non-existing package config path',
+    () {
+      expect(
+        () => PackageFileResolverImpl.forRoot('non_existing_path', 'root'),
+        throwsA(isA<PackageConfigNotFound>()),
+      );
+    },
+  );
 
-  test('PackageFileResolver should throw exception for invalid package config', () {
-    final String dir = Directory.current.path;
-    final String path = '$dir/test/resolvers/package_file_resolver.dart';
-    expect(() => PackageFileResolverImpl.loadPackageConfig(path), throwsA(isA<PackageConfigParseError>()));
-  });
+  test(
+    'PackageFileResolver should throw exception for invalid package config',
+    () {
+      final String dir = Directory.current.path;
+      final String path = '$dir/test/resolvers/package_file_resolver.dart';
+      expect(
+        () => PackageFileResolverImpl.loadPackageConfig(path),
+        throwsA(isA<PackageConfigParseError>()),
+      );
+    },
+  );
 }

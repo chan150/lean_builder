@@ -1,8 +1,10 @@
-import 'package:lean_builder/src/asset/package_file_resolver.dart' show PackageFileResolverImpl;
+import 'package:lean_builder/src/asset/package_file_resolver.dart'
+    show PackageFileResolverImpl;
 import 'package:lean_builder/src/graph/assets_graph.dart' show AssetsGraph;
 import 'package:lean_builder/src/graph/directive_statement.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
-import 'package:lean_builder/src/graph/references_scanner.dart' show ReferencesScanner;
+import 'package:lean_builder/src/graph/references_scanner.dart'
+    show ReferencesScanner;
 
 import 'package:test/expect.dart';
 import 'package:test/scaffolding.dart';
@@ -274,15 +276,30 @@ main() {
     final List<List<dynamic>> imports = assetsGraph.importsOf(src.id);
     expect(imports.length, 1);
     final List<dynamic> importArr = imports.first;
-    expect(importArr, <Object?>[DirectiveStatement.import, src.id, 'package:root/path.dart', null, null]);
+    expect(importArr, <Object?>[
+      DirectiveStatement.import,
+      src.id,
+      'package:root/path.dart',
+      null,
+      null,
+    ]);
   });
 
   test('Should parse simple import with alias', () {
-    final StringAsset file = StringAsset("import 'package:root/path.dart' as i;");
+    final StringAsset file = StringAsset(
+      "import 'package:root/path.dart' as i;",
+    );
     scanner.scan(file);
     final List<List<dynamic>> imports = assetsGraph.importsOf(file.id);
     expect(imports.length, 1);
-    expect(imports.first, <Object?>[DirectiveStatement.import, file.id, 'package:root/path.dart', null, null, 'i']);
+    expect(imports.first, <Object?>[
+      DirectiveStatement.import,
+      file.id,
+      'package:root/path.dart',
+      null,
+      null,
+      'i',
+    ]);
   });
 
   test('Should parse simple deferred import', () {
@@ -293,11 +310,21 @@ main() {
     scanner.scan(file);
     final List<List<dynamic>> imports = assetsGraph.importsOf(file.id);
     expect(imports.length, 1);
-    expect(imports.first, <Object?>[DirectiveStatement.import, file.id, 'package:root/path.dart', null, null, 'i', 1]);
+    expect(imports.first, <Object?>[
+      DirectiveStatement.import,
+      file.id,
+      'package:root/path.dart',
+      null,
+      null,
+      'i',
+      1,
+    ]);
   });
 
   test('Should parse simple import with show', () {
-    final StringAsset asset = StringAsset("import 'package:root/path.dart' show A, B;");
+    final StringAsset asset = StringAsset(
+      "import 'package:root/path.dart' show A, B;",
+    );
     scanner.registerAndScan(asset);
     final List<List<dynamic>> imports = assetsGraph.importsOf(asset.id);
     expect(imports.length, 1);
@@ -311,7 +338,9 @@ main() {
   });
 
   test('Should parse simple import with hide', () {
-    final StringAsset asset = StringAsset("import 'package:root/path.dart' hide A, B;");
+    final StringAsset asset = StringAsset(
+      "import 'package:root/path.dart' hide A, B;",
+    );
     scanner.registerAndScan(asset);
     final List<List<dynamic>> imports = assetsGraph.importsOf(asset.id);
     expect(imports.first, <Object?>[
@@ -324,7 +353,9 @@ main() {
   });
 
   test('Should parse simple import with show and hide', () {
-    final StringAsset file = StringAsset("import 'package:root/path.dart' show A, B hide C, D;");
+    final StringAsset file = StringAsset(
+      "import 'package:root/path.dart' show A, B hide C, D;",
+    );
     scanner.scan(file);
     final List<List<dynamic>> imports = assetsGraph.importsOf(file.id);
     expect(imports.length, 1);
@@ -341,7 +372,13 @@ main() {
     final StringAsset file = StringAsset("export 'package:root/path.dart';");
     scanner.scan(file);
     final List<List<dynamic>> exports = assetsGraph.exportsOf(file.id);
-    expect(exports.first, <Object?>[DirectiveStatement.export, file.id, 'package:root/path.dart', null, null]);
+    expect(exports.first, <Object?>[
+      DirectiveStatement.export,
+      file.id,
+      'package:root/path.dart',
+      null,
+      null,
+    ]);
   });
 
   test('Should parse simple export with show', () {
@@ -398,13 +435,34 @@ main() {
     final List<List<dynamic>> imports = assetsGraph.importsOf(file.id);
     final List<List<dynamic>> exports = assetsGraph.exportsOf(file.id);
     final List<List<dynamic>> parts = assetsGraph.partsOf(file.id);
-    expect(imports.first, <Object?>[DirectiveStatement.part, file.id, 'package:root/path.dart', null, null]);
-    expect(exports.first, <Object?>[DirectiveStatement.part, file.id, 'package:root/path.dart', null, null]);
-    expect(parts.first, <Object?>[DirectiveStatement.part, file.id, 'package:root/path.dart', null, null]);
+    expect(imports.first, <Object?>[
+      DirectiveStatement.part,
+      file.id,
+      'package:root/path.dart',
+      null,
+      null,
+    ]);
+    expect(exports.first, <Object?>[
+      DirectiveStatement.part,
+      file.id,
+      'package:root/path.dart',
+      null,
+      null,
+    ]);
+    expect(parts.first, <Object?>[
+      DirectiveStatement.part,
+      file.id,
+      'package:root/path.dart',
+      null,
+      null,
+    ]);
   });
 
   test('Should parse part of', () {
-    final StringAsset asset = StringAsset("part of 'path.dart';", uriString: 'path.dart');
+    final StringAsset asset = StringAsset(
+      "part of 'path.dart';",
+      uriString: 'path.dart',
+    );
     scanner.registerAndScan(asset, relativeTo: asset);
     expect(assetsGraph.partOfOf(asset.id), isNotNull);
   });
@@ -415,7 +473,11 @@ main() {
       class MyClass {}
     ''');
     scanner.registerAndScan(asset);
-    expect(assetsGraph.identifiers.first, <Object>['MyClass', asset.id, ReferenceType.$class.value]);
+    expect(assetsGraph.identifiers.first, <Object>[
+      'MyClass',
+      asset.id,
+      ReferenceType.$class.value,
+    ]);
     expect(assetsGraph.assets[asset.id]?[2], 1);
   });
 
@@ -425,7 +487,11 @@ main() {
       class MyClass {}
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, <Object>['MyClass', file.id, ReferenceType.$class.value]);
+    expect(assetsGraph.identifiers.first, <Object>[
+      'MyClass',
+      file.id,
+      ReferenceType.$class.value,
+    ]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
 
@@ -435,7 +501,11 @@ main() {
       class MyClass {}
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, <Object>['MyClass', file.id, ReferenceType.$class.value]);
+    expect(assetsGraph.identifiers.first, <Object>[
+      'MyClass',
+      file.id,
+      ReferenceType.$class.value,
+    ]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
 
@@ -445,7 +515,11 @@ main() {
       const myVar = 42;
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, <Object>['myVar', file.id, ReferenceType.$variable.value]);
+    expect(assetsGraph.identifiers.first, <Object>[
+      'myVar',
+      file.id,
+      ReferenceType.$variable.value,
+    ]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
 
@@ -455,20 +529,31 @@ main() {
       const myVar = 42;
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, <Object>['myVar', file.id, ReferenceType.$variable.value]);
+    expect(assetsGraph.identifiers.first, <Object>[
+      'myVar',
+      file.id,
+      ReferenceType.$variable.value,
+    ]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
 
-  test('TopLevelScanner should detect class annotated with import-prefixed annotation', () {
-    final StringAsset file = StringAsset('''
+  test(
+    'TopLevelScanner should detect class annotated with import-prefixed annotation',
+    () {
+      final StringAsset file = StringAsset('''
       @prefix.Annotation()
       @prefix.Annotation.named()
       class MyClass {}
     ''');
-    scanner.scan(file);
-    expect(assetsGraph.identifiers.first, <Object>['MyClass', file.id, ReferenceType.$class.value]);
-    expect(assetsGraph.assets[file.id]?[2], 1);
-  });
+      scanner.scan(file);
+      expect(assetsGraph.identifiers.first, <Object>[
+        'MyClass',
+        file.id,
+        ReferenceType.$class.value,
+      ]);
+      expect(assetsGraph.assets[file.id]?[2], 1);
+    },
+  );
 
   test('TopLevelScanner should detect multiple annotations', () {
     final StringAsset file = StringAsset('''
@@ -477,7 +562,11 @@ main() {
       class MyClass {}
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, <Object>['MyClass', file.id, ReferenceType.$class.value]);
+    expect(assetsGraph.identifiers.first, <Object>[
+      'MyClass',
+      file.id,
+      ReferenceType.$class.value,
+    ]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
 
@@ -490,12 +579,18 @@ main() {
       void myFunction() {}
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, <Object>['myFunction', file.id, ReferenceType.$function.value]);
+    expect(assetsGraph.identifiers.first, <Object>[
+      'myFunction',
+      file.id,
+      ReferenceType.$function.value,
+    ]);
     expect(assetsGraph.assets[file.id]?[2], 1);
   });
 
-  test('TopLevelScanner should ignore field, method, any class member annotation', () {
-    final StringAsset file = StringAsset('''
+  test(
+    'TopLevelScanner should ignore field, method, any class member annotation',
+    () {
+      final StringAsset file = StringAsset('''
       class MyClass {
         @Annotation()
         int myField = 42;
@@ -503,17 +598,26 @@ main() {
         void myMethod() {}
       }
     ''');
-    scanner.scan(file);
-    expect(assetsGraph.identifiers.first, <Object>['MyClass', file.id, ReferenceType.$class.value]);
-    expect(assetsGraph.assets[file.id]?[2], 0);
-  });
+      scanner.scan(file);
+      expect(assetsGraph.identifiers.first, <Object>[
+        'MyClass',
+        file.id,
+        ReferenceType.$class.value,
+      ]);
+      expect(assetsGraph.assets[file.id]?[2], 0);
+    },
+  );
 
   test('TopLevelScanner should ignore top functions parameter annotation', () {
     final StringAsset file = StringAsset('''
       void myFunction(@Annotation() int arg) {}
     ''');
     scanner.scan(file);
-    expect(assetsGraph.identifiers.first, <Object>['myFunction', file.id, ReferenceType.$function.value]);
+    expect(assetsGraph.identifiers.first, <Object>[
+      'myFunction',
+      file.id,
+      ReferenceType.$function.value,
+    ]);
     expect(assetsGraph.assets[file.id]?[2], 0);
   });
 }

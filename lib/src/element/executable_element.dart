@@ -140,7 +140,8 @@ abstract class FunctionElement implements ExecutableElement {
 /// Constructors can also redirect to other constructors or invoke
 /// superclass constructors.
 /// {@endtemplate}
-abstract class ConstructorElement implements ClassMemberElement, ExecutableElement {
+abstract class ConstructorElement
+    implements ClassMemberElement, ExecutableElement {
   /// {@template constructor_element.is_const}
   /// Whether the constructor is a constant constructor.
   /// {@endtemplate}
@@ -309,7 +310,10 @@ abstract class ExecutableElementImpl extends ElementImpl
 
   @override
   DartType instantiate(NamedDartType typeRef) {
-    Substitution substitution = Substitution.fromPairs(typeParameters, typeRef.typeArguments);
+    Substitution substitution = Substitution.fromPairs(
+      typeParameters,
+      typeRef.typeArguments,
+    );
     return substitution.substituteType(type, isNullable: typeRef.isNullable);
   }
 }
@@ -320,7 +324,8 @@ abstract class ExecutableElementImpl extends ElementImpl
 /// This class represents standalone functions (not methods) and provides
 /// concrete implementations of the functions-specific functionality.
 /// {@endtemplate}
-class FunctionElementImpl extends ExecutableElementImpl implements FunctionElement {
+class FunctionElementImpl extends ExecutableElementImpl
+    implements FunctionElement {
   /// {@template function_element_impl.constructor}
   /// Creates a function element with the specified properties.
   ///
@@ -392,7 +397,10 @@ class MethodElementImpl extends ExecutableElementImpl implements MethodElement {
   /// @param isSetter Whether the accessor is a setter
   /// @return A property accessor element based on this method
   /// {@endtemplate}
-  PropertyAccessorElementImpl toPropertyAccessorElement({required bool isGetter, required bool isSetter}) {
+  PropertyAccessorElementImpl toPropertyAccessorElement({
+    required bool isGetter,
+    required bool isSetter,
+  }) {
     return PropertyAccessorElementImpl(
       name: name,
       isAbstract: isAbstract,
@@ -416,7 +424,8 @@ class MethodElementImpl extends ExecutableElementImpl implements MethodElement {
 /// to properties. They can be explicitly defined with the `get` and `set`
 /// keywords or implicitly created for fields.
 /// {@endtemplate}
-class PropertyAccessorElementImpl extends MethodElementImpl implements PropertyAccessorElement {
+class PropertyAccessorElementImpl extends MethodElementImpl
+    implements PropertyAccessorElement {
   /// {@template property_accessor_element_impl.constructor}
   /// Creates a property accessor element with the specified properties.
   ///
@@ -461,7 +470,8 @@ class PropertyAccessorElementImpl extends MethodElementImpl implements PropertyA
 /// such as handling redirecting constructors, superclass constructor calls,
 /// and different constructor types (const, factory, etc.).
 /// {@endtemplate}
-class ConstructorElementImpl extends ExecutableElementImpl implements ConstructorElement {
+class ConstructorElementImpl extends ExecutableElementImpl
+    implements ConstructorElement {
   /// {@template constructor_element_impl.constructor}
   /// Creates a constructor element with the specified properties.
   ///
@@ -492,7 +502,8 @@ class ConstructorElementImpl extends ExecutableElementImpl implements Constructo
   final bool isConst;
 
   @override
-  bool get isDefaultConstructor => name.isEmpty && parameters.every((ParameterElement e) => e.isOptional);
+  bool get isDefaultConstructor =>
+      name.isEmpty && parameters.every((ParameterElement e) => e.isOptional);
 
   @override
   final bool isFactory;

@@ -65,7 +65,11 @@ abstract class Asset {
   /// - [shortUri]: A shortened URI that may use package or asset schemes.
   /// - [file]: The file that this asset represents.
   /// {@endtemplate}
-  factory Asset({required String id, required Uri shortUri, required File file}) = FileAsset;
+  factory Asset({
+    required String id,
+    required Uri shortUri,
+    required File file,
+  }) = FileAsset;
 
   /// {@template asset.toJson}
   /// Converts this asset to a JSON representation.
@@ -150,7 +154,11 @@ class FileAsset implements Asset {
   /// {@macro asset.toJson}
   @override
   Map<String, dynamic> toJson() {
-    return <String, dynamic>{'id': id, 'shortUri': shortUri.toString(), 'uri': uri.toString()};
+    return <String, dynamic>{
+      'id': id,
+      'shortUri': shortUri.toString(),
+      'uri': uri.toString(),
+    };
   }
 
   /// Creates a new FileAsset from a JSON representation.

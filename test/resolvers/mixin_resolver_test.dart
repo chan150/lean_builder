@@ -53,6 +53,9 @@ void main() {
     final LibraryElement library = resolver!.resolveLibrary(asset);
     final MixinElementImpl? mixinElement = library.getMixin('Foo');
     expect(mixinElement, isNotNull);
-    expect(mixinElement!.superclassConstraints, library.classes.map((ClassElementImpl e) => e.thisType));
+    expect(
+      mixinElement!.superclassConstraints,
+      library.classes.map((ClassElementImpl e) => e.thisType),
+    );
   });
 }

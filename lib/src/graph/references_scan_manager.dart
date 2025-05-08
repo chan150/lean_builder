@@ -49,14 +49,21 @@ Future<void> scannerWorker(SendPort sendPort) async {
 
   await for (dynamic message in receivePort) {
     if (message is ScanningTask) {
-      final PackageFileResolver fileResolver = PackageFileResolver.fromJson(message.packageResolverData);
+      final PackageFileResolver fileResolver = PackageFileResolver.fromJson(
+        message.packageResolverData,
+      );
       final AssetsScanResults resultsCollector = AssetsScanResults();
-      final ReferencesScanner scanner = ReferencesScanner(resultsCollector, fileResolver);
+      final ReferencesScanner scanner = ReferencesScanner(
+        resultsCollector,
+        fileResolver,
+      );
       for (final Asset asset in message.assets) {
         scanner.scan(asset);
       }
       // Send results back to main isolate
-      sendPort.send(<String, Map<String, dynamic>>{'results': resultsCollector.toJson()});
+      sendPort.send(<String, Map<String, dynamic>>{
+        'results': resultsCollector.toJson(),
+      });
     } else if (message == 'exit') {
       break;
     }
@@ -92,7 +99,11 @@ class ReferencesScanManager {
   final String rootPackage;
 
   /// {@macro references_scan_manager}
-  ReferencesScanManager({required this.assetsGraph, required this.fileResolver, required this.rootPackage});
+  ReferencesScanManager({
+    required this.assetsGraph,
+    required this.fileResolver,
+    required this.rootPackage,
+  });
 
   /// {@template references_scan_manager.scan_assets}
   /// Scans Dart source files to build or update the dependency graph.
@@ -106,21 +117,30 @@ class ReferencesScanManager {
   /// {@endtemplate}
   Future<void> scanAssets({bool scanOnlyRoot = false}) async {
     final FileAssetReader assetsReader = FileAssetReader(fileResolver);
-    final Set<String> packagesToScan = scanOnlyRoot ? <String>{rootPackage} : fileResolver.packages;
+    final Set<String> packagesToScan =
+        scanOnlyRoot ? <String>{rootPackage} : fileResolver.packages;
 
-    final Map<String, List<Asset>> assets = assetsReader.listAssetsFor(packagesToScan);
-    final List<Asset> assetsList = assets.values.expand((List<Asset> e) => e).toList();
+    final Map<String, List<Asset>> assets = assetsReader.listAssetsFor(
+      packagesToScan,
+    );
+    final List<Asset> assetsList =
+        assets.values.expand((List<Asset> e) => e).toList();
     // Only distribute work if building from scratch
     if (!assetsGraph.loadedFromCache) {
       await scanWithIsolates(assetsList, fileResolver.toJson());
     } else {
       // Use single-threaded approach for incremental updates
-      final ReferencesScanner scanner = ReferencesScanner(assetsGraph, fileResolver);
+      final ReferencesScanner scanner = ReferencesScanner(
+        assetsGraph,
+        fileResolver,
+      );
       for (final Asset asset in assetsList) {
         scanner.scan(asset);
       }
     }
-    handleIncrementallyUpdatedAssets(assetsGraph.getAssetsForPackage(rootPackage));
+    handleIncrementallyUpdatedAssets(
+      assetsGraph.getAssetsForPackage(rootPackage),
+    );
   }
 
   /// {@template references_scan_manager.scan_with_isolates}
@@ -137,8 +157,12 @@ class ReferencesScanManager {
   /// [assets] The list of assets to scan
   /// [packageResolverData] Serialized package resolver data to pass to isolates
   /// {@endtemplate}
-  Future<Set<ProcessableAsset>> scanWithIsolates(List<Asset> assets, Map<String, dynamic> packageResolverData) async {
-    final int isolateCount = Platform.numberOfProcessors - 1; // Leave one core free
+  Future<Set<ProcessableAsset>> scanWithIsolates(
+    List<Asset> assets,
+    Map<String, dynamic> packageResolverData,
+  ) async {
+    final int isolateCount =
+        Platform.numberOfProcessors - 1; // Leave one core free
     final int actualIsolateCount = isolateCount.clamp(1, assets.length);
 
     // Calculate chunk size - each isolate gets roughly equal work
@@ -147,11 +171,13 @@ class ReferencesScanManager {
 
     // Split assets into chunks
     for (int i = 0; i < assets.length; i += chunkSize) {
-      final int end = (i + chunkSize < assets.length) ? i + chunkSize : assets.length;
+      final int end =
+          (i + chunkSize < assets.length) ? i + chunkSize : assets.length;
       chunks.add(assets.sublist(i, end));
     }
 
-    final List<Future<Iterable<ProcessableAsset>>> futures = <Future<Iterable<ProcessableAsset>>>[];
+    final List<Future<Iterable<ProcessableAsset>>> futures =
+        <Future<Iterable<ProcessableAsset>>>[];
 
     // Create and start isolates
     for (final List<Asset> chunk in chunks) {
@@ -159,7 +185,9 @@ class ReferencesScanManager {
     }
     // Wait for all isolates to complete
     final List<Iterable<ProcessableAsset>> results = await Future.wait(futures);
-    return Set<ProcessableAsset>.unmodifiable(results.expand((Iterable<ProcessableAsset> e) => e));
+    return Set<ProcessableAsset>.unmodifiable(
+      results.expand((Iterable<ProcessableAsset> e) => e),
+    );
   }
 
   /// {@template references_scan_manager.process_chunk_in_isolate}
@@ -198,14 +226,19 @@ class ReferencesScanManager {
         workerSendPort!.send(ScanningTask(chunk, packageResolverData));
       } else if (message is Map<String, dynamic>) {
         // Process results
-        final AssetsScanResults results = AssetsScanResults.fromJson(message['results']);
+        final AssetsScanResults results = AssetsScanResults.fromJson(
+          message['results'],
+        );
         assetsGraph.merge(results);
         completer.complete();
       }
     });
 
     // Spawn the isolate with our already-configured receive port
-    final Isolate isolate = await Isolate.spawn(scannerWorker, receivePort.sendPort);
+    final Isolate isolate = await Isolate.spawn(
+      scannerWorker,
+      receivePort.sendPort,
+    );
 
     // Wait for the result
     await completer.future;
@@ -256,8 +289,13 @@ class ReferencesScanManager {
   /// [asset] The asset that has been updated
   /// {@endtemplate}
   void handleUpdatedAsset(Asset asset) {
-    final ReferencesScanner scanner = ReferencesScanner(assetsGraph, fileResolver);
-    final Map<String, List<dynamic>> dependents = assetsGraph.dependentsOf(asset.id);
+    final ReferencesScanner scanner = ReferencesScanner(
+      assetsGraph,
+      fileResolver,
+    );
+    final Map<String, List<dynamic>> dependents = assetsGraph.dependentsOf(
+      asset.id,
+    );
     scanner.scan(asset, forceOverride: true);
     for (final MapEntry<String, List<dynamic>> dep in dependents.entries) {
       if (assetsGraph.outputs[asset.id]?.contains(dep.key) == true) {
@@ -293,7 +331,10 @@ class ReferencesScanManager {
   /// [asset] The new asset that has been added
   /// {@endtemplate}
   void handleInsertedAsset(Asset asset) {
-    final ReferencesScanner scanner = ReferencesScanner(assetsGraph, fileResolver);
+    final ReferencesScanner scanner = ReferencesScanner(
+      assetsGraph,
+      fileResolver,
+    );
     scanner.scan(asset);
   }
 }
@@ -329,7 +370,11 @@ class ProcessableAsset {
 
   /// Converts this asset to a JSON representation for serialization
   Map<String, dynamic> toJson() {
-    return <String, dynamic>{'asset': asset.toJson(), 'state': state.index, 'tlmFlag': tlmFlag.index};
+    return <String, dynamic>{
+      'asset': asset.toJson(),
+      'state': state.index,
+      'tlmFlag': tlmFlag.index,
+    };
   }
 
   @override
