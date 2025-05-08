@@ -1,15 +1,17 @@
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
+import 'package:lean_builder/src/element/element.dart';
 import 'package:lean_builder/src/graph/assets_graph.dart';
-import 'package:lean_builder/src/graph/assets_scanner.dart';
+import 'package:lean_builder/src/graph/references_scanner.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
-import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
+import 'package:lean_builder/src/resolvers/source_parser.dart';
+import 'package:lean_builder/src/type/type.dart';
 import 'package:test/test.dart';
 
 import '../scanner/string_asset_src.dart';
 
 void main() {
   late PackageFileResolver fileResolver;
-  AssetsScanner? scanner;
+  ReferencesScanner? scanner;
   ResolverImpl? resolver;
 
   setUpAll(() {
@@ -18,22 +20,22 @@ void main() {
 
   setUp(() {
     final AssetsGraph graph = AssetsGraph('hash');
-    scanner = AssetsScanner(graph, fileResolver);
+    scanner = ReferencesScanner(graph, fileResolver);
     resolver = ResolverImpl(graph, fileResolver, SourceParser());
   });
 
   test('should resolve simple class element', () {
-    final asset = StringAsset('class Foo {}');
+    final StringAsset asset = StringAsset('class Foo {}');
     scanner!.scan(asset);
-    final library = resolver!.resolveLibrary(asset);
+    final LibraryElement library = resolver!.resolveLibrary(asset);
     expect(library.getClass('Foo'), isNotNull);
   });
 
   test('should resolve abstract class element', () {
-    final asset = StringAsset('abstract class Foo {}');
+    final StringAsset asset = StringAsset('abstract class Foo {}');
     scanner!.scan(asset);
-    final library = resolver!.resolveLibrary(asset);
-    final classElement = library.getClass('Foo');
+    final LibraryElement library = resolver!.resolveLibrary(asset);
+    final ClassElementImpl? classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
     expect(classElement!.name, 'Foo');
     expect(classElement.hasAbstract, isTrue);
@@ -47,10 +49,10 @@ void main() {
   });
 
   test('should resolve final class element', () {
-    final asset = StringAsset('final class Foo {}');
+    final StringAsset asset = StringAsset('final class Foo {}');
     scanner!.scan(asset);
-    final library = resolver!.resolveLibrary(asset);
-    final classElement = library.getClass('Foo');
+    final LibraryElement library = resolver!.resolveLibrary(asset);
+    final ClassElementImpl? classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
     expect(classElement!.hasAbstract, isFalse);
     expect(classElement.hasFinal, isTrue);
@@ -63,10 +65,10 @@ void main() {
   });
 
   test('should resolve base class element', () {
-    final asset = StringAsset('base class Foo {}');
+    final StringAsset asset = StringAsset('base class Foo {}');
     scanner!.scan(asset);
-    final library = resolver!.resolveLibrary(asset);
-    final classElement = library.getClass('Foo');
+    final LibraryElement library = resolver!.resolveLibrary(asset);
+    final ClassElementImpl? classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
     expect(classElement!.hasAbstract, isFalse);
     expect(classElement.hasFinal, isFalse);
@@ -79,10 +81,10 @@ void main() {
   });
 
   test('should resolve interface class element', () {
-    final asset = StringAsset('interface class Foo {}');
+    final StringAsset asset = StringAsset('interface class Foo {}');
     scanner!.scan(asset);
-    final library = resolver!.resolveLibrary(asset);
-    final classElement = library.getClass('Foo');
+    final LibraryElement library = resolver!.resolveLibrary(asset);
+    final ClassElementImpl? classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
     expect(classElement!.hasAbstract, isFalse);
     expect(classElement.hasFinal, isFalse);
@@ -95,10 +97,10 @@ void main() {
   });
 
   test('should resolve mixin class element', () {
-    final asset = StringAsset('mixin class Foo {}');
+    final StringAsset asset = StringAsset('mixin class Foo {}');
     scanner!.scan(asset);
-    final library = resolver!.resolveLibrary(asset);
-    final classElement = library.getClass('Foo');
+    final LibraryElement library = resolver!.resolveLibrary(asset);
+    final ClassElementImpl? classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
     expect(classElement!.hasAbstract, isFalse);
     expect(classElement.hasFinal, isFalse);
@@ -111,10 +113,10 @@ void main() {
   });
 
   test('should resolve sealed class element', () {
-    final asset = StringAsset('sealed class Foo {}');
+    final StringAsset asset = StringAsset('sealed class Foo {}');
     scanner!.scan(asset);
-    final library = resolver!.resolveLibrary(asset);
-    final classElement = library.getClass('Foo');
+    final LibraryElement library = resolver!.resolveLibrary(asset);
+    final ClassElementImpl? classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
     expect(classElement!.hasAbstract, isFalse);
     expect(classElement.hasSealedKeyword, isTrue);
@@ -127,14 +129,14 @@ void main() {
   });
 
   test('should resolve mixin application class element', () {
-    final asset = StringAsset('''
+    final StringAsset asset = StringAsset('''
         class Bar {}
         mixin Baz {}
         class Foo = Bar with Baz;
     ''');
     scanner!.scan(asset);
-    final library = resolver!.resolveLibrary(asset);
-    final classElement = library.getClass('Foo');
+    final LibraryElement library = resolver!.resolveLibrary(asset);
+    final ClassElementImpl? classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
     expect(classElement!.hasSealedKeyword, isFalse);
     expect(classElement.hasAbstract, isFalse);
@@ -147,10 +149,10 @@ void main() {
   });
 
   test('should resolve abstract interface class element', () {
-    final asset = StringAsset('abstract interface class Foo {}');
+    final StringAsset asset = StringAsset('abstract interface class Foo {}');
     scanner!.scan(asset);
-    final library = resolver!.resolveLibrary(asset);
-    final classElement = library.getClass('Foo');
+    final LibraryElement library = resolver!.resolveLibrary(asset);
+    final ClassElementImpl? classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
     expect(classElement!.name, 'Foo');
     expect(classElement.hasAbstract, isTrue);
@@ -164,10 +166,10 @@ void main() {
   });
 
   test('should resolve abstract final class element', () {
-    final asset = StringAsset('abstract final class Foo {}');
+    final StringAsset asset = StringAsset('abstract final class Foo {}');
     scanner!.scan(asset);
-    final library = resolver!.resolveLibrary(asset);
-    final classElement = library.getClass('Foo');
+    final LibraryElement library = resolver!.resolveLibrary(asset);
+    final ClassElementImpl? classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
     expect(classElement!.name, 'Foo');
     expect(classElement.hasAbstract, isTrue);
@@ -181,10 +183,10 @@ void main() {
   });
 
   test('should resolve abstract mixin class element', () {
-    final asset = StringAsset('abstract mixin class Foo {}');
+    final StringAsset asset = StringAsset('abstract mixin class Foo {}');
     scanner!.scan(asset);
-    final library = resolver!.resolveLibrary(asset);
-    final classElement = library.getClass('Foo');
+    final LibraryElement library = resolver!.resolveLibrary(asset);
+    final ClassElementImpl? classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
     expect(classElement!.name, 'Foo');
     expect(classElement.hasAbstract, isTrue);
@@ -198,40 +200,43 @@ void main() {
   });
 
   test('should resolve class with super class', () {
-    final asset = StringAsset('''
+    final StringAsset asset = StringAsset('''
         class Bar {}
         class Foo extends Bar {}
     ''');
     scanner!.scan(asset);
-    final library = resolver!.resolveLibrary(asset);
-    final classElement = library.getClass('Foo');
+    final LibraryElement library = resolver!.resolveLibrary(asset);
+    final ClassElementImpl? classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
     expect(classElement!.superType, library.getClass('Bar')!.thisType);
   });
 
   test('should resolve class with super interfaces', () {
-    final asset = StringAsset('''
+    final StringAsset asset = StringAsset('''
          class Bar {}
          class Baz {}
          class Foo implements Bar, Baz {}
     ''');
     scanner!.scan(asset);
-    final library = resolver!.resolveLibrary(asset);
-    final classElement = library.getClass('Foo');
+    final LibraryElement library = resolver!.resolveLibrary(asset);
+    final ClassElementImpl? classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
-    expect(classElement!.interfaces, [library.getClass('Bar')!.thisType, library.getClass('Baz')!.thisType]);
+    expect(classElement!.interfaces, <InterfaceType>[
+      library.getClass('Bar')!.thisType,
+      library.getClass('Baz')!.thisType,
+    ]);
   });
 
   test('should resolve class with mixins', () {
-    final asset = StringAsset('''
+    final StringAsset asset = StringAsset('''
         mixin Bar {}
         mixin Baz {}
         class Foo with Bar, Baz {}
     ''');
     scanner!.scan(asset);
-    final library = resolver!.resolveLibrary(asset);
-    final classElement = library.getClass('Foo');
+    final LibraryElement library = resolver!.resolveLibrary(asset);
+    final ClassElementImpl? classElement = library.getClass('Foo');
     expect(classElement, isNotNull);
-    expect(classElement!.mixins, [library.getMixin('Bar')!.thisType, library.getMixin('Baz')!.thisType]);
+    expect(classElement!.mixins, <InterfaceType>[library.getMixin('Bar')!.thisType, library.getMixin('Baz')!.thisType]);
   });
 }

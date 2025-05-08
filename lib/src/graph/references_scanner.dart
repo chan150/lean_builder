@@ -11,11 +11,11 @@ import 'package:lean_builder/src/logger.dart';
 
 import 'directive_statement.dart';
 
-class AssetsScanner {
+class ReferencesScanner {
   final ScanResults results;
   final PackageFileResolver fileResolver;
 
-  AssetsScanner(this.results, this.fileResolver);
+  ReferencesScanner(this.results, this.fileResolver);
 
   void scan(Asset asset, {bool forceOverride = false}) {
     try {

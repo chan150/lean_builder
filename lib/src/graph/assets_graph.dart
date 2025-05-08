@@ -5,18 +5,18 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
 import 'package:lean_builder/src/builder/builder.dart';
-import 'package:lean_builder/src/errors/resolver_error.dart';
-import 'package:lean_builder/src/graph/asset_scan_manager.dart';
 import 'package:lean_builder/src/graph/directive_statement.dart';
+import 'package:lean_builder/src/graph/references_scan_manager.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/logger.dart';
 import 'package:collection/collection.dart';
+import 'package:lean_builder/src/resolvers/errors.dart';
 import 'package:xxh3/xxh3.dart';
 
 import 'identifier_ref.dart';
 
 class AssetsGraph extends AssetsScanResults {
-  static final cacheFile = File('.dart_tool/lean_build/assets_graph.json');
+  static final File cacheFile = File('.dart_tool/lean_build/assets_graph.json');
 
   static void invalidateCache() {
     if (cacheFile.existsSync()) {
@@ -32,9 +32,9 @@ class AssetsGraph extends AssetsScanResults {
 
   static const String version = '1.0.0';
 
-  late final _coreImportId = xxh3String(Uint8List.fromList('dart:core/core.dart'.codeUnits));
+  late final String _coreImportId = xxh3String(Uint8List.fromList('dart:core/core.dart'.codeUnits));
 
-  late final _coreImport = [DirectiveStatement.import, _coreImportId, '', null, null];
+  late final List<Object?> _coreImport = <Object?>[DirectiveStatement.import, _coreImportId, '', null, null];
 
   AssetsGraph(this.hash) : loadedFromCache = false, shouldInvalidate = false;
 
@@ -44,7 +44,7 @@ class AssetsGraph extends AssetsScanResults {
     if (cacheFile.existsSync()) {
       try {
         final cachedGraph = jsonDecode(cacheFile.readAsStringSync());
-        final instance = AssetsGraph.fromCache(cachedGraph, hash);
+        final AssetsGraph instance = AssetsGraph.fromCache(cachedGraph, hash);
         if (!instance.loadedFromCache || instance.shouldInvalidate) {
           Logger.info('Cache is invalid, rebuilding...');
           cacheFile.deleteSync(recursive: true);
@@ -59,7 +59,7 @@ class AssetsGraph extends AssetsScanResults {
   }
 
   Future<void> save() async {
-    final file = AssetsGraph.cacheFile;
+    final File file = AssetsGraph.cacheFile;
     if (!file.existsSync()) {
       file.createSync(recursive: true);
     }
@@ -74,9 +74,9 @@ class AssetsGraph extends AssetsScanResults {
   }
 
   List<ScannedAsset> getAssetsForPackage(String package) {
-    final assets = <ScannedAsset>[];
-    for (final entry in this.assets.entries) {
-      final uri = Uri.parse(entry.value[GraphIndex.assetUri]);
+    final List<ScannedAsset> assets = <ScannedAsset>[];
+    for (final MapEntry<String, List> entry in this.assets.entries) {
+      final Uri uri = Uri.parse(entry.value[GraphIndex.assetUri]);
       if (uri.pathSegments.isEmpty) continue;
       if (uri.pathSegments[0] == package) {
         assets.add(
@@ -93,8 +93,8 @@ class AssetsGraph extends AssetsScanResults {
   }
 
   void invalidateProcessedAssetsOf(String package) {
-    for (final entry in assets.entries) {
-      final uri = Uri.parse(entry.value[GraphIndex.assetUri]);
+    for (final MapEntry<String, List> entry in assets.entries) {
+      final Uri uri = Uri.parse(entry.value[GraphIndex.assetUri]);
       if (uri.pathSegments.isEmpty) continue;
       if (uri.pathSegments[0] == package) {
         entry.value[GraphIndex.assetState] = AssetState.unProcessed.index;
@@ -115,49 +115,54 @@ class AssetsGraph extends AssetsScanResults {
       );
     }
 
-    final possibleSrcs = Map<String, int>.fromEntries(
+    final Map<String, int> possibleSrcs = Map<String, int>.fromEntries(
       identifiers
-          .where((e) => e[GraphIndex.identifierName] == identifier)
-          .map((e) => MapEntry(e[GraphIndex.identifierSrc], e[GraphIndex.identifierType])),
+          .where((List<dynamic> e) => e[GraphIndex.identifierName] == identifier)
+          .map((List<dynamic> e) => MapEntry<String, int>(e[GraphIndex.identifierSrc], e[GraphIndex.identifierType])),
     );
 
-    final actualSrc = getParentSrc(importingSrc.id);
+    final String actualSrc = getParentSrc(importingSrc.id);
     // First check if the identifier is declared directly in this file
-    for (final entry in possibleSrcs.entries) {
+    for (final MapEntry<String, int> entry in possibleSrcs.entries) {
       if (entry.key == importingSrc.id || entry.key == actualSrc) {
         return buildRef(entry, providerId: actualSrc);
       }
     }
 
     // Check all imports of the source file
-    final fileImports = [...importsOf(importingSrc.id), if (assets.containsKey(_coreImportId)) _coreImport];
+    final List<List<Object?>> fileImports = <List<Object?>>[
+      ...importsOf(importingSrc.id),
+      if (assets.containsKey(_coreImportId)) _coreImport,
+    ];
 
-    for (final importEntry in fileImports) {
-      final importedFileSrc = importEntry[GraphIndex.directiveSrc] as String;
-      final prefix = importEntry.elementAtOrNull(GraphIndex.directivePrefix) as String?;
+    for (final List<Object?> importEntry in fileImports) {
+      final String importedFileSrc = importEntry[GraphIndex.directiveSrc] as String;
+      final String? prefix = importEntry.elementAtOrNull(GraphIndex.directivePrefix) as String?;
       if (importPrefix != null && importPrefix != prefix) continue;
 
       // Skip if the identifier is hidden
-      final hides = importEntry[GraphIndex.directiveHide] as List<dynamic>? ?? const [];
+      final List<dynamic> hides = importEntry[GraphIndex.directiveHide] as List<dynamic>? ?? const <dynamic>[];
       if (hides.contains(identifier)) continue;
 
       // Skip if the identifier is not shown
-      final shows = importEntry[GraphIndex.directiveShow] as List<dynamic>? ?? const [];
+      final List<dynamic> shows = importEntry[GraphIndex.directiveShow] as List<dynamic>? ?? const <dynamic>[];
       if (shows.isNotEmpty && !shows.contains(identifier)) continue;
 
       // Check if the imported file directly declares the identifier
-      for (final entry in possibleSrcs.entries) {
+      for (final MapEntry<String, int> entry in possibleSrcs.entries) {
         if (entry.key == importedFileSrc) {
           return buildRef(entry, providerId: importedFileSrc);
         }
       }
     }
-    for (final importEntry in fileImports) {
-      final importedFileSrc = importEntry[GraphIndex.directiveSrc] as String;
-      final visitedSrcs = <String>{};
-      final src = _traceExportsOf(importedFileSrc, identifier, possibleSrcs.keys, visitedSrcs);
+    for (final List<Object?> importEntry in fileImports) {
+      final String importedFileSrc = importEntry[GraphIndex.directiveSrc] as String;
+      final Set<String> visitedSrcs = <String>{};
+      final String? src = _traceExportsOf(importedFileSrc, identifier, possibleSrcs.keys, visitedSrcs);
       if (src != null) {
-        final srcEntry = possibleSrcs.entries.firstWhere((k) => k.key == src);
+        final MapEntry<String, int> srcEntry = possibleSrcs.entries.firstWhere(
+          (MapEntry<String, int> k) => k.key == src,
+        );
         return buildRef(srcEntry, providerId: importedFileSrc);
       }
     }
@@ -166,14 +171,14 @@ class AssetsGraph extends AssetsScanResults {
 
   DeclarationRef? lookupIdentifierByProvider(String name, String providerSrc) {
     if (!assets.containsKey(providerSrc)) return null;
-    final possibleSrcs = Map<String, List<dynamic>>.fromEntries(
+    final Map<String, List<dynamic>> possibleSrcs = Map<String, List<dynamic>>.fromEntries(
       identifiers
-          .where((e) => e[GraphIndex.identifierName] == name)
-          .map((e) => MapEntry(e[GraphIndex.identifierSrc], e)),
+          .where((List<dynamic> e) => e[GraphIndex.identifierName] == name)
+          .map((List<dynamic> e) => MapEntry(e[GraphIndex.identifierSrc], e)),
     );
 
     // First check if the identifier is declared directly in this file
-    for (final entry in possibleSrcs.entries) {
+    for (final MapEntry<String, List<dynamic>> entry in possibleSrcs.entries) {
       if (entry.key == providerSrc) {
         return DeclarationRef(
           identifier: name,
@@ -185,8 +190,8 @@ class AssetsGraph extends AssetsScanResults {
       }
     }
     // trace exports
-    final visitedSrcs = <String>{};
-    final src = _traceExportsOf(providerSrc, name, possibleSrcs.keys, visitedSrcs);
+    final Set<String> visitedSrcs = <String>{};
+    final String? src = _traceExportsOf(providerSrc, name, possibleSrcs.keys, visitedSrcs);
     if (src != null) {
       return DeclarationRef(
         identifier: name,
@@ -203,13 +208,13 @@ class AssetsGraph extends AssetsScanResults {
     if (visitedSrcs.contains(srcId)) return null;
     visitedSrcs.add(srcId);
 
-    final exports = exportsOf(srcId);
-    final checkableExports = <String>{};
-    for (final export in exports) {
-      final exportedFileSrc = export[GraphIndex.directiveSrc] as String;
-      final hides = export[GraphIndex.directiveHide] as List<dynamic>? ?? const [];
+    final List<List> exports = exportsOf(srcId);
+    final Set<String> checkableExports = <String>{};
+    for (final List export in exports) {
+      final String exportedFileSrc = export[GraphIndex.directiveSrc] as String;
+      final List hides = export[GraphIndex.directiveHide] as List<dynamic>? ?? const <dynamic>[];
       if (hides.contains(identifier)) continue;
-      final shows = export[GraphIndex.directiveShow] as List<dynamic>? ?? const [];
+      final List shows = export[GraphIndex.directiveShow] as List<dynamic>? ?? const <dynamic>[];
       if (shows.isNotEmpty && !shows.contains(identifier)) continue;
 
       if (possibleSrcs.contains(exportedFileSrc)) {
@@ -222,8 +227,8 @@ class AssetsGraph extends AssetsScanResults {
       }
       checkableExports.add(exportedFileSrc);
     }
-    for (final exportedFileHash in checkableExports) {
-      final src = _traceExportsOf(exportedFileHash, identifier, possibleSrcs, visitedSrcs);
+    for (final String exportedFileHash in checkableExports) {
+      final String? src = _traceExportsOf(exportedFileHash, identifier, possibleSrcs, visitedSrcs);
       if (src != null) {
         return src;
       }
@@ -237,8 +242,8 @@ class AssetsGraph extends AssetsScanResults {
   }
 
   Set<String> identifiersForAsset(String src) {
-    final identifiers = <String>{};
-    for (final entry in this.identifiers) {
+    final Set<String> identifiers = <String>{};
+    for (final List entry in this.identifiers) {
       if (entry[GraphIndex.identifierSrc] == src) {
         identifiers.add(entry[GraphIndex.identifierName]);
       }
@@ -247,10 +252,10 @@ class AssetsGraph extends AssetsScanResults {
   }
 
   Map<String, String> getExposedIdentifiersInside(String fileHash) {
-    final identifiers = <String, String>{};
-    for (final importArr in importsOf(fileHash)) {
-      final importedIdentifiers = identifiersForAsset(importArr[GraphIndex.directiveSrc]);
-      for (final identifier in importedIdentifiers) {
+    final Map<String, String> identifiers = <String, String>{};
+    for (final List importArr in importsOf(fileHash)) {
+      final Set<String> importedIdentifiers = identifiersForAsset(importArr[GraphIndex.directiveSrc]);
+      for (final String identifier in importedIdentifiers) {
         identifiers[identifier] = importArr[GraphIndex.directiveSrc];
       }
     }
@@ -259,15 +264,15 @@ class AssetsGraph extends AssetsScanResults {
 
   @override
   Map<String, dynamic> toJson() {
-    return {...super.toJson(), 'version': version, 'hash': hash};
+    return <String, dynamic>{...super.toJson(), 'version': version, 'hash': hash};
   }
 
   // Create from cached data
   factory AssetsGraph.fromCache(Map<String, dynamic> json, String hash) {
-    final lastUsedHash = json['hash'] as String?;
-    final version = json['version'] as String?;
-    final shouldInvalidate = lastUsedHash != hash || version != AssetsGraph.version;
-    final instance = AssetsGraph._fromCache(hash, shouldInvalidate: shouldInvalidate);
+    final String? lastUsedHash = json['hash'] as String?;
+    final String? version = json['version'] as String?;
+    final bool shouldInvalidate = lastUsedHash != hash || version != AssetsGraph.version;
+    final AssetsGraph instance = AssetsGraph._fromCache(hash, shouldInvalidate: shouldInvalidate);
     return AssetsScanResults.populate(instance, json);
   }
 
@@ -280,12 +285,12 @@ class AssetsGraph extends AssetsScanResults {
   // get any asset that depends on this asset,
   // either via direct import, part-of or via re-exports
   Map<String, List<dynamic>> dependentsOf(String id) {
-    final visited = <String>{};
-    final dependents = _dependentsOf(id, visited);
-    final assets = <String, List<dynamic>>{};
-    for (final dep in dependents) {
+    final Set<String> visited = <String>{};
+    final Set<String> dependents = _dependentsOf(id, visited);
+    final Map<String, List> assets = <String, List<dynamic>>{};
+    for (final String dep in dependents) {
       if (dep == id) continue;
-      final arr = this.assets[dep];
+      final List? arr = this.assets[dep];
       if (arr != null) {
         assets[dep] = arr;
       }
@@ -294,11 +299,11 @@ class AssetsGraph extends AssetsScanResults {
   }
 
   Set<String> _dependentsOf(String id, Set<String> visited) {
-    if (visited.contains(id)) return {};
+    if (visited.contains(id)) return <String>{};
     visited.add(id);
-    final dependents = <String>{};
-    for (final entry in directives.entries) {
-      for (final directive in entry.value) {
+    final Set<String> dependents = <String>{};
+    for (final MapEntry<String, List<List>> entry in directives.entries) {
+      for (final List directive in entry.value) {
         final type = directive[GraphIndex.directiveType];
         if (directive[GraphIndex.directiveSrc] == id) {
           if (type == DirectiveStatement.export) {
@@ -316,7 +321,7 @@ class AssetsGraph extends AssetsScanResults {
   }
 
   String? getGeneratorOfOutput(String id) {
-    for (final entry in outputs.entries) {
+    for (final MapEntry<String, Set<String>> entry in outputs.entries) {
       if (entry.value.contains(id)) {
         return entry.key;
       }
@@ -325,11 +330,11 @@ class AssetsGraph extends AssetsScanResults {
   }
 
   List<ExportedSymbol> exportedSymbolsOf(String id) {
-    final exportedSymbols = <ExportedSymbol>[];
-    for (final entry in identifiers) {
+    final List<ExportedSymbol> exportedSymbols = <ExportedSymbol>[];
+    for (final List entry in identifiers) {
       if (entry[GraphIndex.identifierSrc] == id) {
         final name = entry[GraphIndex.identifierName];
-        final type = SymbolType.fromValue(entry[GraphIndex.identifierType]);
+        final SymbolType type = SymbolType.fromValue(entry[GraphIndex.identifierType]);
         exportedSymbols.add(ExportedSymbol(name, type));
       }
     }
@@ -337,7 +342,7 @@ class AssetsGraph extends AssetsScanResults {
   }
 
   bool isAGeneratedSource(String id) {
-    for (final entry in outputs.entries) {
+    for (final MapEntry<String, Set<String>> entry in outputs.entries) {
       if (entry.value.contains(id)) {
         return true;
       }
@@ -346,7 +351,7 @@ class AssetsGraph extends AssetsScanResults {
   }
 
   List<dynamic>? getInputOf(String id) {
-    for (final entry in outputs.entries) {
+    for (final MapEntry<String, Set<String>> entry in outputs.entries) {
       if (entry.value.contains(id)) {
         return assets[entry.key];
       }
@@ -355,7 +360,7 @@ class AssetsGraph extends AssetsScanResults {
   }
 
   void removeOutput(String output) {
-    for (final entry in outputs.entries) {
+    for (final MapEntry<String, Set<String>> entry in outputs.entries) {
       if (entry.value.contains(output)) {
         entry.value.remove(output);
         if (entry.value.isEmpty) {
@@ -367,12 +372,12 @@ class AssetsGraph extends AssetsScanResults {
   }
 
   Set<ProcessableAsset> getProcessableAssets(PackageFileResolver fileResolver) {
-    final processableAssets = <ProcessableAsset>{};
-    for (final entry in assets.entries) {
+    final Set<ProcessableAsset> processableAssets = <ProcessableAsset>{};
+    for (final MapEntry<String, List> entry in assets.entries) {
       if (entry.value[GraphIndex.assetState] != AssetState.processed.index) {
-        final tlmFlag = TLMFlag.fromIndex(entry.value[GraphIndex.assetTLMFlag] as int);
-        final asset = fileResolver.assetForUri(Uri.parse(entry.value[GraphIndex.assetUri]));
-        final state = AssetState.fromIndex(entry.value[GraphIndex.assetState]);
+        final TLMFlag tlmFlag = TLMFlag.fromIndex(entry.value[GraphIndex.assetTLMFlag] as int);
+        final Asset asset = fileResolver.assetForUri(Uri.parse(entry.value[GraphIndex.assetUri]));
+        final AssetState state = AssetState.fromIndex(entry.value[GraphIndex.assetState]);
         processableAssets.add(ProcessableAsset(asset, state, tlmFlag));
       }
     }
@@ -380,12 +385,12 @@ class AssetsGraph extends AssetsScanResults {
   }
 
   Set<ProcessableAsset> getBuilderProcessableAssets(PackageFileResolver fileResolver) {
-    final processableAssets = <ProcessableAsset>{};
-    for (final entry in assets.entries) {
-      final tlmFlag = entry.value[GraphIndex.assetTLMFlag] as int;
+    final Set<ProcessableAsset> processableAssets = <ProcessableAsset>{};
+    for (final MapEntry<String, List> entry in assets.entries) {
+      final int tlmFlag = entry.value[GraphIndex.assetTLMFlag] as int;
       if (tlmFlag == TLMFlag.builder.index || tlmFlag == TLMFlag.both.index) {
-        final asset = fileResolver.assetForUri(Uri.parse(entry.value[GraphIndex.assetUri]));
-        final state = AssetState.fromIndex(entry.value[GraphIndex.assetState]);
+        final Asset asset = fileResolver.assetForUri(Uri.parse(entry.value[GraphIndex.assetUri]));
+        final AssetState state = AssetState.fromIndex(entry.value[GraphIndex.assetState]);
         processableAssets.add(ProcessableAsset(asset, state, TLMFlag.fromIndex(tlmFlag)));
       }
     }
@@ -398,7 +403,7 @@ class AssetsGraph extends AssetsScanResults {
   }
 
   bool hasProcessableAssets() {
-    for (final asset in assets.values) {
+    for (final List asset in assets.values) {
       if (asset[GraphIndex.assetState] != AssetState.processed.index) {
         return true;
       }
@@ -447,7 +452,7 @@ class IdentifierRef {
 
   @override
   String toString() {
-    final buffer = StringBuffer();
+    final StringBuffer buffer = StringBuffer();
     if (prefix != null) {
       buffer.write('$prefix.');
     }

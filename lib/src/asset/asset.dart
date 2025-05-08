@@ -150,7 +150,7 @@ class FileAsset implements Asset {
   /// {@macro asset.toJson}
   @override
   Map<String, dynamic> toJson() {
-    return {'id': id, 'shortUri': shortUri.toString(), 'uri': uri.toString()};
+    return <String, dynamic>{'id': id, 'shortUri': shortUri.toString(), 'uri': uri.toString()};
   }
 
   /// Creates a new FileAsset from a JSON representation.
@@ -190,7 +190,7 @@ class FileAsset implements Asset {
         file.deleteSync(recursive: true);
       }
     } catch (e) {
-      final stack = e is Error ? e.stackTrace : StackTrace.current;
+      final StackTrace? stack = e is Error ? e.stackTrace : StackTrace.current;
       Logger.error('Error deleting file ${file.path}', stackTrace: stack);
     }
   }

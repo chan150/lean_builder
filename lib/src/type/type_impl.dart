@@ -104,7 +104,7 @@ class InterfaceTypeImpl extends TypeImpl implements InterfaceType {
     this.declarationRef,
     this.resolver, {
     super.isNullable = false,
-    this.typeArguments = const [],
+    this.typeArguments = const <DartType>[],
     InterfaceElement? element,
   }) : _element = element;
 
@@ -175,11 +175,11 @@ class InterfaceTypeImpl extends TypeImpl implements InterfaceType {
 
   @override
   String toString() {
-    final buffer = StringBuffer();
+    final StringBuffer buffer = StringBuffer();
     buffer.write(name);
     if (typeArguments.isNotEmpty) {
       buffer.write('<');
-      buffer.write(typeArguments.map((e) => e.toString()).join(', '));
+      buffer.write(typeArguments.map((DartType e) => e.toString()).join(', '));
       buffer.write('>');
     }
     if (isNullable) {
@@ -204,10 +204,11 @@ class InterfaceTypeImpl extends TypeImpl implements InterfaceType {
           runtimeType == other.runtimeType &&
           name == other.name &&
           declarationRef.srcId == other.declarationRef.srcId &&
-          const ListEquality().equals(typeArguments, other.typeArguments);
+          const ListEquality<DartType>().equals(typeArguments, other.typeArguments);
 
   @override
-  int get hashCode => name.hashCode ^ declarationRef.srcId.hashCode ^ const ListEquality().hash(typeArguments);
+  int get hashCode =>
+      name.hashCode ^ declarationRef.srcId.hashCode ^ const ListEquality<DartType>().hash(typeArguments);
 
   /// Determines if this type is exactly the same as [other].
   @override
@@ -222,7 +223,7 @@ class InterfaceTypeImpl extends TypeImpl implements InterfaceType {
 
   /// Resolves the element associated with this interface type.
   InterfaceElement _resolveElement() {
-    final ele = resolver.elementOf(this);
+    final Element? ele = resolver.elementOf(this);
     if (ele is! InterfaceElement) {
       throw Exception('Element of $this (${ele.runtimeType}) is not an InterfaceElement');
     }
@@ -320,7 +321,7 @@ class TypeAliasTypeImpl extends TypeImpl implements TypeAliasType {
     this.declarationRef,
     this.resolver, {
     super.isNullable = false,
-    this.typeArguments = const [],
+    this.typeArguments = const <DartType>[],
   });
 
   /// The element that declares this type alias.
@@ -331,7 +332,7 @@ class TypeAliasTypeImpl extends TypeImpl implements TypeAliasType {
 
   /// Resolves the element associated with this type alias.
   TypeAliasElement _resolveElement() {
-    final ele = resolver.elementOf(this);
+    final Element? ele = resolver.elementOf(this);
     if (ele is! TypeAliasElement) {
       throw Exception('Element of $this is not a TypeAliasElement');
     }
@@ -381,7 +382,7 @@ class FunctionType extends TypeImpl {
   FunctionType({
     required super.isNullable,
     required this.parameters,
-    this.typeParameters = const [],
+    this.typeParameters = const <TypeParameterType>[],
     required this.returnType,
   });
 
@@ -401,11 +402,15 @@ class FunctionType extends TypeImpl {
 
   @override
   String toString() {
-    final requiredPositionalParams = parameters.where((p) => p.isRequiredPositional);
-    final optionalPositionalParams = parameters.where((p) => p.isOptionalPositional);
-    final namedParams = parameters.where((p) => p.isNamed);
+    final Iterable<ParameterElement> requiredPositionalParams = parameters.where(
+      (ParameterElement p) => p.isRequiredPositional,
+    );
+    final Iterable<ParameterElement> optionalPositionalParams = parameters.where(
+      (ParameterElement p) => p.isOptionalPositional,
+    );
+    final Iterable<ParameterElement> namedParams = parameters.where((ParameterElement p) => p.isNamed);
 
-    final buffer = StringBuffer();
+    final StringBuffer buffer = StringBuffer();
     if (returnType != DartType.neverType) {
       buffer.write('$returnType ');
     }
@@ -418,14 +423,14 @@ class FunctionType extends TypeImpl {
     if (parameters.isNotEmpty) {
       buffer.write('(');
       if (requiredPositionalParams.isNotEmpty) {
-        buffer.write(requiredPositionalParams.map((e) => '${e.type} ${e.name}').join(', '));
+        buffer.write(requiredPositionalParams.map((ParameterElement e) => '${e.type} ${e.name}').join(', '));
       }
       if (optionalPositionalParams.isNotEmpty) {
         if (requiredPositionalParams.isNotEmpty) {
           buffer.write(', ');
         }
         buffer.write('[');
-        buffer.write(optionalPositionalParams.map((e) => '${e.type} ${e.name}').join(', '));
+        buffer.write(optionalPositionalParams.map((ParameterElement e) => '${e.type} ${e.name}').join(', '));
         buffer.write(']');
       }
       if (namedParams.isNotEmpty) {
@@ -433,7 +438,7 @@ class FunctionType extends TypeImpl {
           buffer.write(', ');
         }
         buffer.write('{');
-        buffer.write(namedParams.map((e) => '${e.type} ${e.name}').join(', '));
+        buffer.write(namedParams.map((ParameterElement e) => '${e.type} ${e.name}').join(', '));
         buffer.write('}');
       }
       buffer.write(')');
@@ -449,18 +454,20 @@ class FunctionType extends TypeImpl {
       identical(this, other) ||
       other is FunctionType &&
           runtimeType == other.runtimeType &&
-          const ListEquality().equals(parameters, other.parameters) &&
-          const ListEquality().equals(typeParameters, other.typeParameters) &&
+          const ListEquality<ParameterElement>().equals(parameters, other.parameters) &&
+          const ListEquality<TypeParameterType>().equals(typeParameters, other.typeParameters) &&
           returnType == other.returnType;
 
   @override
   int get hashCode =>
-      const ListEquality().hash(parameters) ^ const ListEquality().hash(typeParameters) ^ returnType.hashCode;
+      const ListEquality<ParameterElement>().hash(parameters) ^
+      const ListEquality<TypeParameterType>().hash(typeParameters) ^
+      returnType.hashCode;
 
   /// A map of named parameter names to their types.
   Map<String, DartType> get namedParameterTypes {
     Map<String, DartType> types = <String, DartType>{};
-    for (final parameter in parameters) {
+    for (final ParameterElement parameter in parameters) {
       if (parameter.isNamed && parameter.isRequiredNamed) {
         types[parameter.name] = parameter.type;
       }
@@ -471,7 +478,7 @@ class FunctionType extends TypeImpl {
   /// A list of types for all required positional parameters.
   List<DartType> get normalParameterTypes {
     List<DartType> types = <DartType>[];
-    for (final parameter in parameters) {
+    for (final ParameterElement parameter in parameters) {
       if (parameter.isRequired) {
         types.add(parameter.type);
       }
@@ -482,7 +489,7 @@ class FunctionType extends TypeImpl {
   /// A list of types for all optional parameters (either positional or named).
   List<DartType> get optionalParameterTypes {
     List<DartType> types = <DartType>[];
-    for (final parameter in parameters) {
+    for (final ParameterElement parameter in parameters) {
       if (parameter.isOptional) {
         types.add(parameter.type);
       }
@@ -491,11 +498,12 @@ class FunctionType extends TypeImpl {
   }
 
   /// A list of names for required positional parameters.
-  List<String> get normalParameterNames => parameters.where((p) => p.isRequiredPositional).map((p) => p.name).toList();
+  List<String> get normalParameterNames =>
+      parameters.where((ParameterElement p) => p.isRequiredPositional).map((ParameterElement p) => p.name).toList();
 
   /// A list of names for optional positional parameters.
   List<String> get optionalParameterNames =>
-      parameters.where((p) => p.isOptionalPositional).map((p) => p.name).toList();
+      parameters.where((ParameterElement p) => p.isOptionalPositional).map((ParameterElement p) => p.name).toList();
 
   @override
   Null get element => null;
@@ -513,16 +521,16 @@ class FunctionType extends TypeImpl {
       return this;
     }
 
-    var substitution = Substitution.fromPairs(typeParameters, argumentTypes);
+    Substitution substitution = Substitution.fromPairs(typeParameters, argumentTypes);
 
-    final newParams = List.of(parameters);
-    for (final param in parameters.whereType<ParameterElementImpl>()) {
+    final List<ParameterElement> newParams = List<ParameterElement>.of(parameters);
+    for (final ParameterElementImpl param in parameters.whereType<ParameterElementImpl>()) {
       param.type = substitution.substituteType(param.type);
     }
 
     return FunctionType(
       returnType: substitution.substituteType(returnType),
-      typeParameters: const [],
+      typeParameters: const <TypeParameterType>[],
       parameters: newParams,
       isNullable: isNullable,
     );
@@ -561,7 +569,7 @@ class TypeParameterType extends TypeImpl {
 
   @override
   String toString() {
-    final buffer = StringBuffer();
+    final StringBuffer buffer = StringBuffer();
     buffer.write(name);
     if (bound != DartType.dynamicType) {
       buffer.write(' extends ');
@@ -603,17 +611,19 @@ class RecordType extends TypeImpl {
 
   @override
   String toString() {
-    final buffer = StringBuffer();
+    final StringBuffer buffer = StringBuffer();
     buffer.write('(');
     if (positionalFields.isNotEmpty) {
-      buffer.write(positionalFields.mapIndexed((i, e) => '${e.type} ${r'$'}${i + 1}').join(', '));
+      buffer.write(
+        positionalFields.mapIndexed((int i, RecordTypePositionalField e) => '${e.type} ${r'$'}${i + 1}').join(', '),
+      );
     }
     if (namedFields.isNotEmpty) {
       if (positionalFields.isNotEmpty) {
         buffer.write(', ');
       }
       buffer.write('{');
-      buffer.write(namedFields.map((e) => '${e.type} ${e.name}').join(', '));
+      buffer.write(namedFields.map((RecordTypeNamedField e) => '${e.type} ${e.name}').join(', '));
       buffer.write('}');
     }
     buffer.write(')');

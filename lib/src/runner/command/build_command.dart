@@ -1,12 +1,13 @@
 import 'dart:async';
 
 import 'package:lean_builder/runner.dart' show BuilderEntry;
+import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
-import 'package:lean_builder/src/graph/asset_scan_manager.dart';
 import 'package:lean_builder/src/graph/assets_graph.dart';
+import 'package:lean_builder/src/graph/references_scan_manager.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
 import 'package:lean_builder/src/logger.dart';
-import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
+import 'package:lean_builder/src/resolvers/source_parser.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/runner/build_phase.dart' show BuildPhase;
 import 'package:lean_builder/src/runner/build_result.dart';
@@ -34,8 +35,8 @@ class BuildCommand extends BaseCommand<int> {
   Future<int>? run() async {
     prepare();
     return runZoned(() {
-      final fileResolver = PackageFileResolver.forRoot();
-      var assetsGraph = AssetsGraph.init(fileResolver.packagesHash);
+      final PackageFileResolver fileResolver = PackageFileResolver.forRoot();
+      AssetsGraph assetsGraph = AssetsGraph.init(fileResolver.packagesHash);
 
       if (assetsGraph.shouldInvalidate) {
         Logger.info('Cache is invalidated, deleting old outputs...');
@@ -47,10 +48,10 @@ class BuildCommand extends BaseCommand<int> {
       }
 
       final sourceParser = SourceParser();
-      final resolver = ResolverImpl(assetsGraph, fileResolver, sourceParser);
-      final assets = assetsGraph.getProcessableAssets(fileResolver);
+      final ResolverImpl resolver = ResolverImpl(assetsGraph, fileResolver, sourceParser);
+      final Set<ProcessableAsset> assets = assetsGraph.getProcessableAssets(fileResolver);
       return onRun(assets, resolver);
-    }, zoneValues: {#isDevMode: isDevMode});
+    }, zoneValues: <Object?, Object?>{#isDevMode: isDevMode});
   }
 
   Future<int> onRun(Set<ProcessableAsset> assets, ResolverImpl resolver) async {
@@ -58,9 +59,9 @@ class BuildCommand extends BaseCommand<int> {
   }
 
   Future<int> processAssets(Set<ProcessableAsset> assets, ResolverImpl resolver) async {
-    final stopWatch = Stopwatch()..start();
+    final Stopwatch stopWatch = Stopwatch()..start();
 
-    for (final entry in assets) {
+    for (final ProcessableAsset entry in assets) {
       /// assume assets reaching this point are processed,
       /// if something goes wrong, we revert back to unprocessed
       if (entry.state != AssetState.deleted) {
@@ -68,9 +69,9 @@ class BuildCommand extends BaseCommand<int> {
       }
     }
 
-    final rootAssets = List.of(
-      assets.where((e) {
-        final asset = e.asset;
+    final List<ProcessableAsset> rootAssets = List.of(
+      assets.where((ProcessableAsset e) {
+        final Asset asset = e.asset;
         return asset.packageName == resolver.fileResolver.rootPackage;
       }),
     );
@@ -83,14 +84,14 @@ class BuildCommand extends BaseCommand<int> {
     validateBuilderEntries(buildRunner.builderEntries);
 
     try {
-      final outputCount = await build(assets: rootAssets, builders: buildRunner.builderEntries, resolver: resolver);
+      final int outputCount = await build(assets: rootAssets, builders: buildRunner.builderEntries, resolver: resolver);
       await resolver.graph.save();
       Logger.success('Build succeeded in ${stopWatch.elapsed.formattedMS}, with ($outputCount) outputs');
       return 0;
     } catch (e, stk) {
       await resolver.graph.save();
       if (e is MultiFailedAssetsException) {
-        for (final failure in e.assets) {
+        for (final FailedAsset failure in e.assets) {
           Logger.error(failure.error.toString(), stackTrace: failure.stackTrace ?? stk);
         }
       } else {
@@ -101,13 +102,13 @@ class BuildCommand extends BaseCommand<int> {
   }
 
   void _deleteExistingOutputs(AssetsGraph assetsGraph, PackageFileResolver fileResolver) {
-    for (final entry in List.of(assetsGraph.outputs.entries)) {
+    for (final MapEntry<String, Set<String>> entry in List.of(assetsGraph.outputs.entries)) {
       assetsGraph.updateAssetState(entry.key, AssetState.unProcessed);
-      for (final output in entry.value) {
-        final outputUri = assetsGraph.uriForAssetOrNull(output);
+      for (final String output in entry.value) {
+        final Uri? outputUri = assetsGraph.uriForAssetOrNull(output);
         if (outputUri == null) continue;
         assetsGraph.removeAsset(output);
-        final outputAsset = fileResolver.assetForUri(outputUri);
+        final Asset outputAsset = fileResolver.assetForUri(outputUri);
         outputAsset.safeDelete();
       }
     }
@@ -120,27 +121,27 @@ class BuildCommand extends BaseCommand<int> {
   }) async {
     assert(assets.isNotEmpty);
 
-    final fileResolver = resolver.fileResolver;
-    final graph = resolver.graph;
+    final PackageFileResolver fileResolver = resolver.fileResolver;
+    final AssetsGraph graph = resolver.graph;
 
-    final allOutputExtensions = builders.expand((e) => e.outputExtensions);
+    final Iterable<String> allOutputExtensions = builders.expand((BuilderEntry e) => e.outputExtensions);
 
-    for (final entry in List.of(assets)) {
+    for (final ProcessableAsset entry in List.of(assets)) {
       // handle deleted assets
       if (entry.state == AssetState.deleted) {
         graph.removeAsset(entry.asset.id);
         assets.remove(entry);
       }
 
-      final outputs = graph.outputs[entry.asset.id];
+      final Set<String>? outputs = graph.outputs[entry.asset.id];
       if (outputs != null) {
-        for (final output in outputs) {
-          final outputUri = graph.uriForAssetOrNull(output);
+        for (final String output in outputs) {
+          final Uri? outputUri = graph.uriForAssetOrNull(output);
           if (outputUri == null) continue;
-          if (!allOutputExtensions.any((e) => outputUri.path.endsWith(e))) {
+          if (!allOutputExtensions.any((String e) => outputUri.path.endsWith(e))) {
             // this output is not generated by any builder, so we need to delete it now
             graph.removeAsset(output);
-            assets.removeWhere((entry) => entry.asset.id == output);
+            assets.removeWhere((ProcessableAsset entry) => entry.asset.id == output);
             fileResolver.assetForUri(outputUri).safeDelete();
           }
         }
@@ -150,15 +151,15 @@ class BuildCommand extends BaseCommand<int> {
     if (assets.isEmpty) return 0;
 
     int outputCount = 0;
-    final phases = calculateBuilderPhases(builders);
-    final assetsToProcess = Set.of(assets);
-    for (var i = 0; i < phases.length; i++) {
-      final phase = phases[i];
-      final buildPhase = BuildPhase(resolver, phase);
+    final List<List<BuilderEntry>> phases = calculateBuilderPhases(builders);
+    final Set<ProcessableAsset> assetsToProcess = Set.of(assets);
+    for (int i = 0; i < phases.length; i++) {
+      final List<BuilderEntry> phase = phases[i];
+      final BuildPhase buildPhase = BuildPhase(resolver, phase);
       buildPhase.beforeBuild(resolver, assets);
-      final result = await buildPhase.build(assetsToProcess);
+      final PhaseResult result = await buildPhase.build(assetsToProcess);
       if (result.hasErrors) {
-        for (final entry in result.failedAssets) {
+        for (final FailedAsset entry in result.failedAssets) {
           graph.updateAssetState(entry.asset.id, AssetState.unProcessed);
         }
         // todo: decide if we should throw here, all or just first
@@ -167,18 +168,18 @@ class BuildCommand extends BaseCommand<int> {
 
       outputCount += result.outputs.length;
       if (result.containsAnyChanges) {
-        final nextPhase = i + 1 < phases.length ? phases[i + 1] : null;
+        final List<BuilderEntry>? nextPhase = i + 1 < phases.length ? phases[i + 1] : null;
         if (nextPhase != null) {
-          for (final builder in phase) {
+          for (final BuilderEntry builder in phase) {
             // skip if this builder did not do anything
             if (!result.containsChangesFromBuilder(builder)) continue;
 
-            for (final nextBuilder in nextPhase) {
+            for (final BuilderEntry nextBuilder in nextPhase) {
               if (builder.applies.contains(nextBuilder.key)) {
-                final packageAssets = graph.getAssetsForPackage(fileResolver.rootPackage);
-                for (final asset in packageAssets) {
-                  if (nextBuilder.outputExtensions.any((e) => asset.uri.path.endsWith(e))) {
-                    final srcGenerator = graph.getGeneratorOfOutput(asset.id);
+                final List<ScannedAsset> packageAssets = graph.getAssetsForPackage(fileResolver.rootPackage);
+                for (final ScannedAsset asset in packageAssets) {
+                  if (nextBuilder.outputExtensions.any((String e) => asset.uri.path.endsWith(e))) {
+                    final String? srcGenerator = graph.getGeneratorOfOutput(asset.id);
                     if (srcGenerator != null) {
                       // mark the source as unprocessed to force the next phase to reprocess it
                       graph.updateAssetState(srcGenerator, AssetState.unProcessed);
@@ -191,11 +192,11 @@ class BuildCommand extends BaseCommand<int> {
         }
       }
       // add new outputs to the assets to be processed by the next phase
-      final newAssets = graph.getProcessableAssets(fileResolver);
+      final Set<ProcessableAsset> newAssets = graph.getProcessableAssets(fileResolver);
       assetsToProcess.addAll(newAssets);
       // we assume that the new assets will be processed in the next phase
       // if something goes wrong, we revert back to unprocessed
-      for (final entry in newAssets) {
+      for (final ProcessableAsset entry in newAssets) {
         if (entry.state != AssetState.deleted) {
           graph.updateAssetState(entry.asset.id, AssetState.processed);
         }

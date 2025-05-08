@@ -71,9 +71,9 @@ class SubtypeHelper {
       // * if `T0` is a promoted type variable `X & S`,
       //   then `T0 <: T1` iff `S <: Object`.
       if (!t0.isNullable && t0 is TypeParameterType) {
-        var S = t0.promotedBound;
+        DartType? S = t0.promotedBound;
         if (S == null) {
-          var B = t0.bound.isDynamic ? _objectQuestion : t0.bound;
+          DartType B = t0.bound.isDynamic ? _objectQuestion : t0.bound;
           return isSubtypeOf(B, _objectNone);
         } else {
           return isSubtypeOf(S, _objectNone);
@@ -98,7 +98,7 @@ class SubtypeHelper {
       //   If `R` is a non-nullable type then `V0` is a proper subtype
       //   of `Object`, and a non-nullable type.
       if (t0 is InterfaceTypeImpl && t0.element is ExtensionTypeImpl) {
-        if (t0.superType case final representationType?) {
+        if (t0.superType case final NamedDartType representationType?) {
           if (_typeUtils.isNullable(representationType)) {
             return false;
           }
@@ -113,7 +113,7 @@ class SubtypeHelper {
       // * If `T1` is `FutureOr<S>` for some `S`, then the query is true iff
       // `Null <: S`.
       if (!t1.isNullable && t1 is InterfaceTypeImpl && t1.isDartAsyncFutureOr) {
-        var S = t1.typeArguments[0];
+        DartType S = t1.typeArguments[0];
         return isSubtypeOf(_nullNone, S);
       }
       // If `T1` is `Null`, `S?` or `S*` for some `S`, then the query is true.
@@ -130,10 +130,10 @@ class SubtypeHelper {
 
     // Left FutureOr: if `T0` is `FutureOr<S0>` then:
     if (!t0.isNullable && t0 is InterfaceTypeImpl && t0.isDartAsyncFutureOr) {
-      var s0 = t0.typeArguments[0];
+      DartType s0 = t0.typeArguments[0];
       // * `T0 <: T1` iff `Future<S0> <: T1` and `S0 <: T1`
       if (isSubtypeOf(s0, t1)) {
-        var futureS0 = _typeUtils.buildFutureType(s0);
+        InterfaceType futureS0 = _typeUtils.buildFutureType(s0);
         return isSubtypeOf(futureS0, t1);
       }
       return false;
@@ -142,7 +142,7 @@ class SubtypeHelper {
     // Left Nullable: if `T0` is `S0?` then:
     //   * `T0 <: T1` iff `S0 <: T1` and `Null <: T1`.
     if (t0.isNullable) {
-      var s0 = t0.withNullability(false);
+      DartType s0 = t0.withNullability(false);
       return isSubtypeOf(s0, t1) && isSubtypeOf(_nullNone, t1);
     }
 
@@ -159,19 +159,19 @@ class SubtypeHelper {
     // Right Promoted Variable: if `T1` is a promoted type variable `X1 & S1`:
     //   * `T0 <: T1` iff `T0 <: X1` and `T0 <: S1`
     if (t1 is TypeParameterType) {
-      var t1PromotedBound = t1.promotedBound;
+      DartType? t1PromotedBound = t1.promotedBound;
       if (t1PromotedBound != null) {
-        var x1 = TypeParameterType(t1.name, isNullable: t1.isNullable, bound: DartType.dynamicType);
+        TypeParameterType x1 = TypeParameterType(t1.name, isNullable: t1.isNullable, bound: DartType.dynamicType);
         return isSubtypeOf(t0, x1) && isSubtypeOf(t0, t1PromotedBound);
       }
     }
 
     // Right FutureOr: if `T1` is `FutureOr<S1>` then:
     if (!t1.isNullable && t1 is InterfaceTypeImpl && t1.isDartAsyncFutureOr) {
-      var s1 = t1.typeArguments[0];
+      DartType s1 = t1.typeArguments[0];
       // `T0 <: T1` iff any of the following hold:
       // * either `T0 <: Future<S1>`
-      var futureS1 = _typeUtils.buildFutureType(s1);
+      InterfaceType futureS1 = _typeUtils.buildFutureType(s1);
       if (isSubtypeOf(t0, futureS1)) {
         return true;
       }
@@ -182,11 +182,11 @@ class SubtypeHelper {
       // * or `T0` is `X0` and `X0` has bound `S0` and `S0 <: T1`
       // * or `T0` is `X0 & S0` and `S0 <: T1`
       if (t0 is TypeParameterType) {
-        var s0 = t0.promotedBound;
+        DartType? s0 = t0.promotedBound;
         if (s0 != null && isSubtypeOf(s0, t1)) {
           return true;
         }
-        var b1 = t0.bound;
+        DartType b1 = t0.bound;
         if (!b1.isDynamic && isSubtypeOf(b1, t1)) {
           return true;
         }
@@ -197,7 +197,7 @@ class SubtypeHelper {
 
     // Right Nullable: if `T1` is `S1?` then:
     if (t1.isNullable) {
-      var s1 = t1.withNullability(false);
+      DartType s1 = t1.withNullability(false);
       // `T0 <: T1` iff any of the following hold:
       // * either `T0 <: S1`
       if (isSubtypeOf(t0, s1)) {
@@ -210,11 +210,11 @@ class SubtypeHelper {
       // or `T0` is `X0` and `X0` has bound `S0` and `S0 <: T1`
       // or `T0` is `X0 & S0` and `S0 <: T1`
       if (t0 is TypeParameterType) {
-        var s0 = t0.promotedBound;
+        DartType? s0 = t0.promotedBound;
         if (s0 != null && isSubtypeOf(s0, t1)) {
           return true;
         }
-        var b0 = t0.bound;
+        DartType b0 = t0.bound;
         if (!b0.isDynamic && isSubtypeOf(b0, t1)) {
           return true;
         }
@@ -235,12 +235,12 @@ class SubtypeHelper {
     // Left Type Variable Bound: `T0` is a type variable `X0` with bound `B0`
     //   * and `B0 <: T1`
     if (t0 is TypeParameterType) {
-      var s0 = t0.promotedBound;
+      DartType? s0 = t0.promotedBound;
       if (s0 != null && isSubtypeOf(s0, t1)) {
         return true;
       }
 
-      var b0 = t0.bound;
+      DartType b0 = t0.bound;
       if (!b0.isDynamic && isSubtypeOf(b0, t1)) {
         return true;
       }
@@ -278,9 +278,9 @@ class SubtypeHelper {
     assert(parameters.length == subArguments.length);
 
     for (int i = 0; i < subArguments.length; i++) {
-      var parameter = parameters[i];
-      var subArgument = subArguments[i];
-      var superArgument = superArguments[i];
+      TypeParameterType parameter = parameters[i];
+      DartType subArgument = subArguments[i];
+      DartType superArgument = superArguments[i];
 
       // todo: ready actual variance value
       Variance variance = Variance.covariant;
@@ -308,7 +308,7 @@ class SubtypeHelper {
 
   /// Check that [f] is a subtype of [g].
   bool _isFunctionSubtypeOf(FunctionType f, FunctionType g) {
-    var fresh = _typeUtils.relateTypeParameters(f.typeParameters, g.typeParameters);
+    RelatedTypeParameters? fresh = _typeUtils.relateTypeParameters(f.typeParameters, g.typeParameters);
     if (fresh == null) {
       return false;
     }
@@ -320,14 +320,14 @@ class SubtypeHelper {
       return false;
     }
 
-    var fParameters = f.parameters;
-    var gParameters = g.parameters;
+    List<ParameterElement> fParameters = f.parameters;
+    List<ParameterElement> gParameters = g.parameters;
 
-    var fIndex = 0;
-    var gIndex = 0;
+    int fIndex = 0;
+    int gIndex = 0;
     while (fIndex < fParameters.length && gIndex < gParameters.length) {
-      var fParameter = fParameters[fIndex];
-      var gParameter = gParameters[gIndex];
+      ParameterElement fParameter = fParameters[fIndex];
+      ParameterElement gParameter = gParameters[gIndex];
       if (fParameter.isRequiredPositional) {
         if (gParameter.isRequiredPositional) {
           if (isSubtypeOf(gParameter.type, fParameter.type)) {
@@ -352,9 +352,9 @@ class SubtypeHelper {
         }
       } else if (fParameter.isNamed) {
         if (gParameter.isNamed) {
-          var compareNames = fParameter.name.compareTo(gParameter.name);
+          int compareNames = fParameter.name.compareTo(gParameter.name);
           if (compareNames == 0) {
-            var gIsRequiredOrLegacy = gParameter.isRequiredNamed;
+            bool gIsRequiredOrLegacy = gParameter.isRequiredNamed;
             if (fParameter.isRequiredNamed && !gIsRequiredOrLegacy) {
               return false;
             } else if (isSubtypeOf(gParameter.type, fParameter.type)) {
@@ -382,7 +382,7 @@ class SubtypeHelper {
 
     // The supertype must provide all required parameters to the subtype.
     while (fIndex < fParameters.length) {
-      var fParameter = fParameters[fIndex++];
+      ParameterElement fParameter = fParameters[fIndex++];
       if (fParameter.isRequired) {
         return false;
       }
@@ -410,8 +410,8 @@ class SubtypeHelper {
       return false;
     }
 
-    var subElement = subType.element;
-    var superElement = superType.element;
+    InterfaceElement subElement = subType.element;
+    InterfaceElement superElement = superType.element;
     if (subElement == superElement) {
       return _interfaceArguments(superElement, subType, superType);
     }
@@ -421,11 +421,11 @@ class SubtypeHelper {
       return false;
     }
 
-    for (var interface in subElement.allSupertypes) {
+    for (InterfaceType interface in subElement.allSupertypes) {
       if (interface.element == superElement) {
         if (subType.typeArguments.isNotEmpty) {
-          var substitution = Substitution.fromPairs(subType.element.typeParameters, subType.typeArguments);
-          var substitutedInterface = substitution.substituteType(interface) as InterfaceType;
+          Substitution substitution = Substitution.fromPairs(subType.element.typeParameters, subType.typeArguments);
+          InterfaceType substitutedInterface = substitution.substituteType(interface) as InterfaceType;
           return _interfaceArguments(superElement, substitutedInterface, superType);
         } else {
           _interfaceArguments(superElement, interface, superType);
@@ -438,29 +438,29 @@ class SubtypeHelper {
 
   /// Check that [subType] is a subtype of [superType].
   bool _isRecordSubtypeOf(RecordType subType, RecordType superType) {
-    final subPositional = subType.positionalFields;
-    final superPositional = superType.positionalFields;
+    final List<RecordTypePositionalField> subPositional = subType.positionalFields;
+    final List<RecordTypePositionalField> superPositional = superType.positionalFields;
     if (subPositional.length != superPositional.length) {
       return false;
     }
 
-    final subNamed = subType.namedFields;
-    final superNamed = superType.namedFields;
+    final List<RecordTypeNamedField> subNamed = subType.namedFields;
+    final List<RecordTypeNamedField> superNamed = superType.namedFields;
     if (subNamed.length != superNamed.length) {
       return false;
     }
 
-    for (var i = 0; i < subPositional.length; i++) {
-      final subField = subPositional[i];
-      final superField = superPositional[i];
+    for (int i = 0; i < subPositional.length; i++) {
+      final RecordTypePositionalField subField = subPositional[i];
+      final RecordTypePositionalField superField = superPositional[i];
       if (!isSubtypeOf(subField.type, superField.type)) {
         return false;
       }
     }
 
-    for (var i = 0; i < subNamed.length; i++) {
-      final subField = subNamed[i];
-      final superField = superNamed[i];
+    for (int i = 0; i < subNamed.length; i++) {
+      final RecordTypeNamedField subField = subNamed[i];
+      final RecordTypeNamedField superField = superNamed[i];
       if (subField.name != superField.name) {
         return false;
       }

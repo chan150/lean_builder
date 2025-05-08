@@ -2,19 +2,19 @@ import 'dart:io';
 
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
 import 'package:lean_builder/src/build_script/build_script.dart';
-import 'package:lean_builder/src/graph/asset_scan_manager.dart';
 import 'package:lean_builder/src/graph/assets_graph.dart';
+import 'package:lean_builder/src/graph/references_scan_manager.dart' show ProcessableAsset, ReferencesScanManager;
 import 'package:lean_builder/src/logger.dart';
-import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
+import 'package:lean_builder/src/resolvers/source_parser.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/runner/command/utils.dart';
 
 Future<void> main(List<String> args) async {
   try {
-    final stopWatch = Stopwatch()..start();
-    final fileResolver = PackageFileResolver.forRoot();
+    final Stopwatch stopWatch = Stopwatch()..start();
+    final PackageFileResolver fileResolver = PackageFileResolver.forRoot();
     final AssetsGraph graph = AssetsGraph.init(fileResolver.packagesHash);
-    final scanManager = AssetScanManager(
+    final ReferencesScanManager scanManager = ReferencesScanManager(
       assetsGraph: graph,
       fileResolver: fileResolver,
       rootPackage: fileResolver.rootPackage,
@@ -22,9 +22,9 @@ Future<void> main(List<String> args) async {
     Logger.info('Syncing assets graph...');
     await scanManager.scanAssets();
     Logger.info("Assets graph synced in ${stopWatch.elapsed.formattedMS}.");
-    final builderAssets = graph.getBuilderProcessableAssets(fileResolver);
-    final resolver = ResolverImpl(graph, fileResolver, SourceParser());
-    final scriptPath = prepareBuildScript(builderAssets, resolver);
+    final Set<ProcessableAsset> builderAssets = graph.getBuilderProcessableAssets(fileResolver);
+    final ResolverImpl resolver = ResolverImpl(graph, fileResolver, SourceParser());
+    final String? scriptPath = prepareBuildScript(builderAssets, resolver);
     await graph.save();
 
     if (scriptPath == null) {

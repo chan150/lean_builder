@@ -1,14 +1,14 @@
 import 'package:lean_builder/builder.dart';
-import 'package:meta/meta_meta.dart';
+import 'package:meta/meta_meta.dart' show TargetKind, Target;
 
 /// A collection of annotation names used by the lean_builder package.
-const kBuilderAnnotationNames = {'LeanBuilder', 'LeanGenerator', 'LeanBuilderOverrides'};
+const Set<String> kBuilderAnnotationNames = <String>{'LeanBuilder', 'LeanGenerator', 'LeanBuilderOverrides'};
 
 /// Annotation for defining a build-time builder.
 ///
 /// Classes annotated with `LeanBuilder` are recognized by the build system
 /// and will be instantiated to process source files during the build process.
-@Target({TargetKind.classType})
+@Target(<TargetKind>{TargetKind.classType})
 class LeanBuilder {
   /// Optional unique identifier for this builder.
   final String? key;
@@ -23,8 +23,8 @@ class LeanBuilder {
   /// Builder keys that should run before this builder.
   final Set<String>? runsBefore;
 
-  /// {@template lean_builder_annotations}
-  /// The Type annotations this builder intends to uses for type checking.
+  /// {@template lean_builder_register_types}
+  /// The Types this builder intends to uses for type checking.
   ///
   /// these types will be fed to the resolver at build time to mimic
   /// creating a type checker from runtime types.
@@ -32,7 +32,7 @@ class LeanBuilder {
   /// this exists because the lean_builder package aims
   /// to not depend on reflections at all.
   /// {@endtemplate}
-  final Set<Type>? annotations;
+  final Set<Type>? registerTypes;
 
   /// Additional configuration options for this builder.
   final Map<String, dynamic>? options;
@@ -40,7 +40,7 @@ class LeanBuilder {
   /// The default constructor
   const LeanBuilder({
     this.key,
-    this.annotations,
+    this.registerTypes,
     this.generateToCache,
     this.generateFor,
     this.runsBefore,
@@ -53,7 +53,7 @@ class LeanBuilder {
 /// Classes annotated with `LeanGenerator` will be used to generate code
 /// during the build process. Generators typically transform input files
 /// into output files with specified extensions.
-@Target({TargetKind.classType})
+@Target(<TargetKind>{TargetKind.classType})
 class LeanGenerator {
   /// Optional unique identifier for this generator.
   final String? key;
@@ -71,8 +71,8 @@ class LeanGenerator {
   /// Builder keys that this generator applies to.
   final Set<String>? applies;
 
-  /// {@macro lean_builder_annotations}
-  final Set<Type>? annotations;
+  /// {@macro lean_builder_register_types}
+  final Set<Type>? registerTypes;
 
   /// File extensions this generator will produce.
   final Set<String> outputExtensions;
@@ -89,7 +89,7 @@ class LeanGenerator {
     this.key,
     this.allowSyntaxErrors,
     this.generateToCache,
-    this.annotations,
+    this.registerTypes,
     this.generateFor,
     this.runsBefore,
     this.options,
@@ -101,11 +101,11 @@ class LeanGenerator {
     this.key,
     this.allowSyntaxErrors,
     this.applies,
-    this.annotations,
+    this.registerTypes,
     this.generateFor,
     this.runsBefore,
     this.options,
-  }) : outputExtensions = const {},
+  }) : outputExtensions = const <String>{},
        generateToCache = false;
 }
 
@@ -113,7 +113,7 @@ class LeanGenerator {
 ///
 /// Variables annotated with `LeanBuilderOverrides` can be used to
 /// customize the behavior of builders during the build process.
-@Target({TargetKind.topLevelVariable})
+@Target(<TargetKind>{TargetKind.topLevelVariable})
 class LeanBuilderOverrides {
   /// The default constructor
   const LeanBuilderOverrides();

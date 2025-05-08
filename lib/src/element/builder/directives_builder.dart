@@ -4,26 +4,31 @@ import 'package:lean_builder/src/element/element.dart';
 import 'package:lean_builder/src/graph/directive_statement.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
 
+/// A Specialized [ElementBuilder] for building directive elements.
+/// to reduce the complexity of the [ElementBuilder] class.
+///
+/// See [ElementBuilder] for more information.
 class DirectivesBuilder extends ElementBuilder {
+  /// Creates a new instance of [DirectivesBuilder].
   DirectivesBuilder(super.resolver, super.rootLibrary);
 
   @override
   void visitImportDirective(ImportDirective node) {
-    final stringUri = node.uri.stringValue;
+    final String? stringUri = node.uri.stringValue;
     if (stringUri == null) return;
-    final library = currentLibrary();
-    final directive = _getCorrespondingDirective(library, stringUri, DirectiveStatement.import);
-    final showNames = <String>[];
-    final hideNames = <String>[];
-    for (final comb in node.combinators) {
+    final LibraryElementImpl library = currentLibrary();
+    final List<dynamic> directive = _getCorrespondingDirective(library, stringUri, DirectiveStatement.import);
+    final List<String> showNames = <String>[];
+    final List<String> hideNames = <String>[];
+    for (final Combinator comb in node.combinators) {
       if (comb is ShowCombinator) {
-        showNames.addAll(comb.shownNames.map((e) => e.name));
+        showNames.addAll(comb.shownNames.map((SimpleIdentifier e) => e.name));
       } else if (comb is HideCombinator) {
-        hideNames.addAll(comb.hiddenNames.map((e) => e.name));
+        hideNames.addAll(comb.hiddenNames.map((SimpleIdentifier e) => e.name));
       }
     }
 
-    final element = ImportElement(
+    final ImportElement element = ImportElement(
       library: library,
       stringUri: stringUri,
       srcId: directive[GraphIndex.directiveSrc],
@@ -45,21 +50,21 @@ class DirectivesBuilder extends ElementBuilder {
 
   @override
   void visitExportDirective(ExportDirective node) {
-    final stringUri = node.uri.stringValue;
+    final String? stringUri = node.uri.stringValue;
     if (stringUri == null) return;
-    final library = currentLibrary();
-    final directive = _getCorrespondingDirective(library, stringUri, DirectiveStatement.export);
-    final showNames = <String>[];
-    final hideNames = <String>[];
-    for (final comb in node.combinators) {
+    final LibraryElementImpl library = currentLibrary();
+    final List<dynamic> directive = _getCorrespondingDirective(library, stringUri, DirectiveStatement.export);
+    final List<String> showNames = <String>[];
+    final List<String> hideNames = <String>[];
+    for (final Combinator comb in node.combinators) {
       if (comb is ShowCombinator) {
-        showNames.addAll(comb.shownNames.map((e) => e.name));
+        showNames.addAll(comb.shownNames.map((SimpleIdentifier e) => e.name));
       } else if (comb is HideCombinator) {
-        hideNames.addAll(comb.hiddenNames.map((e) => e.name));
+        hideNames.addAll(comb.hiddenNames.map((SimpleIdentifier e) => e.name));
       }
     }
 
-    final element = ExportElement(
+    final ExportElement element = ExportElement(
       library: library,
       stringUri: stringUri,
       srcId: directive[GraphIndex.directiveSrc],
@@ -79,11 +84,11 @@ class DirectivesBuilder extends ElementBuilder {
 
   @override
   void visitPartDirective(PartDirective node) {
-    final stringUri = node.uri.stringValue;
+    final String? stringUri = node.uri.stringValue;
     if (stringUri == null) return;
-    final library = currentLibrary();
-    final directive = _getCorrespondingDirective(library, stringUri, DirectiveStatement.part);
-    final element = PartElement(
+    final LibraryElementImpl library = currentLibrary();
+    final List directive = _getCorrespondingDirective(library, stringUri, DirectiveStatement.part);
+    final PartElement element = PartElement(
       library: library,
       stringUri: stringUri,
       srcId: directive[GraphIndex.directiveSrc],
@@ -101,14 +106,14 @@ class DirectivesBuilder extends ElementBuilder {
 
   @override
   void visitPartOfDirective(PartOfDirective node) {
-    final stringUri = node.uri?.stringValue;
+    final String? stringUri = node.uri?.stringValue;
     if (stringUri == null) return;
-    final library = currentLibrary();
-    final thisSrc = library.src.id;
-    final partOf = resolver.graph.partOfOf(thisSrc);
+    final LibraryElementImpl library = currentLibrary();
+    final String thisSrc = library.src.id;
+    final List<dynamic>? partOf = resolver.graph.partOfOf(thisSrc);
     assert(partOf != null && partOf[GraphIndex.directiveStringUri] == stringUri);
-    final actualSrc = partOf![GraphIndex.directiveSrc];
-    final element = PartOfElement(
+    final String actualSrc = partOf![GraphIndex.directiveSrc];
+    final PartOfElement element = PartOfElement(
       referencesLibraryDirective: true,
       uri: resolver.uriForAsset(actualSrc),
       library: library,
@@ -126,15 +131,15 @@ class DirectivesBuilder extends ElementBuilder {
 
   @override
   void visitLibraryDirective(LibraryDirective node) {
-    final name = node.name2?.name;
+    final String? name = node.name2?.name;
     if (name == null) return;
-    final library = currentLibrary();
-    final asset = resolver.graph.assets[library.src.id];
+    final LibraryElementImpl library = currentLibrary();
+    final List? asset = resolver.graph.assets[library.src.id];
     assert(
       asset?.elementAtOrNull(GraphIndex.assetLibraryName) == name,
       'Library name mismatch: ${asset?.elementAtOrNull(GraphIndex.assetLibraryName)} != $name',
     );
-    final element = LibraryDirectiveElement(
+    final LibraryDirectiveElement element = LibraryDirectiveElement(
       library: library,
       stringUri: name,
       srcId: library.src.id,
@@ -152,12 +157,13 @@ class DirectivesBuilder extends ElementBuilder {
   }
 
   List<dynamic> _getCorrespondingDirective(LibraryElementImpl library, String stringUri, int type) {
-    final fileDirectives = resolver.graph.directives[library.src.id];
+    final List<List<dynamic>>? fileDirectives = resolver.graph.directives[library.src.id];
     if (fileDirectives == null) {
       throw StateError('No directives found for ${library.src.shortUri}');
     }
-    final directive = fileDirectives.firstWhere(
-      (element) => element[GraphIndex.directiveStringUri] == stringUri && element[GraphIndex.directiveType] == type,
+    final List<dynamic> directive = fileDirectives.firstWhere(
+      (List<dynamic> element) =>
+          element[GraphIndex.directiveStringUri] == stringUri && element[GraphIndex.directiveType] == type,
       orElse: () => throw StateError('No export directive found for $stringUri in ${library.src.shortUri}'),
     );
     return directive;

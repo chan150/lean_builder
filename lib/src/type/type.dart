@@ -37,19 +37,19 @@ abstract class DartType {
   /// {@endtemplate}
 
   /// {@macro core_type_constant}
-  static const voidType = VoidType.instance;
+  static const VoidType voidType = VoidType.instance;
 
   /// {@macro core_type_constant}
-  static const dynamicType = DynamicType.instance;
+  static const DynamicType dynamicType = DynamicType.instance;
 
   /// {@macro core_type_constant}
-  static const neverType = NeverType.instance;
+  static const NeverType neverType = NeverType.instance;
 
   /// {@macro core_type_constant}
-  static const invalidType = InvalidType.instance;
+  static const InvalidType invalidType = InvalidType.instance;
 
   /// {@macro core_type_constant}
-  static const unknownInferredType = UnknownInferredType.instance;
+  static const UnknownInferredType unknownInferredType = UnknownInferredType.instance;
 
   /// Return `true` if this type represents the type 'void'
   bool get isVoid;

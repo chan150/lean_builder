@@ -7,29 +7,29 @@ import 'package:test/scaffolding.dart';
 class _Generator extends Generator {}
 
 BuilderFactory libBuilderFactory([String ext = '.lib.dart']) =>
-    (_) => LibraryBuilder(_Generator(), outputExtensions: {ext});
+    (_) => LibraryBuilder(_Generator(), outputExtensions: <String>{ext});
 
 void main() {
   test('Builder Entries should be sorted based on runsBefore', () {
-    final builders = [
-      BuilderEntry('b', libBuilderFactory(), runsBefore: {'a'}),
+    final List<BuilderEntry> builders = <BuilderEntry>[
+      BuilderEntry('b', libBuilderFactory(), runsBefore: <String>{'a'}),
       BuilderEntry('a', libBuilderFactory()),
-      BuilderEntry('c', libBuilderFactory(), runsBefore: {'b'}),
+      BuilderEntry('c', libBuilderFactory(), runsBefore: <String>{'b'}),
     ];
-    final sorted = orderBasedOnRunsBefore(builders);
+    final List<BuilderEntry> sorted = orderBasedOnRunsBefore(builders);
     expect(sorted[0].key, 'c');
     expect(sorted[1].key, 'b');
     expect(sorted[2].key, 'a');
   });
 
   test('Builder Entries should be sorted based on runsBefore with multiple dependencies', () {
-    final builders = [
+    final List<BuilderEntry> builders = <BuilderEntry>[
       BuilderEntry('a', libBuilderFactory()),
-      BuilderEntry('b', libBuilderFactory(), runsBefore: {'a'}),
-      BuilderEntry('c', libBuilderFactory(), runsBefore: {'b'}),
-      BuilderEntry('d', libBuilderFactory(), runsBefore: {'a', 'c'}),
+      BuilderEntry('b', libBuilderFactory(), runsBefore: <String>{'a'}),
+      BuilderEntry('c', libBuilderFactory(), runsBefore: <String>{'b'}),
+      BuilderEntry('d', libBuilderFactory(), runsBefore: <String>{'a', 'c'}),
     ];
-    final sorted = orderBasedOnRunsBefore(builders);
+    final List<BuilderEntry> sorted = orderBasedOnRunsBefore(builders);
     expect(sorted[0].key, 'd');
     expect(sorted[1].key, 'c');
     expect(sorted[2].key, 'b');
@@ -37,31 +37,31 @@ void main() {
   });
 
   test('Builder Entries should be sorted based on runsBefore with no dependencies', () {
-    final builders = [
+    final List<BuilderEntry> builders = <BuilderEntry>[
       BuilderEntry('a', libBuilderFactory()),
       BuilderEntry('b', libBuilderFactory()),
       BuilderEntry('c', libBuilderFactory()),
     ];
-    final sorted = orderBasedOnRunsBefore(builders);
+    final List<BuilderEntry> sorted = orderBasedOnRunsBefore(builders);
     expect(sorted[0].key, 'a');
     expect(sorted[1].key, 'b');
     expect(sorted[2].key, 'c');
   });
 
   test('Builder Entries should be sorted based on runsBefore with multiple dependencies', () {
-    final builders = [
+    final List<BuilderEntry> builders = <BuilderEntry>[
       BuilderEntry('a', libBuilderFactory()),
-      BuilderEntry('b', libBuilderFactory(), runsBefore: {'a'}),
-      BuilderEntry('c', libBuilderFactory(), runsBefore: {'b'}),
-      BuilderEntry('d', libBuilderFactory(), runsBefore: {'a', 'c'}),
-      BuilderEntry('e', libBuilderFactory(), runsBefore: {'d'}),
-      BuilderEntry('f', libBuilderFactory(), runsBefore: {'e'}),
-      BuilderEntry('g', libBuilderFactory(), runsBefore: {'f'}),
-      BuilderEntry('h', libBuilderFactory(), runsBefore: {'g'}),
-      BuilderEntry('i', libBuilderFactory(), runsBefore: {'h', 'j'}),
-      BuilderEntry('j', libBuilderFactory(), runsBefore: {'x'}),
+      BuilderEntry('b', libBuilderFactory(), runsBefore: <String>{'a'}),
+      BuilderEntry('c', libBuilderFactory(), runsBefore: <String>{'b'}),
+      BuilderEntry('d', libBuilderFactory(), runsBefore: <String>{'a', 'c'}),
+      BuilderEntry('e', libBuilderFactory(), runsBefore: <String>{'d'}),
+      BuilderEntry('f', libBuilderFactory(), runsBefore: <String>{'e'}),
+      BuilderEntry('g', libBuilderFactory(), runsBefore: <String>{'f'}),
+      BuilderEntry('h', libBuilderFactory(), runsBefore: <String>{'g'}),
+      BuilderEntry('i', libBuilderFactory(), runsBefore: <String>{'h', 'j'}),
+      BuilderEntry('j', libBuilderFactory(), runsBefore: <String>{'x'}),
     ];
-    final sorted = orderBasedOnRunsBefore(builders);
+    final List<BuilderEntry> sorted = orderBasedOnRunsBefore(builders);
     expect(sorted[0].key, 'i');
     expect(sorted[1].key, 'h');
     expect(sorted[2].key, 'j');
@@ -75,63 +75,63 @@ void main() {
   });
 
   test('Cycle detection in builder dependencies', () {
-    final builders = [
-      BuilderEntry('a', libBuilderFactory(), runsBefore: {'b'}),
-      BuilderEntry('b', libBuilderFactory(), runsBefore: {'c'}),
-      BuilderEntry('c', libBuilderFactory(), runsBefore: {'a'}),
+    final List<BuilderEntry> builders = <BuilderEntry>[
+      BuilderEntry('a', libBuilderFactory(), runsBefore: <String>{'b'}),
+      BuilderEntry('b', libBuilderFactory(), runsBefore: <String>{'c'}),
+      BuilderEntry('c', libBuilderFactory(), runsBefore: <String>{'a'}),
     ];
     expect(() => orderBasedOnRunsBefore(builders), throwsStateError);
   });
 
   test('Direct cycle detection in builder dependencies', () {
-    final builders = [
-      BuilderEntry('a', libBuilderFactory(), runsBefore: {'b'}),
-      BuilderEntry('b', libBuilderFactory(), runsBefore: {'a'}),
+    final List<BuilderEntry> builders = <BuilderEntry>[
+      BuilderEntry('a', libBuilderFactory(), runsBefore: <String>{'b'}),
+      BuilderEntry('b', libBuilderFactory(), runsBefore: <String>{'a'}),
     ];
     expect(() => orderBasedOnRunsBefore(builders), throwsStateError);
   });
 
   test('Should build phases based on order', () {
-    final builders = [
-      BuilderEntry('c', libBuilderFactory(), runsBefore: {'a'}),
+    final List<BuilderEntry> builders = <BuilderEntry>[
+      BuilderEntry('c', libBuilderFactory(), runsBefore: <String>{'a'}),
       BuilderEntry('a', libBuilderFactory()),
       BuilderEntry('b', libBuilderFactory()),
     ];
-    final phases = calculateBuilderPhases(builders);
+    final List<List<BuilderEntry>> phases = calculateBuilderPhases(builders);
     expect(phases[0][0].key, 'c');
     expect(phases[0][1].key, 'b');
     expect(phases[1][0].key, 'a');
   });
 
   test('Should force shared part builders into the same phase', () {
-    final builders = [
-      BuilderEntry('a', (_) => SharedPartBuilder([_Generator()])),
-      BuilderEntry('b', (_) => SharedPartBuilder([_Generator()])),
+    final List<BuilderEntry> builders = <BuilderEntry>[
+      BuilderEntry('a', (_) => SharedPartBuilder(<Generator>[_Generator()])),
+      BuilderEntry('b', (_) => SharedPartBuilder(<Generator>[_Generator()])),
     ];
-    final phases = calculateBuilderPhases(builders);
+    final List<List<BuilderEntry>> phases = calculateBuilderPhases(builders);
     expect(phases.length, 1);
     expect(phases[0][0], isA<CombiningBuilderEntry>());
   });
 
   test('Should not force shared part builders into the same phase', () {
-    final builders = [
+    final List<BuilderEntry> builders = <BuilderEntry>[
       BuilderEntry('b', libBuilderFactory()),
-      BuilderEntry('a', (_) => SharedPartBuilder([_Generator()])),
+      BuilderEntry('a', (_) => SharedPartBuilder(<Generator>[_Generator()])),
     ];
-    final phases = calculateBuilderPhases(builders);
+    final List<List<BuilderEntry>> phases = calculateBuilderPhases(builders);
     expect(phases.length, 1);
     expect(phases[0][0], isA<BuilderEntryImpl>());
     expect(phases[0][1], isA<CombiningBuilderEntry>());
   });
 
   test('Should create phases respecting combining builders', () {
-    final builders = [
-      BuilderEntry('c', libBuilderFactory(), runsBefore: {'a'}),
-      BuilderEntry('a', (_) => SharedPartBuilder([_Generator()])),
-      BuilderEntry('d', (_) => SharedPartBuilder([_Generator()])),
-      BuilderEntry('b', (_) => SharedPartBuilder([_Generator()])),
+    final List<BuilderEntry> builders = <BuilderEntry>[
+      BuilderEntry('c', libBuilderFactory(), runsBefore: <String>{'a'}),
+      BuilderEntry('a', (_) => SharedPartBuilder(<Generator>[_Generator()])),
+      BuilderEntry('d', (_) => SharedPartBuilder(<Generator>[_Generator()])),
+      BuilderEntry('b', (_) => SharedPartBuilder(<Generator>[_Generator()])),
     ];
-    final phases = calculateBuilderPhases(builders);
+    final List<List<BuilderEntry>> phases = calculateBuilderPhases(builders);
     expect(phases.length, 2);
     expect(phases[0][0].key, 'c');
     expect(phases[1][0], isA<CombiningBuilderEntry>());
@@ -139,36 +139,42 @@ void main() {
   });
 
   test('Should detect cycles in combining builders', () {
-    final builders = [
-      BuilderEntry('a', (_) => SharedPartBuilder([_Generator()]), runsBefore: {'c'}),
-      BuilderEntry('b', (_) => SharedPartBuilder([_Generator()])),
-      BuilderEntry('c', libBuilderFactory(), runsBefore: {'a'}),
+    final List<BuilderEntry> builders = <BuilderEntry>[
+      BuilderEntry('a', (_) => SharedPartBuilder(<Generator>[_Generator()]), runsBefore: <String>{'c'}),
+      BuilderEntry('b', (_) => SharedPartBuilder(<Generator>[_Generator()])),
+      BuilderEntry('c', libBuilderFactory(), runsBefore: <String>{'a'}),
     ];
     expect(() => calculateBuilderPhases(builders), throwsStateError);
   });
 
   test('Should detect cycles in combining builders with multiple dependencies', () {
-    final builders = [
-      BuilderEntry('a', (_) => SharedPartBuilder([_Generator()]), runsBefore: {'c'}),
-      BuilderEntry('b', (_) => SharedPartBuilder([_Generator()])),
-      BuilderEntry('c', libBuilderFactory(), runsBefore: {'a', 'b'}),
+    final List<BuilderEntry> builders = <BuilderEntry>[
+      BuilderEntry('a', (_) => SharedPartBuilder(<Generator>[_Generator()]), runsBefore: <String>{'c'}),
+      BuilderEntry('b', (_) => SharedPartBuilder(<Generator>[_Generator()])),
+      BuilderEntry('c', libBuilderFactory(), runsBefore: <String>{'a', 'b'}),
     ];
     expect(() => calculateBuilderPhases(builders), throwsStateError);
   });
 
   test('Should detect output conflicts', () {
-    final builders = [BuilderEntry('a', libBuilderFactory('.a.dart')), BuilderEntry('b', libBuilderFactory('.a.dart'))];
+    final List<BuilderEntry> builders = <BuilderEntry>[
+      BuilderEntry('a', libBuilderFactory('.a.dart')),
+      BuilderEntry('b', libBuilderFactory('.a.dart')),
+    ];
     expect(() => validateBuilderEntries(builders), throwsException);
   });
 
   test('Should detect duplicate builder keys', () {
-    final builders = [BuilderEntry('a', libBuilderFactory()), BuilderEntry('a', libBuilderFactory('.a.dart'))];
+    final List<BuilderEntry> builders = <BuilderEntry>[
+      BuilderEntry('a', libBuilderFactory()),
+      BuilderEntry('a', libBuilderFactory('.a.dart')),
+    ];
     expect(() => validateBuilderEntries(builders), throwsException);
   });
 
   test('Should throw if a SharedPartBuilder is used with generateToCache', () {
-    final builders = [
-      BuilderEntry('a', (_) => SharedPartBuilder([_Generator()]), generateToCache: true),
+    final List<BuilderEntry> builders = <BuilderEntry>[
+      BuilderEntry('a', (_) => SharedPartBuilder(<Generator>[_Generator()]), generateToCache: true),
     ];
     expect(() => validateBuilderEntries(builders), throwsException);
   });

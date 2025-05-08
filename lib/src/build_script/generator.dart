@@ -1,49 +1,51 @@
+import 'dart:collection';
+
 import 'package:lean_builder/src/build_script/parsed_builder_entry.dart';
 
-const _leanBuilderImport = 'package:lean_builder/runner.dart';
-const _isolateImport = 'dart:isolate';
+const String _leanBuilderImport = 'package:lean_builder/runner.dart';
+const String _isolateImport = 'dart:isolate';
 
 /// Generates the build script for the given entries.
 String generateBuildScript(List<BuilderDefinitionEntry> entries) {
   assert(entries.isNotEmpty);
-  final importPrefixes = <String, String>{};
+  final Map<String, String> importPrefixes = HashMap<String, String>();
 
-  final buffer = StringBuffer();
-  final writeln = buffer.writeln;
-  final write = buffer.write;
+  final StringBuffer buffer = StringBuffer();
+  final Function writeln = buffer.writeln;
+  final void Function(Object? object) write = buffer.write;
   writeln('// This is an auto-generated build script.');
   writeln('// Do not modify by hand.');
 
-  final imports = <String>{_isolateImport, _leanBuilderImport};
-  for (final entry in entries) {
+  final Set<String> imports = <String>{_isolateImport, _leanBuilderImport};
+  for (final BuilderDefinitionEntry entry in entries) {
     imports.add(entry.import);
-    if (entry.annotationsTypeMap != null) {
-      for (final annotation in entry.annotationsTypeMap!) {
+    if (entry.registeredTypes != null) {
+      for (final RuntimeTypeRegisterEntry annotation in entry.registeredTypes!) {
         if (annotation.import != null) {
           imports.add(annotation.import!);
         }
       }
     }
   }
-  for (final import in imports) {
-    final prefix = importPrefixes[import] ??= 'i${importPrefixes.length + 1}';
+  for (final String import in imports) {
+    final String prefix = importPrefixes[import] ??= 'i${importPrefixes.length + 1}';
     writeln('import \'$import\' as $prefix;');
   }
-  final builderPrefix = importPrefixes[_leanBuilderImport]!;
-  final isolatePrefix = importPrefixes[_isolateImport]!;
+  final String builderPrefix = importPrefixes[_leanBuilderImport]!;
+  final String isolatePrefix = importPrefixes[_isolateImport]!;
 
   writeln('final _builders = <$builderPrefix.BuilderEntry>[');
-  for (final entry in entries) {
-    final prefix = importPrefixes[entry.import]!;
+  for (final BuilderDefinitionEntry entry in entries) {
+    final String prefix = importPrefixes[entry.import]!;
     writeln('$builderPrefix.BuilderEntry');
 
-    final typeRegMap = <String, String>{};
-    for (final reg in {...?entry.annotationsTypeMap}) {
-      final importPrefix = importPrefixes[reg.import];
-      typeRegMap[[if (importPrefix != null) importPrefix, reg.name].join('.')] = reg.srcId;
+    final Map<String, String> typeRegMap = <String, String>{};
+    for (final RuntimeTypeRegisterEntry reg in <RuntimeTypeRegisterEntry>{...?entry.registeredTypes}) {
+      final String? importPrefix = importPrefixes[reg.import];
+      typeRegMap[<String>[if (importPrefix != null) importPrefix, reg.name].join('.')] = reg.srcId;
     }
 
-    final type = entry.builderType;
+    final BuilderType type = entry.builderType;
 
     write(switch (type) {
       BuilderType.shared => '.forSharedPart(',
@@ -51,20 +53,23 @@ String generateBuildScript(List<BuilderDefinitionEntry> entries) {
       BuilderType.custom => '(',
     });
 
-    final props = [
+    final List<String> props = <String>[
       '\'${entry.key}\'',
       if (type.isLibrary)
         'outputExtensions'
-            ' : {${entry.outputExtensions!.map((e) => "'$e'").join(', ')}}',
+            ' : {${entry.outputExtensions!.map((String e) => "'$e'").join(', ')}}',
       entry.expectsOptions ? '$prefix.${entry.generatorName}.new' : '(_)=> $prefix.${entry.generatorName}()',
       if (entry.generateToCache != null) 'generateToCache: ${entry.generateToCache}',
       if (typeRegMap.isNotEmpty)
-        'annotationsTypeMap: {${typeRegMap.entries.map((e) => "${e.key}: '${e.value}' ").join(', ')}}',
+        'registeredTypes: {${typeRegMap.entries.map((MapEntry<String, String> e) => "${e.key}: '${e.value}' ").join(', ')}}',
       if (entry.allowSyntaxErrors != null) 'allowSyntaxErrors: ${entry.allowSyntaxErrors}',
-      if (entry.generateFor?.isNotEmpty == true) 'generateFor: {${entry.generateFor!.map((e) => "'$e'").join(', ')}}',
-      if (entry.runsBefore?.isNotEmpty == true) 'runsBefore: {${entry.runsBefore!.map((e) => "'$e'").join(', ')}}',
-      if (entry.applies?.isNotEmpty == true) 'applies: {${entry.applies!.map((e) => "'$e'").join(', ')}}',
-      if (entry.options?.isNotEmpty == true) 'options: ${entry.options!.map((k, v) => MapEntry("'$k'", v))}',
+      if (entry.generateFor?.isNotEmpty == true)
+        'generateFor: {${entry.generateFor!.map((String e) => "'$e'").join(', ')}}',
+      if (entry.runsBefore?.isNotEmpty == true)
+        'runsBefore: {${entry.runsBefore!.map((String e) => "'$e'").join(', ')}}',
+      if (entry.applies?.isNotEmpty == true) 'applies: {${entry.applies!.map((String e) => "'$e'").join(', ')}}',
+      if (entry.options?.isNotEmpty == true)
+        'options: ${entry.options!.map((String k, dynamic v) => MapEntry<String, dynamic>("'$k'", v))}',
     ];
     writeln('${props.join(',\n')},');
 

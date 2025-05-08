@@ -1,4 +1,4 @@
-import 'package:collection/collection.dart';
+import 'package:collection/collection.dart' show SetEquality, MapEquality, ListEquality;
 
 /// Represents a runtime type entry used for registering type annotations.
 ///
@@ -76,7 +76,7 @@ class BuilderDefinitionEntry {
   final bool? allowSyntaxErrors;
 
   /// Type annotations this builder processes.
-  final List<RuntimeTypeRegisterEntry>? annotationsTypeMap;
+  final List<RuntimeTypeRegisterEntry>? registeredTypes;
 
   /// Whether this builder expects options to be provided.
   final bool expectsOptions;
@@ -96,7 +96,7 @@ class BuilderDefinitionEntry {
     this.generateToCache,
     this.generateFor,
     this.runsBefore,
-    this.annotationsTypeMap,
+    this.registeredTypes,
     this.allowSyntaxErrors,
     this.outputExtensions,
   });
@@ -110,7 +110,7 @@ class BuilderDefinitionEntry {
   /// @param override The builder override to apply
   /// @return A new builder definition with merged values
   BuilderDefinitionEntry merge(BuilderOverride override) {
-    final mergedOptions = options ?? {};
+    final Map<String, dynamic> mergedOptions = options ?? <String, dynamic>{};
     if (override.options != null) {
       mergedOptions.addAll(override.options!);
     }
@@ -124,7 +124,7 @@ class BuilderDefinitionEntry {
       runsBefore: override.runsBefore ?? runsBefore,
       builderType: builderType,
       expectsOptions: expectsOptions,
-      annotationsTypeMap: annotationsTypeMap,
+      registeredTypes: registeredTypes,
     );
   }
 
@@ -139,11 +139,11 @@ class BuilderDefinitionEntry {
           generateToCache == other.generateToCache &&
           builderType == other.builderType &&
           allowSyntaxErrors == other.allowSyntaxErrors &&
-          const SetEquality().equals(runsBefore, other.runsBefore) &&
-          const SetEquality().equals(generateFor, other.generateFor) &&
-          const SetEquality().equals(outputExtensions, other.outputExtensions) &&
-          const ListEquality().equals(annotationsTypeMap, other.annotationsTypeMap) &&
-          const MapEquality().equals(options, other.options);
+          const SetEquality<String>().equals(runsBefore, other.runsBefore) &&
+          const SetEquality<String>().equals(generateFor, other.generateFor) &&
+          const SetEquality<String>().equals(outputExtensions, other.outputExtensions) &&
+          const ListEquality<RuntimeTypeRegisterEntry>().equals(registeredTypes, other.registeredTypes) &&
+          const MapEquality<String, dynamic>().equals(options, other.options);
 
   @override
   int get hashCode =>
@@ -152,15 +152,15 @@ class BuilderDefinitionEntry {
       generateToCache.hashCode ^
       builderType.hashCode ^
       allowSyntaxErrors.hashCode ^
-      const ListEquality().hash(annotationsTypeMap) ^
-      const SetEquality().hash(outputExtensions) ^
-      const SetEquality().hash(generateFor) ^
-      const SetEquality().hash(runsBefore) ^
-      const MapEquality().hash(options);
+      const ListEquality<RuntimeTypeRegisterEntry>().hash(registeredTypes) ^
+      const SetEquality<String>().hash(outputExtensions) ^
+      const SetEquality<String>().hash(generateFor) ^
+      const SetEquality<String>().hash(runsBefore) ^
+      const MapEquality<String, dynamic>().hash(options);
 
   @override
   String toString() {
-    return 'BuilderDefinitionEntry{key: $key, import: $import, generatorName: $generatorName, generateToCache: $generateToCache, runsBefore: $runsBefore, generateFor: $generateFor, options: $options, builderType: $builderType, allowSyntaxErrors: $allowSyntaxErrors, annotationsTypeMap: $annotationsTypeMap, expectsOptions: $expectsOptions, outputExtensions: $outputExtensions}';
+    return 'BuilderDefinitionEntry{key: $key, import: $import, generatorName: $generatorName, generateToCache: $generateToCache, runsBefore: $runsBefore, generateFor: $generateFor, options: $options, builderType: $builderType, allowSyntaxErrors: $allowSyntaxErrors, annotationsTypeMap: $registeredTypes, expectsOptions: $expectsOptions, outputExtensions: $outputExtensions}';
   }
 }
 
@@ -195,13 +195,15 @@ final class BuilderOverride {
       identical(this, other) ||
       other is BuilderOverride &&
           runtimeType == other.runtimeType &&
-          const SetEquality().equals(generateFor, other.generateFor) &&
-          const SetEquality().equals(runsBefore, other.runsBefore) &&
-          const MapEquality().equals(options, other.options);
+          const SetEquality<String>().equals(generateFor, other.generateFor) &&
+          const SetEquality<String>().equals(runsBefore, other.runsBefore) &&
+          const MapEquality<String, dynamic>().equals(options, other.options);
 
   @override
   int get hashCode =>
-      const SetEquality().hash(generateFor) ^ const MapEquality().hash(options) ^ const SetEquality().hash(runsBefore);
+      const SetEquality<String>().hash(generateFor) ^
+      const MapEquality<String, dynamic>().hash(options) ^
+      const SetEquality<String>().hash(runsBefore);
 
   @override
   String toString() {

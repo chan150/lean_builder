@@ -11,10 +11,10 @@ import 'paths.dart';
 ///
 /// @param scriptPath The path to the Dart script to be compiled
 void compileScript(String scriptPath) {
-  final execPath = getExecutablePath();
-  final result = Process.runSync('dart', ['compile', 'aot-snapshot', scriptPath]);
+  final String execPath = getExecutablePath();
+  final ProcessResult result = Process.runSync('dart', <String>['compile', 'aot-snapshot', scriptPath]);
   if (!Platform.isWindows) {
-    Process.runSync('chmod', ['+x', execPath]);
+    Process.runSync('chmod', <String>['+x', execPath]);
   }
   if (result.exitCode != 0) {
     throw CompileError('Failed to compile the script: ${result.stderr}');
@@ -43,7 +43,7 @@ bool executableExists() {
 /// Used to force recompilation when the script has been modified
 /// or when the executable may be in an inconsistent state.
 void invalidateExecutable() {
-  final executable = File(getExecutablePath());
+  final File executable = File(getExecutablePath());
   if (executable.existsSync()) {
     executable.deleteSync();
   }

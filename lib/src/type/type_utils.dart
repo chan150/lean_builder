@@ -18,7 +18,7 @@ class TypeUtils {
   final ResolverImpl resolver;
 
   /// Helper for checking subtype relationships.
-  late final _subtypeHelper = SubtypeHelper(this);
+  late final SubtypeHelper _subtypeHelper = SubtypeHelper(this);
 
   /// Whether to enforce strict casting rules.
   ///
@@ -34,7 +34,7 @@ class TypeUtils {
 
   /// {@macro core_type_getter}
   InterfaceType get objectType {
-    final declarationRef = DeclarationRef.from('Object', CoreTypeSource.coreObject, SymbolType.$class);
+    final DeclarationRef declarationRef = DeclarationRef.from('Object', CoreTypeSource.coreObject, SymbolType.$class);
     return InterfaceTypeImpl('Object', declarationRef, resolver);
   }
 
@@ -42,13 +42,13 @@ class TypeUtils {
   ///
   /// This returns a nullable version of the Object type.
   InterfaceType get objectTypeNullable {
-    final declarationRef = DeclarationRef.from('Object', CoreTypeSource.coreObject, SymbolType.$class);
+    final DeclarationRef declarationRef = DeclarationRef.from('Object', CoreTypeSource.coreObject, SymbolType.$class);
     return InterfaceTypeImpl('Object?', declarationRef, resolver, isNullable: true);
   }
 
   /// {@macro core_type_getter}
   InterfaceType get nullTypeObject {
-    final declarationRef = DeclarationRef.from('Null', CoreTypeSource.coreNull, SymbolType.$class);
+    final DeclarationRef declarationRef = DeclarationRef.from('Null', CoreTypeSource.coreNull, SymbolType.$class);
     return InterfaceTypeImpl('Null', declarationRef, resolver);
   }
 
@@ -57,8 +57,14 @@ class TypeUtils {
   /// [typeParam] is the type argument for the Future.
   /// [isNullable] specifies whether the Future type itself is nullable.
   InterfaceType buildFutureType(DartType typeParam, {bool isNullable = false}) {
-    final declarationRef = DeclarationRef.from('Future', CoreTypeSource.asyncFuture, SymbolType.$class);
-    return InterfaceTypeImpl('Future', declarationRef, resolver, typeArguments: [typeParam], isNullable: isNullable);
+    final DeclarationRef declarationRef = DeclarationRef.from('Future', CoreTypeSource.asyncFuture, SymbolType.$class);
+    return InterfaceTypeImpl(
+      'Future',
+      declarationRef,
+      resolver,
+      typeArguments: <DartType>[typeParam],
+      isNullable: isNullable,
+    );
   }
 
   /// Determines if a type is nullable according to Dart's type system.
@@ -105,21 +111,21 @@ class TypeUtils {
       return RelatedTypeParameters._empty;
     }
 
-    var length = typeParameters1.length;
-    var freshTypeParameters = List.generate(length, (index) {
+    int length = typeParameters1.length;
+    List<TypeParameterType> freshTypeParameters = List.generate(length, (int index) {
       return typeParameters1[index];
     }, growable: false);
 
-    var freshTypeParameterTypes = List.generate(length, (index) {
+    List<TypeParameterType> freshTypeParameterTypes = List.generate(length, (int index) {
       return freshTypeParameters[index];
     }, growable: false);
 
-    var substitution1 = Substitution.fromPairs(typeParameters1, freshTypeParameterTypes);
-    var substitution2 = Substitution.fromPairs(typeParameters2, freshTypeParameterTypes);
+    Substitution substitution1 = Substitution.fromPairs(typeParameters1, freshTypeParameterTypes);
+    Substitution substitution2 = Substitution.fromPairs(typeParameters2, freshTypeParameterTypes);
 
-    for (var i = 0; i < typeParameters1.length; i++) {
-      var bound1 = typeParameters1[i].bound;
-      var bound2 = typeParameters2[i].bound;
+    for (int i = 0; i < typeParameters1.length; i++) {
+      DartType bound1 = typeParameters1[i].bound;
+      DartType bound2 = typeParameters2[i].bound;
 
       bound1 = substitution1.substituteType(bound1);
       bound2 = substitution2.substituteType(bound2);
@@ -128,7 +134,7 @@ class TypeUtils {
       }
 
       if (bound1 is! DynamicType) {
-        final old = freshTypeParameters[i];
+        final TypeParameterType old = freshTypeParameters[i];
         freshTypeParameters[i] = TypeParameterType(old.name, bound: bound1, isNullable: old.isNullable);
       }
     }
@@ -167,7 +173,7 @@ class TypeUtils {
 
     // A 'call' method tearoff.
     if (fromType is InterfaceType && !isNullable(fromType) && acceptsFunctionType(toType)) {
-      var callMethodType = getCallMethodType(fromType);
+      FunctionType? callMethodType = getCallMethodType(fromType);
       if (callMethodType != null && isAssignableTo(callMethodType, toType)) {
         return true;
       }
@@ -223,7 +229,7 @@ class TypeUtils {
   /// Returns null if the type doesn't have a call method.
   FunctionType? getCallMethodType(DartType t) {
     if (t is InterfaceType) {
-      final interfaceElement = t.element;
+      final InterfaceElement interfaceElement = t.element;
       return interfaceElement.getMethod(FunctionElement.kCALLMethodName)?.type;
     }
     return null;
@@ -238,7 +244,10 @@ class TypeUtils {
 /// {@endtemplate}
 class RelatedTypeParameters {
   /// An empty instance for when there are no type parameters.
-  static final _empty = RelatedTypeParameters._(const [], const []);
+  static final RelatedTypeParameters _empty = RelatedTypeParameters._(
+    const <TypeParameterType>[],
+    const <TypeParameterType>[],
+  );
 
   /// Fresh type parameters that can be used in place of the original ones.
   final List<TypeParameterType> typeParameters;

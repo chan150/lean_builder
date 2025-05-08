@@ -1,6 +1,7 @@
 import 'package:analyzer/dart/ast/ast.dart' show AstNode;
-import 'package:lean_builder/element.dart';
-import 'package:source_span/source_span.dart';
+import 'package:lean_builder/element.dart' show Element, FieldElement;
+import 'package:lean_builder/src/asset/asset.dart';
+import 'package:source_span/source_span.dart' show SourceFile, SourceSpan;
 
 /// A description of a problem in the source input to code generation.
 ///
@@ -27,15 +28,16 @@ class InvalidGenerationSourceError implements Exception {
   /// code, or if the location was passed with [element].
   final AstNode? node;
 
+  /// Creates an [InvalidGenerationSourceError] with the given arguments.
   InvalidGenerationSourceError(this.message, {this.todo = '', this.element, this.node});
 
   @override
   String toString() {
-    final buffer = StringBuffer(message);
+    final StringBuffer buffer = StringBuffer(message);
 
-    if (element case final element?) {
+    if (element case final Element element?) {
       try {
-        final span = spanForElement(element);
+        final SourceSpan span = spanForElement(element);
         buffer
           ..writeln()
           ..writeln(span.start.toolString)
@@ -47,9 +49,9 @@ class InvalidGenerationSourceError implements Exception {
       }
     }
 
-    if (node case final node?) {
+    if (node case final AstNode node?) {
       try {
-        final span = spanForNode(node);
+        final SourceSpan span = spanForNode(node);
         buffer
           ..writeln()
           ..writeln(span.start.toolString)
@@ -67,9 +69,9 @@ class InvalidGenerationSourceError implements Exception {
 
 /// Returns a source span that spans the location where [element] is defined.
 SourceSpan spanForElement(Element element) {
-  final src = element.library.src;
-  final source = src.readAsStringSync();
-  final file = SourceFile.fromString(source, url: src.uri);
+  final Asset src = element.library.src;
+  final String source = src.readAsStringSync();
+  final SourceFile file = SourceFile.fromString(source, url: src.uri);
   if (element.nameOffset < 0) {
     if (element is FieldElement) {
       if (element.getter != null) {
@@ -82,12 +84,12 @@ SourceSpan spanForElement(Element element) {
     }
   }
 
-  final nameOffset = element.nameOffset;
+  final int nameOffset = element.nameOffset;
   return file.span(nameOffset, nameOffset + element.nameLength);
 }
 
 /// Returns a source span that spans the location where [node] is written.
 SourceSpan spanForNode(AstNode node) {
-  final file = SourceFile.fromString(node.toSource());
+  final SourceFile file = SourceFile.fromString(node.toSource());
   return file.span(node.offset, node.offset + node.length);
 }

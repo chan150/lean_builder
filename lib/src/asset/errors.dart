@@ -2,13 +2,13 @@
 ///
 /// This exception is thrown when the resolver encounters issues with
 /// finding, parsing, or resolving Dart files and their dependencies.
-abstract class ResolverError implements Exception {}
+abstract class PackageFileResolverError implements Exception {}
 
 /// Package configuration could not be loaded.
 ///
 /// This error occurs when the package_config.json file is missing,
 /// usually indicating that dependencies haven't been fetched.
-class PackageConfigNotFound extends ResolverError {
+class PackageConfigNotFound extends PackageFileResolverError {
   /// Creates a new [PackageConfigNotFound] error.
   PackageConfigNotFound();
 
@@ -21,7 +21,7 @@ class PackageConfigNotFound extends ResolverError {
 ///
 /// This occurs when the package_config.json file exists but contains
 /// invalid JSON or doesn't match the expected format.
-class PackageConfigParseError extends ResolverError {
+class PackageConfigParseError extends PackageFileResolverError {
   /// The source content that failed to parse.
   final String source;
 
@@ -40,7 +40,7 @@ class PackageConfigParseError extends ResolverError {
 ///
 /// This error is thrown when attempting to resolve a package that isn't
 /// listed in the package configuration.
-class PackageNotFoundError extends ResolverError {
+class PackageNotFoundError extends PackageFileResolverError {
   /// Detailed message explaining which package was not found.
   final String message;
 
@@ -55,7 +55,7 @@ class PackageNotFoundError extends ResolverError {
 ///
 /// This occurs when an asset path cannot be converted to a valid URI,
 /// usually due to invalid path formats or missing package information.
-class AssetUriError extends ResolverError {
+class AssetUriError extends PackageFileResolverError {
   /// The path that couldn't be converted to an asset URI.
   final String path;
 
@@ -74,7 +74,7 @@ class AssetUriError extends ResolverError {
 ///
 /// This error is thrown when a file path doesn't follow the expected format
 /// or points to a location that cannot exist in the project structure.
-class InvalidPathError extends ResolverError {
+class InvalidPathError extends PackageFileResolverError {
   /// The invalid path that caused the error.
   final String path;
 
@@ -83,26 +83,4 @@ class InvalidPathError extends ResolverError {
 
   @override
   String toString() => 'InvalidPathError: Path "$path" is invalid';
-}
-
-/// Identifier not found in scope.
-///
-/// This error occurs when trying to resolve a symbol or identifier that
-/// doesn't exist in the current scope or imported libraries.
-class IdentifierNotFoundError extends ResolverError {
-  /// The identifier that couldn't be resolved.
-  final String identifier;
-
-  /// The import prefix, if any (e.g., "dart" in "dart:core").
-  final String? importPrefix;
-
-  /// The library where the resolution was attempted.
-  final Uri importingLibrary;
-
-  /// Creates a new [IdentifierNotFoundError] with the given details.
-  IdentifierNotFoundError(this.identifier, this.importPrefix, this.importingLibrary);
-
-  @override
-  String toString() =>
-      'Could not resolve "${importPrefix == null ? '' : '$importPrefix.'}$identifier" in $importingLibrary';
 }

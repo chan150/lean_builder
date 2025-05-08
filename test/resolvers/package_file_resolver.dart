@@ -1,14 +1,14 @@
 import 'dart:io';
 
+import 'package:lean_builder/src/asset/errors.dart';
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
-import 'package:lean_builder/src/errors/resolver_error.dart';
 import 'package:test/test.dart';
 
 void main() {
   late final PackageFileResolverImpl fileResolver;
   setUpAll(() {
     fileResolver = PackageFileResolverImpl(
-      {
+      <String, String>{
         'lean_builder': 'file:///root/lean_builder-1.0.0',
         'git': 'file:///root/git/vertex_core-12345/',
         r'$sdk': 'file:///sdk-path',
@@ -19,34 +19,36 @@ void main() {
   });
 
   test('PackageFileResolver should resolve package for package uri', () {
-    final uri = Uri.parse('package:lean_builder/src/resolvers/package_file_resolver.dart');
-    final package = fileResolver.packageFor(uri);
+    final Uri uri = Uri.parse('package:lean_builder/src/resolvers/package_file_resolver.dart');
+    final String package = fileResolver.packageFor(uri);
     expect(package, 'lean_builder');
   });
 
   test('PackageFileResolver should resolve package for package uri', () {
-    final uri = Uri.parse('package:git/src/resolvers/package_file_resolver.dart');
-    final package = fileResolver.packageFor(uri);
+    final Uri uri = Uri.parse('package:git/src/resolvers/package_file_resolver.dart');
+    final String package = fileResolver.packageFor(uri);
     expect(package, 'git');
   });
 
   test('PackageFileResolver should resolve path for package', () {
-    final path = fileResolver.pathFor('lean_builder');
+    final String path = fileResolver.pathFor('lean_builder');
     expect(path, 'file:///root/lean_builder-1.0.0');
   });
 
   test('PackageFileResolver should resolve path for package', () {
-    final path = fileResolver.pathFor('git');
+    final String path = fileResolver.pathFor('git');
     expect(path, 'file:///root/git/vertex_core-12345/');
   });
 
   test('PackageFileResolver should resolve uri for package', () {
-    final uri = fileResolver.resolveFileUri(Uri.parse('package:lean_builder/src/resolvers/package_file_resolver.dart'));
+    final Uri uri = fileResolver.resolveFileUri(
+      Uri.parse('package:lean_builder/src/resolvers/package_file_resolver.dart'),
+    );
     expect(uri, Uri.parse('file:///root/lean_builder-1.0.0/lib/src/resolvers/package_file_resolver.dart'));
   });
 
   test('PackageFileResolver should resolve relative uri', () {
-    final uri = fileResolver.resolveFileUri(
+    final Uri uri = fileResolver.resolveFileUri(
       Uri.parse('file_asset.dart'),
       relativeTo: Uri.parse('file:///root/lean_builder-1.0.0/lib/src/resolvers/package_file_resolver.dart'),
     );
@@ -54,7 +56,7 @@ void main() {
   });
 
   test('PackageFileResolver should resolve relative uri when back roots', () {
-    final uri = fileResolver.resolveFileUri(
+    final Uri uri = fileResolver.resolveFileUri(
       Uri.parse('./file_asset.dart'),
       relativeTo: Uri.parse('file:///root/lean_builder-1.0.0/lib/src/resolvers/'),
     );
@@ -62,7 +64,7 @@ void main() {
   });
 
   test('PackageFileResolver should resolve relative uri with leading slash', () {
-    final uri = fileResolver.resolveFileUri(
+    final Uri uri = fileResolver.resolveFileUri(
       Uri.parse('/file_asset.dart'),
       relativeTo: Uri.parse('file:///root/lean_builder-1.0.0/lib/src/resolvers/'),
     );
@@ -70,30 +72,30 @@ void main() {
   });
 
   test('PackageFileResolver should resolve asset uri', () {
-    final uri = fileResolver.resolveFileUri(Uri.parse('asset:lean_builder/test/resolvers/file_asset.dart'));
+    final Uri uri = fileResolver.resolveFileUri(Uri.parse('asset:lean_builder/test/resolvers/file_asset.dart'));
     expect(uri, Uri.parse('file:///root/lean_builder-1.0.0/test/resolvers/file_asset.dart'));
   });
 
   test('PackageFileResolver should resolve dart uri', () {
-    final uri = fileResolver.resolveFileUri(Uri.parse('dart:core/bool.dart'));
+    final Uri uri = fileResolver.resolveFileUri(Uri.parse('dart:core/bool.dart'));
     expect(uri, Uri.parse('file:///sdk-path/lib/core/bool.dart'));
   });
 
   test('PackageFileResolver should resolve short uri', () {
-    final uri = Uri.parse('file:///root/lean_builder-1.0.0/lib/src/resolvers/package_file_resolver.dart');
-    final shortUri = fileResolver.toShortUri(uri);
+    final Uri uri = Uri.parse('file:///root/lean_builder-1.0.0/lib/src/resolvers/package_file_resolver.dart');
+    final Uri shortUri = fileResolver.toShortUri(uri);
     expect(shortUri, Uri.parse('package:lean_builder/src/resolvers/package_file_resolver.dart'));
   });
 
   test('PackageFileResolver should resolve short path for asset', () {
-    final uri = Uri.parse('file:///root/lean_builder-1.0.0/test/resolvers/file_asset.dart');
-    final shortUri = fileResolver.toShortUri(uri);
+    final Uri uri = Uri.parse('file:///root/lean_builder-1.0.0/test/resolvers/file_asset.dart');
+    final Uri shortUri = fileResolver.toShortUri(uri);
     expect(shortUri, Uri.parse('asset:lean_builder/test/resolvers/file_asset.dart'));
   });
 
   test('PackageFileResolver should resolve dart uri for dart:core', () {
-    final uri = Uri.parse('file:///sdk-path/lib/core/bool.dart');
-    final shortUri = fileResolver.toShortUri(uri);
+    final Uri uri = Uri.parse('file:///sdk-path/lib/core/bool.dart');
+    final Uri shortUri = fileResolver.toShortUri(uri);
     expect(shortUri, Uri.parse('dart:core/bool.dart'));
   });
 
@@ -122,8 +124,8 @@ void main() {
   });
 
   test('PackageFileResolver should throw exception for invalid package config', () {
-    final dir = Directory.current.path;
-    final path = '$dir/test/resolvers/package_file_resolver.dart';
+    final String dir = Directory.current.path;
+    final String path = '$dir/test/resolvers/package_file_resolver.dart';
     expect(() => PackageFileResolverImpl.loadPackageConfig(path), throwsA(isA<PackageConfigParseError>()));
   });
 }

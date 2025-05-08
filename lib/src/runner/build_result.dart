@@ -9,8 +9,8 @@ class BuildResult {
 
   @override
   String toString() {
-    final outputCount = outputs.length;
-    final failedCount = faildAssets.length;
+    final int outputCount = outputs.length;
+    final int failedCount = faildAssets.length;
     return 'BuildResult(outputs: $outputCount, fieldAssets: $failedCount)';
   }
 }
@@ -44,12 +44,12 @@ class PhaseResult {
 
   bool containsChangesFromBuilder(BuilderEntry entry) {
     bool didAnyChange = false;
-    for (final ext in entry.outputExtensions) {
-      if (outputs.any((e) => e.path.endsWith(ext))) {
+    for (final String ext in entry.outputExtensions) {
+      if (outputs.any((Uri e) => e.path.endsWith(ext))) {
         didAnyChange = true;
         break;
       }
-      if (deletedOutputs.any((e) => e.path.endsWith(ext))) {
+      if (deletedOutputs.any((Uri e) => e.path.endsWith(ext))) {
         didAnyChange = true;
         break;
       }

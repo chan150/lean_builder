@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:typed_data';
 
 import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/asset/assets_reader.dart';
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
+import 'package:lean_builder/src/graph/references_scanner.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
-import 'package:lean_builder/src/graph/assets_scanner.dart';
 import 'package:xxh3/xxh3.dart';
 
 import 'assets_graph.dart';
@@ -20,19 +21,19 @@ class ScanningTask {
 
 // Worker function that runs in each isolate
 Future<void> scannerWorker(SendPort sendPort) async {
-  final receivePort = ReceivePort();
+  final ReceivePort receivePort = ReceivePort();
   sendPort.send(receivePort.sendPort);
 
   await for (final message in receivePort) {
     if (message is ScanningTask) {
-      final fileResolver = PackageFileResolver.fromJson(message.packageResolverData);
-      final resultsCollector = AssetsScanResults();
-      final scanner = AssetsScanner(resultsCollector, fileResolver);
-      for (final asset in message.assets) {
+      final PackageFileResolver fileResolver = PackageFileResolver.fromJson(message.packageResolverData);
+      final AssetsScanResults resultsCollector = AssetsScanResults();
+      final ReferencesScanner scanner = ReferencesScanner(resultsCollector, fileResolver);
+      for (final Asset asset in message.assets) {
         scanner.scan(asset);
       }
       // Send results back to main isolate
-      sendPort.send({'results': resultsCollector.toJson()});
+      sendPort.send(<String, Map<String, dynamic>>{'results': resultsCollector.toJson()});
     } else if (message == 'exit') {
       break;
     }
@@ -41,26 +42,26 @@ Future<void> scannerWorker(SendPort sendPort) async {
   receivePort.close();
 }
 
-class AssetScanManager {
+class ReferencesScanManager {
   final AssetsGraph assetsGraph;
   final PackageFileResolver fileResolver;
   final String rootPackage;
 
-  AssetScanManager({required this.assetsGraph, required this.fileResolver, required this.rootPackage});
+  ReferencesScanManager({required this.assetsGraph, required this.fileResolver, required this.rootPackage});
 
   Future<void> scanAssets({bool scanOnlyRoot = false}) async {
-    final assetsReader = FileAssetReader(fileResolver);
-    final packagesToScan = scanOnlyRoot ? {rootPackage} : fileResolver.packages;
+    final FileAssetReader assetsReader = FileAssetReader(fileResolver);
+    final Set<String> packagesToScan = scanOnlyRoot ? <String>{rootPackage} : fileResolver.packages;
 
-    final assets = assetsReader.listAssetsFor(packagesToScan);
-    final assetsList = assets.values.expand((e) => e).toList();
+    final Map<String, List<Asset>> assets = assetsReader.listAssetsFor(packagesToScan);
+    final List<Asset> assetsList = assets.values.expand((List<Asset> e) => e).toList();
     // Only distribute work if building from scratch
     if (!assetsGraph.loadedFromCache) {
       await scanWithIsolates(assetsList, fileResolver.toJson());
     } else {
       // Use single-threaded approach for incremental updates
-      final scanner = AssetsScanner(assetsGraph, fileResolver);
-      for (final asset in assetsList) {
+      final ReferencesScanner scanner = ReferencesScanner(assetsGraph, fileResolver);
+      for (final Asset asset in assetsList) {
         scanner.scan(asset);
       }
     }
@@ -68,42 +69,42 @@ class AssetScanManager {
   }
 
   Future<Set<ProcessableAsset>> scanWithIsolates(List<Asset> assets, Map<String, dynamic> packageResolverData) async {
-    final isolateCount = Platform.numberOfProcessors - 1; // Leave one core free
-    final actualIsolateCount = isolateCount.clamp(1, assets.length);
+    final int isolateCount = Platform.numberOfProcessors - 1; // Leave one core free
+    final int actualIsolateCount = isolateCount.clamp(1, assets.length);
 
     // Calculate chunk size - each isolate gets roughly equal work
-    final chunkSize = (assets.length / actualIsolateCount).ceil();
-    final chunks = <List<Asset>>[];
+    final int chunkSize = (assets.length / actualIsolateCount).ceil();
+    final List<List<Asset>> chunks = <List<Asset>>[];
 
     // Split assets into chunks
     for (int i = 0; i < assets.length; i += chunkSize) {
-      final end = (i + chunkSize < assets.length) ? i + chunkSize : assets.length;
+      final int end = (i + chunkSize < assets.length) ? i + chunkSize : assets.length;
       chunks.add(assets.sublist(i, end));
     }
 
-    final futures = <Future<Iterable<ProcessableAsset>>>[];
+    final List<Future<Iterable<ProcessableAsset>>> futures = <Future<Iterable<ProcessableAsset>>>[];
 
     // Create and start isolates
-    for (final chunk in chunks) {
+    for (final List<Asset> chunk in chunks) {
       futures.add(processChunkInIsolate(chunk, packageResolverData));
     }
     // Wait for all isolates to complete
-    final results = await Future.wait(futures);
-    return Set.unmodifiable(results.expand((e) => e));
+    final List<Iterable<ProcessableAsset>> results = await Future.wait(futures);
+    return Set.unmodifiable(results.expand((Iterable<ProcessableAsset> e) => e));
   }
 
   Future<List<ProcessableAsset>> processChunkInIsolate(
     List<Asset> chunk,
     Map<String, dynamic> packageResolverData,
   ) async {
-    Set<ProcessableAsset> processableAssets = {};
+    Set<ProcessableAsset> processableAssets = <ProcessableAsset>{};
 
     // Create the receive port
-    final receivePort = ReceivePort();
-    final completer = Completer();
+    final ReceivePort receivePort = ReceivePort();
+    final Completer completer = Completer();
 
     // Set up listener BEFORE spawning the isolate
-    var gotSendPort = false;
+    bool gotSendPort = false;
     SendPort? workerSendPort;
 
     receivePort.listen((message) {
@@ -116,14 +117,14 @@ class AssetScanManager {
         workerSendPort!.send(ScanningTask(chunk, packageResolverData));
       } else if (message is Map<String, dynamic>) {
         // Process results
-        final results = AssetsScanResults.fromJson(message['results']);
+        final AssetsScanResults results = AssetsScanResults.fromJson(message['results']);
         assetsGraph.merge(results);
         completer.complete();
       }
     });
 
     // Spawn the isolate with our already-configured receive port
-    final isolate = await Isolate.spawn(scannerWorker, receivePort.sendPort);
+    final Isolate isolate = await Isolate.spawn(scannerWorker, receivePort.sendPort);
 
     // Wait for the result
     await completer.future;
@@ -138,13 +139,13 @@ class AssetScanManager {
   }
 
   void handleIncrementallyUpdatedAssets(List<ScannedAsset> entries) {
-    for (final entry in entries) {
-      final asset = fileResolver.assetForUri(entry.uri);
+    for (final ScannedAsset entry in entries) {
+      final Asset asset = fileResolver.assetForUri(entry.uri);
       if (!asset.existsSync()) {
         handleDeletedAsset(asset);
         continue;
       }
-      final content = asset.readAsBytesSync();
+      final Uint8List content = asset.readAsBytesSync();
       if (xxh3String(content) != entry.digest) {
         handleUpdatedAsset(asset);
       }
@@ -152,10 +153,10 @@ class AssetScanManager {
   }
 
   void handleUpdatedAsset(Asset asset) {
-    final scanner = AssetsScanner(assetsGraph, fileResolver);
-    final dependents = assetsGraph.dependentsOf(asset.id);
+    final ReferencesScanner scanner = ReferencesScanner(assetsGraph, fileResolver);
+    final Map<String, List> dependents = assetsGraph.dependentsOf(asset.id);
     scanner.scan(asset, forceOverride: true);
-    for (final dep in dependents.entries) {
+    for (final MapEntry<String, List> dep in dependents.entries) {
       if (assetsGraph.outputs[asset.id]?.contains(dep.key) == true) {
         // if the dependent is an output of the asset, we don't need to mark it as unprocessed
         continue;
@@ -165,7 +166,7 @@ class AssetScanManager {
   }
 
   void handleDeletedAsset(Asset asset) {
-    final generatorSrc = assetsGraph.getGeneratorOfOutput(asset.id);
+    final String? generatorSrc = assetsGraph.getGeneratorOfOutput(asset.id);
     if (generatorSrc != null) {
       assetsGraph.updateAssetState(generatorSrc, AssetState.unProcessed);
     }
@@ -173,7 +174,7 @@ class AssetScanManager {
   }
 
   void handleInsertedAsset(Asset asset) {
-    final scanner = AssetsScanner(assetsGraph, fileResolver);
+    final ReferencesScanner scanner = ReferencesScanner(assetsGraph, fileResolver);
     scanner.scan(asset);
   }
 }
@@ -192,7 +193,7 @@ class ProcessableAsset {
       tlmFlag = TLMFlag.fromIndex(json['tlmFlag'] as int);
 
   Map<String, dynamic> toJson() {
-    return {'asset': asset.toJson(), 'state': state.index, 'tlmFlag': tlmFlag.index};
+    return <String, dynamic>{'asset': asset.toJson(), 'state': state.index, 'tlmFlag': tlmFlag.index};
   }
 
   @override

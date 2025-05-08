@@ -1,10 +1,11 @@
 import 'package:lean_builder/builder.dart';
+import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
 import 'package:lean_builder/src/build_script/build_script.dart';
 import 'package:lean_builder/src/build_script/errors.dart';
 import 'package:lean_builder/src/graph/assets_graph.dart';
-import 'package:lean_builder/src/graph/assets_scanner.dart';
-import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
+import 'package:lean_builder/src/graph/references_scanner.dart';
+import 'package:lean_builder/src/resolvers/source_parser.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:test/test.dart';
 
@@ -13,7 +14,7 @@ import '../utils/test_utils.dart';
 
 void main() {
   late PackageFileResolver fileResolver;
-  late AssetsScanner scanner;
+  late ReferencesScanner scanner;
   late ResolverImpl resolver;
 
   setUpAll(() {
@@ -22,13 +23,13 @@ void main() {
 
   setUp(() {
     final AssetsGraph graph = AssetsGraph('hash');
-    scanner = AssetsScanner(graph, fileResolver);
-    scanDartSdk(scanner, also: {'lean_builder'});
+    scanner = ReferencesScanner(graph, fileResolver);
+    scanDartSdk(scanner, also: <String>{'lean_builder'});
     resolver = ResolverImpl(graph, fileResolver, SourceParser());
   });
 
   test('Should parse Simple SharedPart builder entry', () {
-    final asset = StringAsset('''
+    final StringAsset asset = StringAsset('''
       import 'package:lean_builder/builder.dart';
       
       @LeanGenerator.shared()
@@ -36,7 +37,7 @@ void main() {
     ''');
 
     scanner.scan(asset);
-    final (entries, _) = parseBuilderEntries({asset}, resolver);
+    final (List<BuilderDefinitionEntry> entries, _) = parseBuilderEntries(<Asset>{asset}, resolver);
     expect(entries.length, 1);
     expect(
       entries.first,
@@ -51,7 +52,7 @@ void main() {
   });
 
   test('Should parse Simple Library builder entry', () {
-    final asset = StringAsset('''
+    final StringAsset asset = StringAsset('''
       import 'package:lean_builder/builder.dart';
       
       @LeanGenerator({'.lib.dart'})
@@ -59,13 +60,13 @@ void main() {
     ''');
 
     scanner.scan(asset);
-    final (entries, _) = parseBuilderEntries({asset}, resolver);
+    final (List<BuilderDefinitionEntry> entries, _) = parseBuilderEntries(<Asset>{asset}, resolver);
     expect(entries.length, 1);
     expect(
       entries.first,
       BuilderDefinitionEntry(
         key: 'FooGenerator',
-        outputExtensions: {'.lib.dart'},
+        outputExtensions: <String>{'.lib.dart'},
         import: asset.shortUri.toString(),
         builderType: BuilderType.library,
         generatorName: 'FooGenerator',
@@ -75,7 +76,7 @@ void main() {
   });
 
   test('Should parse SharedPart with custom key', () {
-    final asset = StringAsset('''
+    final StringAsset asset = StringAsset('''
       import 'package:lean_builder/builder.dart';
       
       @LeanGenerator.shared(key: 'CustomKey')
@@ -83,7 +84,7 @@ void main() {
     ''');
 
     scanner.scan(asset);
-    final (entries, _) = parseBuilderEntries({asset}, resolver);
+    final (List<BuilderDefinitionEntry> entries, _) = parseBuilderEntries(<Asset>{asset}, resolver);
     expect(entries.length, 1);
     expect(
       entries.first,
@@ -98,7 +99,7 @@ void main() {
   });
 
   test('Should parse SharedPart with customizations', () {
-    final asset = StringAsset('''
+    final StringAsset asset = StringAsset('''
       import 'package:lean_builder/builder.dart';
       
       @LeanGenerator.shared(generateToCache: false, options: {'key': 'value'}, generateFor: {'lib/**.dart'}, runsBefore: {'other'})
@@ -106,7 +107,7 @@ void main() {
     ''');
 
     scanner.scan(asset);
-    final (entries, _) = parseBuilderEntries({asset}, resolver);
+    final (List<BuilderDefinitionEntry> entries, _) = parseBuilderEntries(<Asset>{asset}, resolver);
     expect(entries.length, 1);
     expect(
       entries.first,
@@ -117,15 +118,15 @@ void main() {
         generatorName: 'FooGenerator',
         expectsOptions: false,
         generateToCache: false,
-        options: {'key': 'value'},
-        generateFor: {'lib/**.dart'},
-        runsBefore: {'other'},
+        options: <String, dynamic>{'key': 'value'},
+        generateFor: <String>{'lib/**.dart'},
+        runsBefore: <String>{'other'},
       ),
     );
   });
 
   test('Should throw if annotated class does not have extend clause', () {
-    final asset = StringAsset('''
+    final StringAsset asset = StringAsset('''
       import 'package:lean_builder/builder.dart';
       
       @LeanGenerator.shared()
@@ -133,11 +134,11 @@ void main() {
     ''');
 
     scanner.scan(asset);
-    expect(() => parseBuilderEntries({asset}, resolver), throwsA(isA<BuildConfigError>()));
+    expect(() => parseBuilderEntries(<Asset>{asset}, resolver), throwsA(isA<BuildConfigError>()));
   });
 
   test('Should throw if annotated class does not extend Generator', () {
-    final asset = StringAsset('''
+    final StringAsset asset = StringAsset('''
       import 'package:lean_builder/builder.dart';
       
       class Bar{}
@@ -146,11 +147,11 @@ void main() {
     ''');
 
     scanner.registerAndScan(asset, relativeTo: asset);
-    expect(() => parseBuilderEntries({asset}, resolver), throwsA(isA<BuildConfigError>()));
+    expect(() => parseBuilderEntries(<Asset>{asset}, resolver), throwsA(isA<BuildConfigError>()));
   });
 
   test('Should register the generic type args for the extended generator', () {
-    final asset = StringAsset('''
+    final StringAsset asset = StringAsset('''
       import 'package:lean_builder/builder.dart';
        class Bar{ const Bar();}
       @LeanGenerator.shared()
@@ -158,7 +159,7 @@ void main() {
     ''');
 
     scanner.registerAndScan(asset, relativeTo: asset);
-    final (entries, _) = parseBuilderEntries({asset}, resolver);
+    final (List<BuilderDefinitionEntry> entries, _) = parseBuilderEntries(<Asset>{asset}, resolver);
     expect(entries.length, 1);
     expect(
       entries.first,
@@ -168,13 +169,15 @@ void main() {
         builderType: BuilderType.shared,
         generatorName: 'FooGenerator',
         expectsOptions: false,
-        annotationsTypeMap: [RuntimeTypeRegisterEntry('Bar', asset.shortUri.toString(), asset.id)],
+        registeredTypes: <RuntimeTypeRegisterEntry>[
+          RuntimeTypeRegisterEntry('Bar', asset.shortUri.toString(), asset.id),
+        ],
       ),
     );
   });
 
   test('Should register the generic type args for the annotation', () {
-    final asset = StringAsset('''
+    final StringAsset asset = StringAsset('''
       import 'package:lean_builder/builder.dart';
        class Bar {}
        class Baz {}
@@ -183,7 +186,7 @@ void main() {
     ''');
 
     scanner.registerAndScan(asset, relativeTo: asset);
-    final (entries, _) = parseBuilderEntries({asset}, resolver);
+    final (List<BuilderDefinitionEntry> entries, _) = parseBuilderEntries(<Asset>{asset}, resolver);
     expect(entries.length, 1);
     expect(
       entries.first,
@@ -193,7 +196,7 @@ void main() {
         builderType: BuilderType.shared,
         generatorName: 'FooGenerator',
         expectsOptions: false,
-        annotationsTypeMap: [
+        registeredTypes: <RuntimeTypeRegisterEntry>[
           RuntimeTypeRegisterEntry('Bar', asset.shortUri.toString(), asset.id),
           RuntimeTypeRegisterEntry('Baz', asset.shortUri.toString(), asset.id),
         ],
@@ -204,7 +207,7 @@ void main() {
   test(
     'Should set expectsOptions to true if the generator has a single positional parameter of type BuilderOptions',
     () {
-      final asset = StringAsset('''
+      final StringAsset asset = StringAsset('''
       import 'package:lean_builder/builder.dart';
       
       @LeanGenerator.shared()
@@ -214,7 +217,7 @@ void main() {
     ''');
 
       scanner.registerAndScan(asset, relativeTo: asset);
-      final (entries, _) = parseBuilderEntries({asset}, resolver);
+      final (List<BuilderDefinitionEntry> entries, _) = parseBuilderEntries(<Asset>{asset}, resolver);
       expect(entries.length, 1);
       expect(
         entries.first,
@@ -230,7 +233,7 @@ void main() {
   );
 
   test('Should throw if the constructor has more then one positional parameter of type BuilderOptions', () {
-    final asset = StringAsset('''
+    final StringAsset asset = StringAsset('''
       import 'package:lean_builder/builder.dart';
       
       @LeanGenerator.shared()
@@ -239,24 +242,24 @@ void main() {
       }
     ''');
     scanner.registerAndScan(asset, relativeTo: asset);
-    expect(() => parseBuilderEntries({asset}, resolver), throwsA(isA<BuildConfigError>()));
+    expect(() => parseBuilderEntries(<Asset>{asset}, resolver), throwsA(isA<BuildConfigError>()));
   });
 
   test('Should throw if @LeanGenerator is used on none class elements', () {
-    final asset = StringAsset('''
+    final StringAsset asset = StringAsset('''
       import 'package:lean_builder/builder.dart';
       
       @LeanGenerator.shared()
        enum FooEnum {}
     ''');
     scanner.registerAndScan(asset, relativeTo: asset);
-    expect(() => parseBuilderEntries({asset}, resolver), throwsA(isA<BuildConfigError>()));
+    expect(() => parseBuilderEntries(<Asset>{asset}, resolver), throwsA(isA<BuildConfigError>()));
   });
 
   test(
     'Should throw if the constructor has more then one positional parameter of type BuilderOptions for @LeanBuilder annotation',
     () {
-      final asset = StringAsset('''
+      final StringAsset asset = StringAsset('''
       import 'package:lean_builder/builder.dart';
       
       @LeanBuilder()
@@ -265,12 +268,12 @@ void main() {
       }
     ''');
       scanner.registerAndScan(asset, relativeTo: asset);
-      expect(() => parseBuilderEntries({asset}, resolver), throwsA(isA<BuildConfigError>()));
+      expect(() => parseBuilderEntries(<Asset>{asset}, resolver), throwsA(isA<BuildConfigError>()));
     },
   );
 
   test('Should throw if the constructor has a single BuilderOptions parameter but is not positional', () {
-    final asset = StringAsset('''
+    final StringAsset asset = StringAsset('''
       import 'package:lean_builder/builder.dart';
       
       @LeanGenerator.shared()
@@ -279,13 +282,13 @@ void main() {
       }
     ''');
     scanner.scan(asset);
-    expect(() => parseBuilderEntries({asset}, resolver), throwsA(isA<BuildConfigError>()));
+    expect(() => parseBuilderEntries(<Asset>{asset}, resolver), throwsA(isA<BuildConfigError>()));
   });
 
   test(
     'Should throw if the constructor has a single BuilderOptions parameter but is not positional for @LeanBuilder',
     () {
-      final asset = StringAsset('''
+      final StringAsset asset = StringAsset('''
       import 'package:lean_builder/builder.dart';
       
       @LeanBuilder()
@@ -294,12 +297,12 @@ void main() {
       }
     ''');
       scanner.scan(asset);
-      expect(() => parseBuilderEntries({asset}, resolver), throwsA(isA<BuildConfigError>()));
+      expect(() => parseBuilderEntries(<Asset>{asset}, resolver), throwsA(isA<BuildConfigError>()));
     },
   );
 
   test('Should parse the @LeanBuilderOverrides annotation', () {
-    final asset = StringAsset('''
+    final StringAsset asset = StringAsset('''
       import 'package:lean_builder/builder.dart';
       
       @LeanBuilderOverrides()
@@ -308,21 +311,21 @@ void main() {
       ];
     ''');
     scanner.scan(asset);
-    final (_, overries) = parseBuilderEntries({asset}, resolver);
+    final (_, List<BuilderOverride> overries) = parseBuilderEntries(<Asset>{asset}, resolver);
     expect(overries.length, 1);
     expect(
       overries.first,
       BuilderOverride(
         key: 'CustomKey',
-        runsBefore: {'SerializableGenerator'},
-        generateFor: {'lib/**.dart'},
-        options: {'key': 'value'},
+        runsBefore: <String>{'SerializableGenerator'},
+        generateFor: <String>{'lib/**.dart'},
+        options: <String, dynamic>{'key': 'value'},
       ),
     );
   });
 
   test('Should throw if the @LeanBuilderOverrides is not a top level const variable', () {
-    final asset = StringAsset('''
+    final StringAsset asset = StringAsset('''
       import 'package:lean_builder/builder.dart';
       
       @LeanBuilderOverrides()
@@ -331,11 +334,11 @@ void main() {
       ];
     ''');
     scanner.scan(asset);
-    expect(() => parseBuilderEntries({asset}, resolver), throwsA(isA<BuildConfigError>()));
+    expect(() => parseBuilderEntries(<Asset>{asset}, resolver), throwsA(isA<BuildConfigError>()));
   });
 
   test('Should throw if the @LeanBuilderOverrides is not a const list', () {
-    final asset = StringAsset('''
+    final StringAsset asset = StringAsset('''
       import 'package:lean_builder/builder.dart';
       
       @LeanBuilderOverrides()
@@ -344,11 +347,11 @@ void main() {
       };
     ''');
     scanner.scan(asset);
-    expect(() => parseBuilderEntries({asset}, resolver), throwsA(isA<BuildConfigError>()));
+    expect(() => parseBuilderEntries(<Asset>{asset}, resolver), throwsA(isA<BuildConfigError>()));
   });
 
   test('Should throw if any element in the list is not a BuilderOverride', () {
-    final asset = StringAsset('''
+    final StringAsset asset = StringAsset('''
       import 'package:lean_builder/builder.dart';
       
       @LeanBuilderOverrides()
@@ -358,11 +361,11 @@ void main() {
       ];
     ''');
     scanner.scan(asset);
-    expect(() => parseBuilderEntries({asset}, resolver), throwsA(isA<BuildConfigError>()));
+    expect(() => parseBuilderEntries(<Asset>{asset}, resolver), throwsA(isA<BuildConfigError>()));
   });
 
   test('Should override the builder entry with the one in the overrides', () {
-    final asset = StringAsset('''
+    final StringAsset asset = StringAsset('''
       import 'package:lean_builder/builder.dart';
       
       @LeanGenerator.shared(options: {'feature': true})
@@ -374,8 +377,10 @@ void main() {
       ];
     ''');
     scanner.scan(asset);
-    final (entries, overries) = parseBuilderEntries({asset}, resolver);
-    final withOverrides = applyOverrides(entries, overries);
+    final (List<BuilderDefinitionEntry> entries, List<BuilderOverride> overries) = parseBuilderEntries(<Asset>{
+      asset,
+    }, resolver);
+    final List<BuilderDefinitionEntry> withOverrides = applyOverrides(entries, overries);
     expect(entries.length, 1);
     expect(
       withOverrides.first,
@@ -385,8 +390,8 @@ void main() {
         builderType: BuilderType.shared,
         generatorName: 'FooGenerator',
         expectsOptions: false,
-        generateFor: {'lib/**.dart'},
-        options: {'feature': false},
+        generateFor: <String>{'lib/**.dart'},
+        options: <String, dynamic>{'feature': false},
       ),
     );
   });

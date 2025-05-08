@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:io';
 
 import 'package:glob/glob.dart';
@@ -31,16 +32,16 @@ class FileAssetReader {
   /// Returns a map where keys are package names and values are lists of [Asset] objects.
   /// {@endtemplate}
   Map<String, List<Asset>> listAssetsFor(Set<String> packages) {
-    final assets = <String, List<Asset>>{};
-    for (final package in packages) {
-      final collection = <Asset>[];
-      final packagePath = fileResolver.pathFor(package);
-      final dir = Directory.fromUri(Uri.parse(packagePath));
+    final Map<String, List<Asset>> assets = HashMap<String, List<Asset>>();
+    for (final String package in packages) {
+      final List<Asset> collection = <Asset>[];
+      final String packagePath = fileResolver.pathFor(package);
+      final Directory dir = Directory.fromUri(Uri.parse(packagePath));
       assert(dir.existsSync(), 'Package $package not found at ${dir.path}');
-      for (final subDir in PackageFileResolver.dirsScheme.keys) {
+      for (final String subDir in PackageFileResolver.dirsScheme.keys) {
         /// Skip none-lib directory for non-root packages
         if (subDir != 'lib' && package != fileResolver.rootPackage) continue;
-        final subDirPath = Directory(p.join(dir.path, subDir));
+        final Directory subDirPath = Directory(p.join(dir.path, subDir));
         if (subDirPath.existsSync()) {
           _collectAssets(subDirPath, collection);
         }
@@ -57,11 +58,11 @@ class FileAssetReader {
   /// and returns a list of [Asset] objects for files that match the [glob].
   /// {@endtemplate}
   List<Asset> findRootAssets(Glob glob) {
-    final package = fileResolver.rootPackage;
-    final packagePath = fileResolver.pathFor(package);
-    final dir = Directory.fromUri(Uri.parse(packagePath));
+    final String package = fileResolver.rootPackage;
+    final String packagePath = fileResolver.pathFor(package);
+    final Directory dir = Directory.fromUri(Uri.parse(packagePath));
     assert(dir.existsSync(), 'Package $package not found at ${dir.path}');
-    final collection = <Asset>[];
+    final List<Asset> collection = <Asset>[];
     _collectAssets(dir, collection, matcher: glob);
     return collection;
   }
@@ -70,7 +71,7 @@ class FileAssetReader {
   ///
   /// Adds found assets to the [assets] list, optionally filtering by [matcher].
   void _collectAssets(Directory directory, List<Asset> assets, {Glob? matcher}) {
-    for (final entity in directory.listSync()) {
+    for (final FileSystemEntity entity in directory.listSync()) {
       if (entity is Directory) {
         _collectAssets(entity, assets, matcher: matcher);
       } else if (entity is File) {

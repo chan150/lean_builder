@@ -1,8 +1,9 @@
 import 'package:lean_builder/src/asset/package_file_resolver.dart' show PackageFileResolver;
+import 'package:lean_builder/src/element/element.dart';
 import 'package:lean_builder/src/graph/assets_graph.dart' show AssetsGraph;
-import 'package:lean_builder/src/graph/assets_scanner.dart' show AssetsScanner;
+import 'package:lean_builder/src/graph/references_scanner.dart' show ReferencesScanner;
 import 'package:lean_builder/src/resolvers/resolver.dart';
-import 'package:lean_builder/src/resolvers/parsed_units_cache.dart';
+import 'package:lean_builder/src/resolvers/source_parser.dart';
 import 'package:test/expect.dart';
 import 'package:test/scaffolding.dart';
 
@@ -11,19 +12,19 @@ import '../utils/test_utils.dart';
 
 void main() {
   PackageFileResolver? fileResolver;
-  AssetsScanner? scanner;
+  ReferencesScanner? scanner;
   ResolverImpl? resolver;
 
   setUp(() {
     fileResolver = PackageFileResolver.forRoot();
     final AssetsGraph graph = AssetsGraph('hash');
-    scanner = AssetsScanner(graph, fileResolver!);
+    scanner = ReferencesScanner(graph, fileResolver!);
     resolver = ResolverImpl(graph, fileResolver!, SourceParser());
   });
 
   // should resolve refs of core dart types
   test('should resolve core dart types', () {
-    final asset = StringAsset('''
+    final StringAsset asset = StringAsset('''
       import 'package:meta/meta.dart';
       import 'package:meta/meta_meta.dart';
       
@@ -53,9 +54,9 @@ void main() {
       class AnnotatedClass {}
     ''');
     scanner!.registerAndScan(asset);
-    scanDartSdk(scanner!, also: {'meta'});
-    final library = resolver!.resolveLibrary(asset);
-    final classElement = library.getClass('AnnotatedClass');
+    scanDartSdk(scanner!, also: <String>{'meta'});
+    final LibraryElement library = resolver!.resolveLibrary(asset);
+    final ClassElementImpl? classElement = library.getClass('AnnotatedClass');
     expect(classElement, isNotNull);
     expect(classElement!.getAnnotation('alwaysThrows')!.isAlwaysThrows, isTrue);
     expect(classElement.getAnnotation('deprecated')!.isDeprecated, isTrue);
