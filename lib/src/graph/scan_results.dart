@@ -1,9 +1,9 @@
-import 'dart:collection';
-import 'dart:typed_data';
+import 'dart:collection' show HashMap;
+import 'dart:typed_data' show Uint8List;
 
-import 'package:collection/collection.dart';
+import 'package:collection/collection.dart' show ListEquality;
+import 'package:xxh3/xxh3.dart' show xxh3String;
 import 'package:lean_builder/src/asset/asset.dart';
-import 'package:xxh3/xxh3.dart';
 
 import 'directive_statement.dart';
 

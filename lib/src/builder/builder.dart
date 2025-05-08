@@ -1,8 +1,8 @@
-import 'dart:async';
+import 'dart:async' show FutureOr;
 
 import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/graph/scan_results.dart' show ReferenceType;
-import 'package:path/path.dart' as p;
+import 'package:path/path.dart' as p show extension;
 
 import 'build_step.dart';
 

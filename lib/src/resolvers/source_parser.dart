@@ -1,4 +1,4 @@
-import 'package:analyzer/dart/analysis/utilities.dart';
+import 'package:analyzer/dart/analysis/utilities.dart' show parseString;
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:lean_builder/src/asset/asset.dart';
 

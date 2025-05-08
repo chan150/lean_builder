@@ -1,5 +1,5 @@
 import 'dart:math' as math show max;
-import 'dart:typed_data';
+import 'dart:typed_data' show Uint8List;
 
 // ignore: implementation_imports
 import 'package:_fe_analyzer_shared/src/scanner/scanner.dart' as fasta;

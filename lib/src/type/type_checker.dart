@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+import 'dart:typed_data' show Uint8List;
 
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:lean_builder/src/asset/asset.dart';
@@ -6,7 +6,7 @@ import 'package:lean_builder/src/graph/assets_graph.dart';
 import 'package:lean_builder/src/graph/declaration_ref.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/type/type.dart';
-import 'package:xxh3/xxh3.dart';
+import 'package:xxh3/xxh3.dart' show xxh3String;
 
 import '../element/element.dart';
 

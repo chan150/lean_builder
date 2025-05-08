@@ -1,6 +1,7 @@
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/dart/ast/token.dart';
-import 'package:analyzer/dart/ast/visitor.dart';
+
+import 'package:analyzer/dart/ast/token.dart' show Keyword, Token;
+import 'package:analyzer/dart/ast/visitor.dart' show UnifyingAstVisitor;
 import 'package:lean_builder/src/element/builder/element_stack.dart';
 import 'package:lean_builder/src/element/element.dart';
 import 'package:lean_builder/src/graph/assets_graph.dart';

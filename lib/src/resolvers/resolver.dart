@@ -1,26 +1,7 @@
 import 'dart:collection' show HashMap;
 import 'dart:typed_data' show Uint8List;
 
-import 'package:analyzer/dart/ast/ast.dart'
-    show
-        AstNode,
-        AnnotatedNode,
-        ClassDeclaration,
-        ClassTypeAlias,
-        CompilationUnit,
-        ConstructorDeclaration,
-        Directive,
-        EnumConstantDeclaration,
-        EnumDeclaration,
-        FieldDeclaration,
-        FunctionDeclaration,
-        MixinDeclaration,
-        NamedCompilationUnitMember,
-        NodeList,
-        MethodDeclaration,
-        TopLevelVariableDeclaration,
-        TypeAlias,
-        VariableDeclaration;
+import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/syntactic_entity.dart' show SyntacticEntity;
 import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/asset/package_file_resolver.dart';

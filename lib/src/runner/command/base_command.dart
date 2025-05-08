@@ -1,4 +1,4 @@
-import 'package:args/command_runner.dart';
+import 'package:args/command_runner.dart' show Command;
 import 'package:lean_builder/src/logger.dart';
 
 /// {@template base_command}

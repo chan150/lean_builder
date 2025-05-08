@@ -1,53 +1,7 @@
-import 'dart:collection';
+import 'dart:collection' show HashMap;
 
-import 'package:analyzer/dart/ast/ast.dart'
-    show
-        AdjacentStrings,
-        AstNode,
-        NodeList,
-        NamedType,
-        SuperConstructorInvocation,
-        VariableDeclaration,
-        StringLiteral,
-        MethodInvocation,
-        Expression,
-        CollectionElement,
-        SimpleIdentifier,
-        PrefixedIdentifier,
-        TypeAnnotation,
-        PrefixExpression,
-        ClassMember,
-        SimpleStringLiteral,
-        StringInterpolation,
-        SymbolLiteral,
-        TopLevelVariableDeclaration,
-        BinaryExpression,
-        BooleanLiteral,
-        ClassDeclaration,
-        ConstructorDeclaration,
-        ConstructorFieldInitializer,
-        ConstructorInitializer,
-        ConstructorName,
-        DefaultFormalParameter,
-        DoubleLiteral,
-        EnumConstantDeclaration,
-        EnumDeclaration,
-        FieldDeclaration,
-        FormalParameter,
-        FunctionDeclaration,
-        FunctionReference,
-        IntegerLiteral,
-        InterpolationElement,
-        InterpolationExpression,
-        InterpolationString,
-        ListLiteral,
-        MapLiteralEntry,
-        MethodDeclaration,
-        NamedCompilationUnitMember,
-        NullLiteral,
-        ParenthesizedExpression,
-        PropertyAccess,
-        SetOrMapLiteral;
+import 'package:analyzer/dart/ast/ast.dart';
+
 import 'package:analyzer/dart/ast/token.dart' show TokenType, Token;
 import 'package:analyzer/dart/ast/visitor.dart' show GeneralizingAstVisitor;
 import 'package:lean_builder/src/element/builder/element_builder.dart';

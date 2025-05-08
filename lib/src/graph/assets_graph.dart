@@ -1,6 +1,6 @@
-import 'dart:convert';
-import 'dart:io';
-import 'dart:typed_data';
+import 'dart:convert' show jsonDecode, jsonEncode;
+import 'dart:io' show File;
+import 'dart:typed_data' show Uint8List;
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/asset/package_file_resolver.dart';

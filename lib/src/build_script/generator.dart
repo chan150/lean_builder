@@ -1,4 +1,4 @@
-import 'dart:collection';
+import 'dart:collection' show HashMap;
 
 import 'package:lean_builder/src/build_script/parsed_builder_entry.dart';
 

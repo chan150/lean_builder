@@ -1,5 +1,5 @@
 import 'package:analyzer/dart/ast/ast.dart' show Expression, ArgumentList, NamedExpression;
-import 'package:collection/collection.dart';
+import 'package:collection/collection.dart' show ListEquality, MapEquality, SetEquality;
 import 'package:lean_builder/element.dart';
 import 'package:lean_builder/src/graph/declaration_ref.dart';
 import 'package:lean_builder/src/type/type.dart';

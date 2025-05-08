@@ -1,5 +1,5 @@
 import 'package:analyzer/dart/ast/ast.dart' show AstVisitor;
-import 'package:lean_builder/src/element/element.dart' show Element, ElementImpl, LibraryElementImpl, LibraryElement;
+import 'package:lean_builder/src/element/element.dart';
 
 /// {@template element_stack}
 /// A mixin that provides element stack management functionality for AST visitors.

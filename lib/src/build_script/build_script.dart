@@ -15,7 +15,7 @@ import 'package:lean_builder/src/type/type.dart';
 import 'package:lean_builder/src/type/type_checker.dart';
 import 'package:path/path.dart' as p show relative, join, current;
 import 'compile.dart' as compile;
-import 'paths.dart';
+import 'paths.dart' as paths;
 
 /// Import path for lean_builder annotation classes.
 const String _leanAnnotations = 'package:lean_builder/src/build_script/annotations.dart';
@@ -43,7 +43,7 @@ const String _parsedBuilderEntry = 'package:lean_builder/src/build_script/parsed
 /// @param resolver Resolver to use for parsing annotations
 /// @return Path to the build script file, or null if no builders were found
 String? prepareBuildScript(Set<ProcessableAsset> assets, ResolverImpl resolver) {
-  final File scriptFile = File(scriptOutput);
+  final File scriptFile = File(paths.scriptOutput);
 
   void deleteScriptFile() {
     if (scriptFile.existsSync()) {
@@ -304,20 +304,12 @@ BuilderDefinitionEntry _buildEntry(
   return builderDef;
 }
 
-/// Resolves an asset URI to an import string for the build script.
-///
-/// Converts asset URIs to relative paths from the build script location,
-/// and returns external package URIs as strings. For dart:core, returns null
-/// since it's implicitly imported.
-///
-/// @param uri The URI to resolve
-/// @return A string representation of the import path, or null for dart:core
 String? _resolveImport(Uri uri) {
   if (uri.scheme == 'dart' && uri.pathSegments.firstOrNull == 'core') {
     return null;
   }
   if (uri.scheme == 'asset') {
-    final Uri targetUri = Uri.parse(p.join(p.current, scriptOutput));
+    final Uri targetUri = Uri.parse(p.join(p.current, paths.scriptOutput));
     return p.relative(uri.path, from: targetUri.path);
   } else {
     return uri.toString();

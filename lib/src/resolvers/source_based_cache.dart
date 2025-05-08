@@ -1,4 +1,4 @@
-import 'dart:collection';
+import 'dart:collection' show HashMap;
 
 /// {@template source_based_cache}
 /// A simple cache that uses two units as key, one for the source and one for the target.

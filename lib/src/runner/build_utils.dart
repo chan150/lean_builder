@@ -2,7 +2,7 @@ import 'dart:io' show Platform;
 import 'dart:math' as math show max, min;
 import 'package:lean_builder/builder.dart';
 import 'package:lean_builder/runner.dart';
-import 'dart:collection';
+import 'dart:collection' show HashMap;
 
 import 'package:lean_builder/src/graph/references_scan_manager.dart';
 

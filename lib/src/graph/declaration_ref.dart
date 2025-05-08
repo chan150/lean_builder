@@ -1,8 +1,8 @@
-import 'dart:typed_data';
+import 'dart:typed_data' show Uint8List;
 
 import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
-import 'package:xxh3/xxh3.dart';
+import 'package:xxh3/xxh3.dart' show xxh3String;
 
 /// {@template declaration_ref}
 /// Represents a reference to a declaration in Dart code.

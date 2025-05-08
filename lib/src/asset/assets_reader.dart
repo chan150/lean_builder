@@ -1,8 +1,8 @@
-import 'dart:collection';
-import 'dart:io';
+import 'dart:collection' show HashMap;
+import 'dart:io' show Directory, File, FileSystemEntity;
 
-import 'package:glob/glob.dart';
-import 'package:path/path.dart' as p;
+import 'package:glob/glob.dart' show Glob;
+import 'package:path/path.dart' as p show join;
 
 import 'asset.dart';
 import 'package_file_resolver.dart';

@@ -1,8 +1,8 @@
-import 'dart:convert';
-import 'dart:io';
-import 'dart:typed_data';
+import 'dart:convert' show Encoding, utf8;
+import 'dart:io' show File;
+import 'dart:typed_data' show Uint8List;
 import 'package:lean_builder/src/logger.dart';
-import 'package:path/path.dart' as p;
+import 'package:path/path.dart' as p show withoutExtension;
 
 /// {@template asset.description}
 /// A representation of a file-based resource.

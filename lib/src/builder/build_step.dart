@@ -1,19 +1,19 @@
 // Copyright (c) 2017, the Dart project authors.  Please see the AUTHORS file
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
-import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
+import 'dart:async' show FutureOr;
+import 'dart:convert' show Encoding, utf8;
+import 'dart:io' show File, Directory;
 
-import 'package:analyzer/dart/ast/ast.dart';
-import 'package:glob/glob.dart';
+import 'package:analyzer/dart/ast/ast.dart' show PartDirective;
+import 'package:glob/glob.dart' show Glob;
 import 'package:lean_builder/builder.dart';
-import 'package:lean_builder/src/asset/asset.dart' show Asset;
+import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/asset/assets_reader.dart';
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
 import 'package:lean_builder/src/build_script/paths.dart';
 import 'package:lean_builder/src/element/element.dart';
-import 'package:path/path.dart' as p;
+import 'package:path/path.dart' as p show basename, withoutExtension, join, current, dirname, relative;
 
 /// some of the abstractions are borrowed from the build package
 

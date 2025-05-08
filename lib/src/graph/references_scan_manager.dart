@@ -1,14 +1,14 @@
-import 'dart:async';
-import 'dart:io';
-import 'dart:isolate';
-import 'dart:typed_data';
+import 'dart:async' show Completer;
+import 'dart:io' show Platform;
+import 'dart:isolate' show Isolate, ReceivePort, SendPort;
+import 'dart:typed_data' show Uint8List;
 
+import 'package:xxh3/xxh3.dart' show xxh3String;
 import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/asset/assets_reader.dart';
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
 import 'package:lean_builder/src/graph/references_scanner.dart';
 import 'package:lean_builder/src/graph/scan_results.dart';
-import 'package:xxh3/xxh3.dart';
 
 import 'assets_graph.dart';
 

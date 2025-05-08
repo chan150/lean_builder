@@ -1,4 +1,14 @@
-import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/ast/ast.dart'
+    show
+        ImportDirective,
+        ExportDirective,
+        PartDirective,
+        PartOfDirective,
+        LibraryDirective,
+        Combinator,
+        ShowCombinator,
+        HideCombinator,
+        SimpleIdentifier;
 import 'package:lean_builder/src/element/builder/element_builder.dart';
 import 'package:lean_builder/src/element/element.dart';
 import 'package:lean_builder/src/graph/directive_statement.dart';

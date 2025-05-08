@@ -10,14 +10,14 @@ import 'package:path/path.dart' as p;
 
 void main(List<String> args) async {
   final ArgResults argResults = _createArgParser().parse(args);
-  final bool isCleanMode = argResults['clean'] != null;
+  final bool isCleanMode = argResults.command?.name == 'clean';
 
   if (isCleanMode) {
     exit(await _clean());
   }
 
   final bool isDevMode = argResults.flag('dev');
-  final bool isWatchMode = argResults['watch'] != null;
+  final bool isWatchMode = argResults.command?.name == 'watch';
 
   Uri? runnerExePath = Isolate.resolvePackageUriSync(Uri.parse('package:lean_builder/bin/runner.aot'));
   if (runnerExePath == null) {

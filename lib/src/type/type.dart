@@ -1,4 +1,4 @@
-import 'package:collection/collection.dart';
+import 'package:collection/collection.dart' show IterableExtension, ListEquality;
 import 'package:lean_builder/src/element/element.dart';
 import 'package:lean_builder/src/graph/declaration_ref.dart' show DeclarationRef;
 import 'package:lean_builder/src/resolvers/resolver.dart';

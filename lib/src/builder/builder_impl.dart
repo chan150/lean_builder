@@ -1,5 +1,5 @@
-import 'dart:async';
-import 'dart:convert';
+import 'dart:async' show Zone, FutureOr;
+import 'dart:convert' show LineSplitter;
 
 import 'package:dart_style/dart_style.dart';
 import 'package:lean_builder/src/asset/package_file_resolver.dart';

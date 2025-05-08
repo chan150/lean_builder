@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:example/src/annotations.dart';
 import 'package:lean_builder/builder.dart';
 import 'package:lean_builder/type.dart';

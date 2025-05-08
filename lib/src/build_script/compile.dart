@@ -1,7 +1,7 @@
-import 'dart:io';
+import 'dart:io' show File, ProcessResult, Process, Platform;
 
 import 'errors.dart';
-import 'paths.dart';
+import 'paths.dart' as paths;
 
 /// Compiles the build script at the given path to an AOT snapshot.
 ///
@@ -28,7 +28,7 @@ void compileScript(String scriptPath) {
 ///
 /// @return The path to the compiled executable
 String getExecutablePath() {
-  return '$scriptExecutable.aot';
+  return '${paths.scriptExecutable}.aot';
 }
 
 /// Checks if the compiled executable exists on the file system.
