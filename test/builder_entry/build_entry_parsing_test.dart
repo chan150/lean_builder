@@ -37,10 +37,7 @@ void main() {
     ''');
 
     scanner.scan(asset);
-    final (List<BuilderDefinitionEntry> entries, _) = parseBuilderEntries(
-      <Asset>{asset},
-      resolver,
-    );
+    final (List<BuilderDefinitionEntry> entries, _) = parseBuilderEntries(<Asset>{asset}, resolver);
     expect(entries.length, 1);
     expect(
       entries.first,
@@ -50,6 +47,7 @@ void main() {
         builderType: BuilderType.shared,
         generatorName: 'FooGenerator',
         expectsOptions: false,
+        generateToCache: false,
       ),
     );
   });
@@ -63,10 +61,7 @@ void main() {
     ''');
 
     scanner.scan(asset);
-    final (List<BuilderDefinitionEntry> entries, _) = parseBuilderEntries(
-      <Asset>{asset},
-      resolver,
-    );
+    final (List<BuilderDefinitionEntry> entries, _) = parseBuilderEntries(<Asset>{asset}, resolver);
     expect(entries.length, 1);
     expect(
       entries.first,
@@ -90,10 +85,7 @@ void main() {
     ''');
 
     scanner.scan(asset);
-    final (List<BuilderDefinitionEntry> entries, _) = parseBuilderEntries(
-      <Asset>{asset},
-      resolver,
-    );
+    final (List<BuilderDefinitionEntry> entries, _) = parseBuilderEntries(<Asset>{asset}, resolver);
     expect(entries.length, 1);
     expect(
       entries.first,
@@ -103,6 +95,7 @@ void main() {
         builderType: BuilderType.shared,
         generatorName: 'FooGenerator',
         expectsOptions: false,
+        generateToCache: false,
       ),
     );
   });
@@ -116,10 +109,7 @@ void main() {
     ''');
 
     scanner.scan(asset);
-    final (List<BuilderDefinitionEntry> entries, _) = parseBuilderEntries(
-      <Asset>{asset},
-      resolver,
-    );
+    final (List<BuilderDefinitionEntry> entries, _) = parseBuilderEntries(<Asset>{asset}, resolver);
     expect(entries.length, 1);
     expect(
       entries.first,
@@ -146,10 +136,7 @@ void main() {
     ''');
 
     scanner.scan(asset);
-    expect(
-      () => parseBuilderEntries(<Asset>{asset}, resolver),
-      throwsA(isA<BuildConfigError>()),
-    );
+    expect(() => parseBuilderEntries(<Asset>{asset}, resolver), throwsA(isA<BuildConfigError>()));
   });
 
   test('Should throw if annotated class does not extend Generator', () {
@@ -162,10 +149,7 @@ void main() {
     ''');
 
     scanner.registerAndScan(asset, relativeTo: asset);
-    expect(
-      () => parseBuilderEntries(<Asset>{asset}, resolver),
-      throwsA(isA<BuildConfigError>()),
-    );
+    expect(() => parseBuilderEntries(<Asset>{asset}, resolver), throwsA(isA<BuildConfigError>()));
   });
 
   test('Should register the generic type args for the extended generator', () {
@@ -177,10 +161,7 @@ void main() {
     ''');
 
     scanner.registerAndScan(asset, relativeTo: asset);
-    final (List<BuilderDefinitionEntry> entries, _) = parseBuilderEntries(
-      <Asset>{asset},
-      resolver,
-    );
+    final (List<BuilderDefinitionEntry> entries, _) = parseBuilderEntries(<Asset>{asset}, resolver);
     expect(entries.length, 1);
     expect(
       entries.first,
@@ -190,6 +171,7 @@ void main() {
         builderType: BuilderType.shared,
         generatorName: 'FooGenerator',
         expectsOptions: false,
+        generateToCache: false,
         registeredTypes: <RuntimeTypeRegisterEntry>[
           RuntimeTypeRegisterEntry('Bar', asset.shortUri.toString(), asset.id),
         ],
@@ -207,10 +189,7 @@ void main() {
     ''');
 
     scanner.registerAndScan(asset, relativeTo: asset);
-    final (List<BuilderDefinitionEntry> entries, _) = parseBuilderEntries(
-      <Asset>{asset},
-      resolver,
-    );
+    final (List<BuilderDefinitionEntry> entries, _) = parseBuilderEntries(<Asset>{asset}, resolver);
     expect(entries.length, 1);
     expect(
       entries.first,
@@ -220,6 +199,7 @@ void main() {
         builderType: BuilderType.shared,
         generatorName: 'FooGenerator',
         expectsOptions: false,
+        generateToCache: false,
         registeredTypes: <RuntimeTypeRegisterEntry>[
           RuntimeTypeRegisterEntry('Bar', asset.shortUri.toString(), asset.id),
           RuntimeTypeRegisterEntry('Baz', asset.shortUri.toString(), asset.id),
@@ -241,10 +221,7 @@ void main() {
     ''');
 
       scanner.registerAndScan(asset, relativeTo: asset);
-      final (List<BuilderDefinitionEntry> entries, _) = parseBuilderEntries(
-        <Asset>{asset},
-        resolver,
-      );
+      final (List<BuilderDefinitionEntry> entries, _) = parseBuilderEntries(<Asset>{asset}, resolver);
       expect(entries.length, 1);
       expect(
         entries.first,
@@ -254,15 +231,14 @@ void main() {
           builderType: BuilderType.shared,
           generatorName: 'FooGenerator',
           expectsOptions: true,
+          generateToCache: false,
         ),
       );
     },
   );
 
-  test(
-    'Should throw if the constructor has more then one positional parameter of type BuilderOptions',
-    () {
-      final StringAsset asset = StringAsset('''
+  test('Should throw if the constructor has more then one positional parameter of type BuilderOptions', () {
+    final StringAsset asset = StringAsset('''
       import 'package:lean_builder/builder.dart';
       
       @LeanGenerator.shared()
@@ -270,13 +246,9 @@ void main() {
         FooGenerator(BuilderOptions options, String name);
       }
     ''');
-      scanner.registerAndScan(asset, relativeTo: asset);
-      expect(
-        () => parseBuilderEntries(<Asset>{asset}, resolver),
-        throwsA(isA<BuildConfigError>()),
-      );
-    },
-  );
+    scanner.registerAndScan(asset, relativeTo: asset);
+    expect(() => parseBuilderEntries(<Asset>{asset}, resolver), throwsA(isA<BuildConfigError>()));
+  });
 
   test('Should throw if @LeanGenerator is used on none class elements', () {
     final StringAsset asset = StringAsset('''
@@ -286,10 +258,7 @@ void main() {
        enum FooEnum {}
     ''');
     scanner.registerAndScan(asset, relativeTo: asset);
-    expect(
-      () => parseBuilderEntries(<Asset>{asset}, resolver),
-      throwsA(isA<BuildConfigError>()),
-    );
+    expect(() => parseBuilderEntries(<Asset>{asset}, resolver), throwsA(isA<BuildConfigError>()));
   });
 
   test(
@@ -304,17 +273,12 @@ void main() {
       }
     ''');
       scanner.registerAndScan(asset, relativeTo: asset);
-      expect(
-        () => parseBuilderEntries(<Asset>{asset}, resolver),
-        throwsA(isA<BuildConfigError>()),
-      );
+      expect(() => parseBuilderEntries(<Asset>{asset}, resolver), throwsA(isA<BuildConfigError>()));
     },
   );
 
-  test(
-    'Should throw if the constructor has a single BuilderOptions parameter but is not positional',
-    () {
-      final StringAsset asset = StringAsset('''
+  test('Should throw if the constructor has a single BuilderOptions parameter but is not positional', () {
+    final StringAsset asset = StringAsset('''
       import 'package:lean_builder/builder.dart';
       
       @LeanGenerator.shared()
@@ -322,13 +286,9 @@ void main() {
         FooGenerator({required BuilderOptions options});
       }
     ''');
-      scanner.scan(asset);
-      expect(
-        () => parseBuilderEntries(<Asset>{asset}, resolver),
-        throwsA(isA<BuildConfigError>()),
-      );
-    },
-  );
+    scanner.scan(asset);
+    expect(() => parseBuilderEntries(<Asset>{asset}, resolver), throwsA(isA<BuildConfigError>()));
+  });
 
   test(
     'Should throw if the constructor has a single BuilderOptions parameter but is not positional for @LeanBuilder',
@@ -342,10 +302,7 @@ void main() {
       }
     ''');
       scanner.scan(asset);
-      expect(
-        () => parseBuilderEntries(<Asset>{asset}, resolver),
-        throwsA(isA<BuildConfigError>()),
-      );
+      expect(() => parseBuilderEntries(<Asset>{asset}, resolver), throwsA(isA<BuildConfigError>()));
     },
   );
 
@@ -359,9 +316,7 @@ void main() {
       ];
     ''');
     scanner.scan(asset);
-    final (_, List<BuilderOverride> overries) = parseBuilderEntries(<Asset>{
-      asset,
-    }, resolver);
+    final (_, List<BuilderOverride> overries) = parseBuilderEntries(<Asset>{asset}, resolver);
     expect(overries.length, 1);
     expect(
       overries.first,
@@ -374,10 +329,8 @@ void main() {
     );
   });
 
-  test(
-    'Should throw if the @LeanBuilderOverrides is not a top level const variable',
-    () {
-      final StringAsset asset = StringAsset('''
+  test('Should throw if the @LeanBuilderOverrides is not a top level const variable', () {
+    final StringAsset asset = StringAsset('''
       import 'package:lean_builder/builder.dart';
       
       @LeanBuilderOverrides()
@@ -385,13 +338,9 @@ void main() {
         BuilderOverride(key: 'CustomKey', runsBefore: {'SerializableGenerator'}),
       ];
     ''');
-      scanner.scan(asset);
-      expect(
-        () => parseBuilderEntries(<Asset>{asset}, resolver),
-        throwsA(isA<BuildConfigError>()),
-      );
-    },
-  );
+    scanner.scan(asset);
+    expect(() => parseBuilderEntries(<Asset>{asset}, resolver), throwsA(isA<BuildConfigError>()));
+  });
 
   test('Should throw if the @LeanBuilderOverrides is not a const list', () {
     final StringAsset asset = StringAsset('''
@@ -403,10 +352,7 @@ void main() {
       };
     ''');
     scanner.scan(asset);
-    expect(
-      () => parseBuilderEntries(<Asset>{asset}, resolver),
-      throwsA(isA<BuildConfigError>()),
-    );
+    expect(() => parseBuilderEntries(<Asset>{asset}, resolver), throwsA(isA<BuildConfigError>()));
   });
 
   test('Should throw if any element in the list is not a BuilderOverride', () {
@@ -420,10 +366,7 @@ void main() {
       ];
     ''');
     scanner.scan(asset);
-    expect(
-      () => parseBuilderEntries(<Asset>{asset}, resolver),
-      throwsA(isA<BuildConfigError>()),
-    );
+    expect(() => parseBuilderEntries(<Asset>{asset}, resolver), throwsA(isA<BuildConfigError>()));
   });
 
   test('Should override the builder entry with the one in the overrides', () {
@@ -439,14 +382,10 @@ void main() {
       ];
     ''');
     scanner.scan(asset);
-    final (
-      List<BuilderDefinitionEntry> entries,
-      List<BuilderOverride> overries,
-    ) = parseBuilderEntries(<Asset>{asset}, resolver);
-    final List<BuilderDefinitionEntry> withOverrides = applyOverrides(
-      entries,
-      overries,
-    );
+    final (List<BuilderDefinitionEntry> entries, List<BuilderOverride> overries) = parseBuilderEntries(<Asset>{
+      asset,
+    }, resolver);
+    final List<BuilderDefinitionEntry> withOverrides = applyOverrides(entries, overries);
     expect(entries.length, 1);
     expect(
       withOverrides.first,
@@ -456,6 +395,7 @@ void main() {
         builderType: BuilderType.shared,
         generatorName: 'FooGenerator',
         expectsOptions: false,
+        generateToCache: false,
         generateFor: <String>{'lib/**.dart'},
         options: <String, dynamic>{'feature': false},
       ),
