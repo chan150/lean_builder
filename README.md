@@ -23,6 +23,7 @@ prioritizes performance and simplicity while offering a streamlined approach to 
 Lean Builder is in active development and is not yet fully tested.
 - Feedback from the community is welcome to help improve the system.
 - Adding more tests is a priority to ensure stability and reliability.
+- The Api is considered stable, but some changes may occur based on feedback and testing.
 
 ## Overview
 
@@ -171,6 +172,43 @@ class MyBuilder extends Builder {
 ```
 
 **Note**: Generic types of `GeneratorForAnnotation<Type>` and friends are automatically registered.
+
+### Reading Constant Values
+
+To read constant values from annotations, use the `ConstantReader` class:
+
+```dart
+void readConstantValues(ElementAnnotation elementAnnotation) {
+    Constant constant = eleemntAnnotation.constant;
+  
+    if (constant is ConstString) {
+      constant.value; // the String value
+    }
+  
+    if (constant is ConstLiteral) {
+      constant.literalValue; // the literal value of this constant
+    }
+  
+    if (constant is ConstObject) {
+      constant.props; // all the props of the object
+      constant.getBool('boolKey')?.value; // ConstBool
+      constant.getTypeRef('typeKey')?.value; // ConstType
+      constant.getObject('NestedObjKey'); // ConstObject?;
+      constant.get('constKey'); // Constant?;
+    }
+  
+    if (constant is ConstList) {
+      constant.value; // List<Constant>
+      constant.literalValue; // List<dynamic>, dart values
+    }
+  
+    if (constant is ConstFunctionReference) {
+      constant.name; // the name of the function
+      constant.type; // the type of the function
+      constant.element; // the executable element of the function
+    }
+  }
+ ``` 
 
 ### Using LeanBuilder directly inside of a project
 
