@@ -1,3 +1,6 @@
+## 0.1.0-alpha.4
+- expose Asset
+- fix fields are bing resolved multiple times
 ## 0.1.0-alpha.3
 - clean up some code
 ## 0.1.0-alpha.2

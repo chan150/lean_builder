@@ -7,3 +7,6 @@ export 'package:lean_builder/src/resolvers/resolver.dart' show Resolver;
 export 'package:lean_builder/src/builder/errors.dart';
 export 'package:lean_builder/src/build_script/annotations.dart';
 export 'package:lean_builder/src/build_script/parsed_builder_entry.dart';
+export 'package:lean_builder/src/asset/asset.dart';
+export 'package:lean_builder/src/asset/errors.dart';
+export 'package:lean_builder/src/asset/package_file_resolver.dart' show PackageFileResolver;

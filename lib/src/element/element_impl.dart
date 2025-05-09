@@ -50,16 +50,13 @@ abstract class ElementImpl implements Element {
   Asset get librarySrc => library.src;
 
   @override
-  bool get hasAlwaysThrows =>
-      metadata.any((ElementAnnotation m) => m.isAlwaysThrows);
+  bool get hasAlwaysThrows => metadata.any((ElementAnnotation m) => m.isAlwaysThrows);
 
   @override
-  bool get hasDeprecated =>
-      metadata.any((ElementAnnotation m) => m.isDeprecated);
+  bool get hasDeprecated => metadata.any((ElementAnnotation m) => m.isDeprecated);
 
   @override
-  bool get hasDoNotStore =>
-      metadata.any((ElementAnnotation m) => m.isDoNotStore);
+  bool get hasDoNotStore => metadata.any((ElementAnnotation m) => m.isDoNotStore);
 
   @override
   bool get hasFactory => metadata.any((ElementAnnotation m) => m.isFactory);
@@ -71,27 +68,22 @@ abstract class ElementImpl implements Element {
   bool get hasIsTest => metadata.any((ElementAnnotation m) => m.isIsTest);
 
   @override
-  bool get hasIsTestGroup =>
-      metadata.any((ElementAnnotation m) => m.isIsTestGroup);
+  bool get hasIsTestGroup => metadata.any((ElementAnnotation m) => m.isIsTestGroup);
 
   @override
   bool get hasLiteral => metadata.any((ElementAnnotation m) => m.isLiteral);
 
   @override
-  bool get hasMustBeOverridden =>
-      metadata.any((ElementAnnotation m) => m.isMustBeOverridden);
+  bool get hasMustBeOverridden => metadata.any((ElementAnnotation m) => m.isMustBeOverridden);
 
   @override
-  bool get hasMustCallSuper =>
-      metadata.any((ElementAnnotation m) => m.isMustCallSuper);
+  bool get hasMustCallSuper => metadata.any((ElementAnnotation m) => m.isMustCallSuper);
 
   @override
-  bool get hasNonVirtual =>
-      metadata.any((ElementAnnotation m) => m.isNonVirtual);
+  bool get hasNonVirtual => metadata.any((ElementAnnotation m) => m.isNonVirtual);
 
   @override
-  bool get hasOptionalTypeArgs =>
-      metadata.any((ElementAnnotation m) => m.isOptionalTypeArgs);
+  bool get hasOptionalTypeArgs => metadata.any((ElementAnnotation m) => m.isOptionalTypeArgs);
 
   @override
   bool get hasOverride => metadata.any((ElementAnnotation m) => m.isOverride);
@@ -115,8 +107,7 @@ abstract class ElementImpl implements Element {
   bool get hasUseResult => metadata.any((ElementAnnotation m) => m.isUseResult);
 
   @override
-  bool get hasVisibleForOverriding =>
-      metadata.any((ElementAnnotation m) => m.isVisibleForOverriding);
+  bool get hasVisibleForOverriding => metadata.any((ElementAnnotation m) => m.isVisibleForOverriding);
 
   @override
   String get identifier => '${library.src.shortUri}#$name';
@@ -174,10 +165,7 @@ abstract class ElementImpl implements Element {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is Element &&
-          runtimeType == other.runtimeType &&
-          identifier == other.identifier;
+      identical(this, other) || other is Element && runtimeType == other.runtimeType && identifier == other.identifier;
 
   @override
   int get hashCode => name.hashCode ^ library.hashCode;
@@ -203,8 +191,7 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   final ResolverImpl resolver;
 
   /// The list of elements that have been resolved in this library.
-  List<Element> get resolvedElements =>
-      List<Element>.unmodifiable(_resolvedElements);
+  List<Element> get resolvedElements => List<Element>.unmodifiable(_resolvedElements);
 
   final List<Element> _resolvedElements = <Element>[];
 
@@ -294,17 +281,10 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   @override
   ClassElementImpl? getClass(String name) {
     if (_didResolveAllClasses || hasElement(name)) {
-      return _elementsOfType<ClassElementImpl>().firstWhereOrNull(
-        (ClassElementImpl e) => e.name == name,
-      );
+      return _elementsOfType<ClassElementImpl>().firstWhereOrNull((ClassElementImpl e) => e.name == name);
     }
-    resolver.resolveClasses(
-      this,
-      predicate: (NamedCompilationUnitMember e) => e.name.lexeme == name,
-    );
-    return _elementsOfType<ClassElementImpl>().firstWhereOrNull(
-      (ClassElementImpl e) => e.name == name,
-    );
+    resolver.resolveClasses(this, predicate: (NamedCompilationUnitMember e) => e.name.lexeme == name);
+    return _elementsOfType<ClassElementImpl>().firstWhereOrNull((ClassElementImpl e) => e.name == name);
   }
 
   @override
@@ -315,65 +295,37 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   @override
   MixinElementImpl? getMixin(String name) {
     if (_didResolveAllMixins || hasElement(name)) {
-      return _elementsOfType<MixinElementImpl>().firstWhereOrNull(
-        (MixinElementImpl e) => e.name == name,
-      );
+      return _elementsOfType<MixinElementImpl>().firstWhereOrNull((MixinElementImpl e) => e.name == name);
     }
-    resolver.resolveMixins(
-      this,
-      predicate: (MixinDeclaration e) => e.name.lexeme == name,
-    );
-    return _elementsOfType<MixinElementImpl>().firstWhereOrNull(
-      (MixinElementImpl e) => e.name == name,
-    );
+    resolver.resolveMixins(this, predicate: (MixinDeclaration e) => e.name.lexeme == name);
+    return _elementsOfType<MixinElementImpl>().firstWhereOrNull((MixinElementImpl e) => e.name == name);
   }
 
   @override
   EnumElementImpl? getEnum(String name) {
     if (_didResolveAllEnums || hasElement(name)) {
-      return _elementsOfType<EnumElementImpl>().firstWhereOrNull(
-        (EnumElementImpl e) => e.name == name,
-      );
+      return _elementsOfType<EnumElementImpl>().firstWhereOrNull((EnumElementImpl e) => e.name == name);
     }
-    resolver.resolveEnums(
-      this,
-      predicate: (EnumDeclaration e) => e.name.lexeme == name,
-    );
-    return _elementsOfType<EnumElementImpl>().firstWhereOrNull(
-      (EnumElementImpl e) => e.name == name,
-    );
+    resolver.resolveEnums(this, predicate: (EnumDeclaration e) => e.name.lexeme == name);
+    return _elementsOfType<EnumElementImpl>().firstWhereOrNull((EnumElementImpl e) => e.name == name);
   }
 
   @override
   TypeAliasElement? getTypeAlias(String name) {
     if (_didResolveAllTypeAliases || hasElement(name)) {
-      return _elementsOfType<TypeAliasElement>().firstWhereOrNull(
-        (TypeAliasElement e) => e.name == name,
-      );
+      return _elementsOfType<TypeAliasElement>().firstWhereOrNull((TypeAliasElement e) => e.name == name);
     }
-    resolver.resolveTypeAliases(
-      this,
-      predicate: (TypeAlias e) => e.name.lexeme == name,
-    );
-    return _elementsOfType<TypeAliasElement>().firstWhereOrNull(
-      (TypeAliasElement e) => e.name == name,
-    );
+    resolver.resolveTypeAliases(this, predicate: (TypeAlias e) => e.name.lexeme == name);
+    return _elementsOfType<TypeAliasElement>().firstWhereOrNull((TypeAliasElement e) => e.name == name);
   }
 
   @override
   FunctionElement? getFunction(String name) {
     if (_didResolveAllFunctions || hasElement(name)) {
-      return _elementsOfType<FunctionElement>().firstWhereOrNull(
-        (FunctionElement e) => e.name == name,
-      );
+      return _elementsOfType<FunctionElement>().firstWhereOrNull((FunctionElement e) => e.name == name);
     }
-    resolver.resolveFunctions(
-      this,
-      predicate: (FunctionDeclaration e) => e.name.lexeme == name,
-    );
-    return _elementsOfType<FunctionElement>().firstWhereOrNull(
-      (FunctionElement e) => e.name == name,
-    );
+    resolver.resolveFunctions(this, predicate: (FunctionDeclaration e) => e.name.lexeme == name);
+    return _elementsOfType<FunctionElement>().firstWhereOrNull((FunctionElement e) => e.name == name);
   }
 
   @override
@@ -389,9 +341,7 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   @override
   Iterable<AnnotatedElement> annotatedWithExact(TypeChecker checker) sync* {
     for (final Element element in resolvedElements) {
-      final ElementAnnotation? annotation = checker.firstAnnotationOfExact(
-        element,
-      );
+      final ElementAnnotation? annotation = checker.firstAnnotationOfExact(element);
       if (annotation != null) {
         yield AnnotatedElement(element, annotation);
       }
@@ -401,10 +351,7 @@ class LibraryElementImpl extends ElementImpl implements LibraryElement {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      super == other &&
-          other is LibraryElement &&
-          runtimeType == other.runtimeType &&
-          src.id == other.src.id;
+      super == other && other is LibraryElement && runtimeType == other.runtimeType && src.id == other.src.id;
 
   @override
   int get hashCode => src.id.hashCode;
@@ -452,8 +399,7 @@ class AnnotatedElement {
 /// {@template type_parameterized_element_mixin}
 /// A mixin that implements the [TypeParameterizedElement] interface.
 /// {@endtemplate}
-mixin TypeParameterizedElementMixin on Element
-    implements TypeParameterizedElement {
+mixin TypeParameterizedElementMixin on Element implements TypeParameterizedElement {
   final List<TypeParameterType> _typeParameters = <TypeParameterType>[];
 
   @override
@@ -469,9 +415,7 @@ mixin TypeParameterizedElementMixin on Element
     final List<TypeParameterType> allTypeParameters = <TypeParameterType>[];
     allTypeParameters.addAll(typeParameters);
     if (enclosingElement is TypeParameterizedElementMixin) {
-      allTypeParameters.addAll(
-        (enclosingElement as TypeParameterizedElementMixin).allTypeParameters,
-      );
+      allTypeParameters.addAll((enclosingElement as TypeParameterizedElementMixin).allTypeParameters);
     }
     return allTypeParameters;
   }
@@ -482,19 +426,13 @@ mixin TypeParameterizedElementMixin on Element
 /// {@endtemplate}
 class ExtensionTypeImpl extends InterfaceElementImpl {
   /// Creates an instance of [ExtensionTypeImpl].
-  ExtensionTypeImpl({
-    required super.name,
-    required super.library,
-    required super.compilationUnit,
-  });
+  ExtensionTypeImpl({required super.name, required super.library, required super.compilationUnit});
 }
 
 /// {@template interface_element_impl}
 /// Implementation for [InterfaceElement].
 /// {@endtemplate}
-class InterfaceElementImpl extends ElementImpl
-    with TypeParameterizedElementMixin
-    implements InterfaceElement {
+class InterfaceElementImpl extends ElementImpl with TypeParameterizedElementMixin implements InterfaceElement {
   final List<NamedDartType> _mixins = <NamedDartType>[];
   final List<NamedDartType> _interfaces = <NamedDartType>[];
   final List<NamedDartType> _superConstrains = <NamedDartType>[];
@@ -514,11 +452,7 @@ class InterfaceElementImpl extends ElementImpl
   final List<FieldElement> _fields = <FieldElement>[];
 
   /// Creates an instance of [InterfaceElementImpl].
-  InterfaceElementImpl({
-    required this.name,
-    required this.library,
-    required this.compilationUnit,
-  });
+  InterfaceElementImpl({required this.name, required this.library, required this.compilationUnit});
 
   @override
   List<FieldElement> get fields {
@@ -535,9 +469,7 @@ class InterfaceElementImpl extends ElementImpl
       library.resolver.resolveMethods(this);
       _didResolveMethods = true;
     }
-    return List<MethodElement>.unmodifiable(
-      _methods.whereNot((MethodElement e) => e is PropertyAccessorElementImpl),
-    );
+    return List<MethodElement>.unmodifiable(_methods.whereNot((MethodElement e) => e is PropertyAccessorElementImpl));
   }
 
   @override
@@ -546,9 +478,7 @@ class InterfaceElementImpl extends ElementImpl
       library.resolver.resolveMethods(this);
       _didResolveMethods = true;
     }
-    return List<PropertyAccessorElement>.unmodifiable(
-      _methods.whereType<PropertyAccessorElement>(),
-    );
+    return List<PropertyAccessorElement>.unmodifiable(_methods.whereType<PropertyAccessorElement>());
   }
 
   @override
@@ -556,8 +486,7 @@ class InterfaceElementImpl extends ElementImpl
     if (_didResolveMethods) {
       return _methods.any((MethodElement e) => e.name == name);
     }
-    for (final MethodDeclaration method
-        in compilationUnit.childEntities.whereType<MethodDeclaration>()) {
+    for (final MethodDeclaration method in compilationUnit.childEntities.whereType<MethodDeclaration>()) {
       if (method.name.lexeme == name) {
         return true;
       }
@@ -568,12 +497,9 @@ class InterfaceElementImpl extends ElementImpl
   @override
   bool hasPropertyAccessor(String name) {
     if (_didResolveMethods) {
-      return _methods.any(
-        (MethodElement e) => e.name == name && e is PropertyAccessorElement,
-      );
+      return _methods.any((MethodElement e) => e.name == name && e is PropertyAccessorElement);
     }
-    for (final MethodDeclaration method
-        in compilationUnit.childEntities.whereType<MethodDeclaration>()) {
+    for (final MethodDeclaration method in compilationUnit.childEntities.whereType<MethodDeclaration>()) {
       if (method.name.lexeme == name && method.propertyKeyword != null) {
         return true;
       }
@@ -589,7 +515,7 @@ class InterfaceElementImpl extends ElementImpl
   @override
   List<ConstructorElement> get constructors {
     if (!_didResolveConstructors) {
-      if (_didResolveFields) {
+      if (!_didResolveFields) {
         library.resolver.resolveFields(this);
         _didResolveFields = true;
       }
@@ -606,16 +532,12 @@ class InterfaceElementImpl extends ElementImpl
 
   @override
   ConstructorElement? getConstructor(String name) {
-    return constructors.firstWhereOrNull(
-      (ConstructorElement e) => e.name == name,
-    );
+    return constructors.firstWhereOrNull((ConstructorElement e) => e.name == name);
   }
 
   @override
   ConstructorElement? get unnamedConstructor {
-    return constructors.firstWhereOrNull(
-      (ConstructorElement e) => e.name.isEmpty,
-    );
+    return constructors.firstWhereOrNull((ConstructorElement e) => e.name.isEmpty);
   }
 
   @override
@@ -712,14 +634,8 @@ class InterfaceElementImpl extends ElementImpl
 
   @override
   DartType instantiate(NamedDartType typeRef) {
-    Substitution substitution = Substitution.fromPairs(
-      typeParameters,
-      typeRef.typeArguments,
-    );
-    return substitution.substituteType(
-      thisType,
-      isNullable: typeRef.isNullable,
-    );
+    Substitution substitution = Substitution.fromPairs(typeParameters, typeRef.typeArguments);
+    return substitution.substituteType(thisType, isNullable: typeRef.isNullable);
   }
 
   @override
@@ -731,8 +647,7 @@ class InterfaceElementImpl extends ElementImpl
 /// {@template variable_element_impl}
 /// Implementation for [VariableElement].
 /// {@endtemplate}
-abstract class VariableElementImpl extends ElementImpl
-    implements VariableElement {
+abstract class VariableElementImpl extends ElementImpl implements VariableElement {
   /// Creates an instance of [VariableElementImpl].
   VariableElementImpl({
     required this.name,
@@ -785,8 +700,7 @@ abstract class VariableElementImpl extends ElementImpl
   }
 
   @override
-  Constant? get constantValue =>
-      _constantValue ??= constantValueCompute?.call();
+  Constant? get constantValue => _constantValue ??= constantValueCompute?.call();
 
   Constant? _constantValue;
 
@@ -803,8 +717,7 @@ abstract class VariableElementImpl extends ElementImpl
 /// {@template top_level_variable_element_impl}
 /// Implementation for [TopLevelVariableElement].
 /// {@endtemplate}
-class TopLevelVariableElementImpl extends VariableElementImpl
-    implements TopLevelVariableElement {
+class TopLevelVariableElementImpl extends VariableElementImpl implements TopLevelVariableElement {
   /// Creates an instance of [TopLevelVariableElementImpl].
   TopLevelVariableElementImpl({
     required super.name,
@@ -826,8 +739,7 @@ class TopLevelVariableElementImpl extends VariableElementImpl
 /// {@template field_element_impl}
 /// Implementation for [FieldElement].
 /// {@endtemplate}
-class FieldElementImpl extends VariableElementImpl
-    implements ClassMemberElement, FieldElement {
+class FieldElementImpl extends VariableElementImpl implements ClassMemberElement, FieldElement {
   /// Creates an instance of [FieldElementImpl].
   FieldElementImpl({
     required super.isStatic,
@@ -885,8 +797,7 @@ class FieldElementImpl extends VariableElementImpl
 /// {@template parameter_element_impl}
 /// Implementation for [ParameterElement].
 /// {@endtemplate}
-class ParameterElementImpl extends VariableElementImpl
-    implements ParameterElement, VariableElement {
+class ParameterElementImpl extends VariableElementImpl implements ParameterElement, VariableElement {
   /// Creates an instance of [ParameterElementImpl].
   ParameterElementImpl({
     required super.name,
@@ -1048,11 +959,7 @@ class ClassElementImpl extends InterfaceElementImpl implements ClassElement {
 /// {@endtemplate}
 class EnumElementImpl extends InterfaceElementImpl implements EnumElement {
   /// Creates a new instance of [EnumElementImpl].
-  EnumElementImpl({
-    required super.name,
-    required super.library,
-    required super.compilationUnit,
-  });
+  EnumElementImpl({required super.name, required super.library, required super.compilationUnit});
 }
 
 /// {@template mixin_element_impl}
@@ -1060,12 +967,7 @@ class EnumElementImpl extends InterfaceElementImpl implements EnumElement {
 /// {@endtemplate}
 class MixinElementImpl extends InterfaceElementImpl implements MixinElement {
   /// Creates a new instance of [MixinElementImpl].
-  MixinElementImpl({
-    required super.name,
-    required super.library,
-    required this.isBase,
-    required super.compilationUnit,
-  });
+  MixinElementImpl({required super.name, required super.library, required this.isBase, required super.compilationUnit});
 
   @override
   final bool isBase;
@@ -1082,9 +984,7 @@ class MixinElementImpl extends InterfaceElementImpl implements MixinElement {
 /// {@template type_alias_element_impl}
 /// Implementation for [TypeAliasElement].
 /// {@endtemplate}
-class TypeAliasElementImpl extends ElementImpl
-    with TypeParameterizedElementMixin
-    implements TypeAliasElement {
+class TypeAliasElementImpl extends ElementImpl with TypeParameterizedElementMixin implements TypeAliasElement {
   /// Creates a new instance of [TypeAliasElementImpl].
   TypeAliasElementImpl({required this.name, required this.library});
 
@@ -1110,14 +1010,8 @@ class TypeAliasElementImpl extends ElementImpl
 
   @override
   DartType instantiate(NamedDartType typeRef) {
-    Substitution substitution = Substitution.fromPairs(
-      typeParameters,
-      typeRef.typeArguments,
-    );
-    return substitution.substituteType(
-      aliasedType,
-      isNullable: typeRef.isNullable,
-    );
+    Substitution substitution = Substitution.fromPairs(typeParameters, typeRef.typeArguments);
+    return substitution.substituteType(aliasedType, isNullable: typeRef.isNullable);
   }
 
   @override
