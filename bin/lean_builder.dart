@@ -1,4 +1,5 @@
-import 'dart:io' show File, Directory, exit, Platform, Process, ProcessStartMode;
+import 'dart:io'
+    show File, Directory, exit, Platform, Process, ProcessStartMode;
 import 'dart:isolate' show Isolate, ReceivePort;
 
 import 'package:lean_builder/src/build_script/compile.dart';
@@ -25,12 +26,20 @@ void main(List<String> args) async {
     exit(1);
   }
 
-  final preBuildScriptKernelPath = p.join(p.current, paths.preBuildScriptKernel);
+  final preBuildScriptKernelPath = p.join(
+    p.current,
+    paths.preBuildScriptKernel,
+  );
   if (!File(preBuildScriptKernelPath).existsSync()) {
     await compileKernel(preBuildScriptUri.path, preBuildScriptKernelPath);
   }
   final messagePort = ReceivePort();
-  await Isolate.spawnUri(Uri.file(preBuildScriptKernelPath), args, messagePort.sendPort, errorsAreFatal: true);
+  await Isolate.spawnUri(
+    Uri.file(preBuildScriptKernelPath),
+    args,
+    messagePort.sendPort,
+    errorsAreFatal: true,
+  );
   final exitCode = await messagePort.first as int;
 
   if (exitCode == 2) {
@@ -47,15 +56,27 @@ void main(List<String> args) async {
 
   if (isDevMode) {
     invalidateExecutable();
-    await _runJit(scriptAbsPath, args, enableVmService: isWatchMode && isDevMode);
+    await _runJit(
+      scriptAbsPath,
+      args,
+      enableVmService: isWatchMode && isDevMode,
+    );
   } else {
     await _runAot(scriptAbsPath, args);
   }
 }
 
-Future<int> _runJit(String scriptPath, List<String> args, {required bool enableVmService}) async {
+Future<int> _runJit(
+  String scriptPath,
+  List<String> args, {
+  required bool enableVmService,
+}) async {
   Logger.warning('Running in JIT mode. This may be slower than AOT.');
-  return _runProcess('dart', <String>[if (enableVmService) '--enable-vm-service', scriptPath, ...args]);
+  return _runProcess('dart', <String>[
+    if (enableVmService) '--enable-vm-service',
+    scriptPath,
+    ...args,
+  ]);
 }
 
 Future<int> _runAot(String scriptPath, List<String> args) async {
@@ -71,7 +92,11 @@ Future<int> _runAot(String scriptPath, List<String> args) async {
 }
 
 Future<int> _runProcess(String executable, List<String> arguments) async {
-  final Process process = await Process.start(executable, arguments, mode: ProcessStartMode.inheritStdio);
+  final Process process = await Process.start(
+    executable,
+    arguments,
+    mode: ProcessStartMode.inheritStdio,
+  );
   // Wait for the process to complete and get the exit code
   return process.exitCode;
 }

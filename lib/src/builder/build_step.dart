@@ -11,7 +11,9 @@ import 'package:lean_builder/builder.dart';
 import 'package:lean_builder/src/asset/assets_reader.dart';
 import 'package:lean_builder/src/build_script/paths.dart';
 import 'package:lean_builder/src/element/element.dart';
-import 'package:path/path.dart' as p show basename, withoutExtension, join, current, dirname, relative;
+import 'package:path/path.dart'
+    as p
+    show basename, withoutExtension, join, current, dirname, relative;
 
 /// some of the abstractions are borrowed from the build package
 
@@ -80,7 +82,11 @@ abstract class BuildStep {
   /// @param contents The text content to write
   /// @param extension The extension of the file to be written (must be in [allowedExtensions])
   /// @param encoding The character encoding to use (defaults to UTF-8)
-  FutureOr<void> writeAsString(String contents, {required String extension, Encoding encoding = utf8});
+  FutureOr<void> writeAsString(
+    String contents, {
+    required String extension,
+    Encoding encoding = utf8,
+  });
 
   /// Returns true if the input library has a part directive for the given extension.
   ///
@@ -121,7 +127,12 @@ class BuildStepImpl implements BuildStep {
   /// @param resolver The resolver to use for this build step
   /// @param allowedExtensions The set of allowed output file extensions
   /// @param generateToCache Whether to write outputs to the build cache
-  BuildStepImpl(this.asset, this.resolver, {required this.allowedExtensions, required this.generateToCache});
+  BuildStepImpl(
+    this.asset,
+    this.resolver, {
+    required this.allowedExtensions,
+    required this.generateToCache,
+  });
 
   @override
   final Set<String> allowedExtensions;
@@ -141,11 +152,18 @@ class BuildStepImpl implements BuildStep {
   Uri _getOutputUri(String extension) {
     if (generateToCache) {
       final Uri shortUri = asset.shortUri;
-      assert(shortUri.scheme == 'package' || shortUri.scheme == 'asset', 'Only package and asset URIs are supported');
-      final Uri outputUri = shortUri.replace(path: p.withoutExtension(shortUri.path) + extension);
+      assert(
+        shortUri.scheme == 'package' || shortUri.scheme == 'asset',
+        'Only package and asset URIs are supported',
+      );
+      final Uri outputUri = shortUri.replace(
+        path: p.withoutExtension(shortUri.path) + extension,
+      );
       _validateOutput(outputUri);
       final String filename = p.basename(outputUri.path);
-      final Directory outputDir = Directory(p.join(p.current, generatedDir, p.dirname(outputUri.path)));
+      final Directory outputDir = Directory(
+        p.join(p.current, generatedDir, p.dirname(outputUri.path)),
+      );
       if (!outputDir.existsSync()) {
         outputDir.createSync(recursive: true);
       }
@@ -162,14 +180,21 @@ class BuildStepImpl implements BuildStep {
   }
 
   @override
-  FutureOr<void> writeAsBytes(List<int> bytes, {required String extension}) async {
+  FutureOr<void> writeAsBytes(
+    List<int> bytes, {
+    required String extension,
+  }) async {
     final Uri outputUri = _getOutputUri(extension);
     await File.fromUri(outputUri).writeAsBytes(bytes);
     _outputs.add(outputUri);
   }
 
   @override
-  FutureOr<void> writeAsString(String contents, {required String extension, Encoding encoding = utf8}) async {
+  FutureOr<void> writeAsString(
+    String contents, {
+    required String extension,
+    Encoding encoding = utf8,
+  }) async {
     final Uri outputUri = _getOutputUri(extension);
     final File file = File.fromUri(outputUri);
     await file.writeAsString(contents, encoding: encoding);
@@ -182,19 +207,25 @@ class BuildStepImpl implements BuildStep {
   /// @throws ArgumentError if the URI doesn't have an allowed extension
   void _validateOutput(Uri uri) {
     if (!allowedExtensions.any((String e) => uri.path.endsWith(e))) {
-      throw ArgumentError('Invalid extension, allowed extensions are: $allowedExtensions');
+      throw ArgumentError(
+        'Invalid extension, allowed extensions are: $allowedExtensions',
+      );
     }
   }
 
   @override
   bool hasValidPartDirectiveFor(String extension) {
     final LibraryElementImpl library = resolver.libraryFor(asset);
-    final Iterable<PartDirective> partDirectives = library.compilationUnit.directives.whereType<PartDirective>();
+    final Iterable<PartDirective> partDirectives =
+        library.compilationUnit.directives.whereType<PartDirective>();
     final PackageFileResolver fileResolver = resolver.fileResolver;
     for (final PartDirective partDirect in partDirectives) {
       final String? part = partDirect.uri.stringValue;
       if (part == null) continue;
-      final Uri partUri = fileResolver.resolveFileUri(Uri.parse(part), relativeTo: library.src.uri);
+      final Uri partUri = fileResolver.resolveFileUri(
+        Uri.parse(part),
+        relativeTo: library.src.uri,
+      );
       if (partUri == asset.uriWithExtension(extension)) {
         return true;
       }
@@ -202,7 +233,9 @@ class BuildStepImpl implements BuildStep {
     return false;
   }
 
-  late final FileAssetReader _assetReader = FileAssetReader(resolver.fileResolver);
+  late final FileAssetReader _assetReader = FileAssetReader(
+    resolver.fileResolver,
+  );
 
   @override
   List<Asset> findAssets(Glob glob) {
@@ -229,18 +262,37 @@ class SharedBuildStep extends BuildStepImpl {
   /// @param resolver The resolver to use for this build step
   /// @param outputUri The URI where the final output will be written
   SharedBuildStep(super.asset, super.resolver, {required this.outputUri})
-    : super(allowedExtensions: <String>{SharedPartBuilder.extension}, generateToCache: false);
+    : super(
+        allowedExtensions: <String>{SharedPartBuilder.extension},
+        generateToCache: false,
+      );
 
   @override
-  Future<void> writeAsBytes(List<int> bytes, {required String extension}) async {
-    assert(outputUri == asset.uriWithExtension(extension), 'Unexpected output uri, expected $outputUri');
+  Future<void> writeAsBytes(
+    List<int> bytes, {
+    required String extension,
+  }) async {
+    assert(
+      outputUri == asset.uriWithExtension(extension),
+      'Unexpected output uri, expected $outputUri',
+    );
     _buffer.writeln(utf8.decode(bytes));
   }
 
   @override
-  Future<void> writeAsString(String contents, {required String extension, Encoding encoding = utf8}) async {
-    assert(encoding == utf8, 'Only utf8 encoding is supported for deferred outputs');
-    assert(outputUri == asset.uriWithExtension(extension), 'Unexpected output uri, expected $outputUri');
+  Future<void> writeAsString(
+    String contents, {
+    required String extension,
+    Encoding encoding = utf8,
+  }) async {
+    assert(
+      encoding == utf8,
+      'Only utf8 encoding is supported for deferred outputs',
+    );
+    assert(
+      outputUri == asset.uriWithExtension(extension),
+      'Unexpected output uri, expected $outputUri',
+    );
     _buffer.writeln(contents);
   }
 
@@ -252,8 +304,14 @@ class SharedBuildStep extends BuildStepImpl {
   /// @return A future that completes when the file has been written
   Future<void> flush() async {
     if (_buffer.isEmpty) return;
-    final String partOf = p.relative(asset.uri.path, from: p.dirname(outputUri.path));
-    final String header = <String>[defaultFileHeader, "part of '$partOf';"].join('\n\n');
+    final String partOf = p.relative(
+      asset.uri.path,
+      from: p.dirname(outputUri.path),
+    );
+    final String header = <String>[
+      defaultFileHeader,
+      "part of '$partOf';",
+    ].join('\n\n');
     final String content = _buffer.toString();
 
     final File outputFile = File.fromUri(outputUri);
