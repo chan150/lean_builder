@@ -1,6 +1,5 @@
-import 'dart:io'
-    show File, Directory, exit, Platform, Process, ProcessStartMode;
-import 'dart:isolate' show Isolate;
+import 'dart:io' show File, Directory, exit, Platform, Process, ProcessStartMode;
+import 'dart:isolate' show Isolate, ReceivePort;
 
 import 'package:lean_builder/src/build_script/compile.dart';
 import 'package:lean_builder/src/build_script/paths.dart' as paths;
@@ -18,22 +17,22 @@ void main(List<String> args) async {
   final bool isDevMode = args.contains('--dev');
   final bool isWatchMode = args.contains('watch');
 
-  Uri? runnerExePath = Isolate.resolvePackageUriSync(
-    Uri.parse('package:lean_builder/bin/runner.aot'),
+  Uri? preBuildScriptUri = Isolate.resolvePackageUriSync(
+    Uri.parse('package:lean_builder/src/build_script/pre_build_script.dart'),
   );
-  if (runnerExePath == null) {
-    Logger.error('Could not resolve the path to runner.aot');
+  if (preBuildScriptUri == null) {
+    Logger.error('Could not resolve the path to pre_build_script.dart');
     exit(1);
   }
-  runnerExePath = runnerExePath.replace(
-    pathSegments: runnerExePath.pathSegments.where((String e) => e != 'lib'),
-  );
-  final String runtimePath = _getRuntimePath();
-  final Process process = await Process.start(runtimePath, <String>[
-    runnerExePath.path,
-    ...args,
-  ], mode: ProcessStartMode.inheritStdio);
-  final int exitCode = await process.exitCode;
+
+  final preBuildScriptKernelPath = p.join(p.current, paths.preBuildScriptKernel);
+  if (!File(preBuildScriptKernelPath).existsSync()) {
+    await compileKernel(preBuildScriptUri.path, preBuildScriptKernelPath);
+  }
+  final messagePort = ReceivePort();
+  await Isolate.spawnUri(Uri.file(preBuildScriptKernelPath), args, messagePort.sendPort, errorsAreFatal: true);
+  final exitCode = await messagePort.first as int;
+
   if (exitCode == 2) {
     if (!isWatchMode && !isDevMode) {
       Logger.info('No Assets to process. Exiting.');
@@ -44,52 +43,35 @@ void main(List<String> args) async {
     exit(exitCode);
   }
 
-  final String scriptAbsPath = p.join(p.current, paths.scriptOutput);
+  final String scriptAbsPath = p.join(p.current, paths.buildScriptOutput);
 
   if (isDevMode) {
     invalidateExecutable();
-    await _runJit(
-      scriptAbsPath,
-      args,
-      enableVmService: isWatchMode && isDevMode,
-    );
+    await _runJit(scriptAbsPath, args, enableVmService: isWatchMode && isDevMode);
   } else {
     await _runAot(scriptAbsPath, args);
   }
 }
 
-Future<int> _runJit(
-  String scriptPath,
-  List<String> args, {
-  required bool enableVmService,
-}) async {
+Future<int> _runJit(String scriptPath, List<String> args, {required bool enableVmService}) async {
   Logger.warning('Running in JIT mode. This may be slower than AOT.');
-  return _runProcess('dart', <String>[
-    if (enableVmService) '--enable-vm-service',
-    scriptPath,
-    ...args,
-  ]);
+  return _runProcess('dart', <String>[if (enableVmService) '--enable-vm-service', scriptPath, ...args]);
 }
 
 Future<int> _runAot(String scriptPath, List<String> args) async {
-  final File executableFile = File(getExecutablePath());
+  final File executableFile = File(p.join(p.current, paths.buildScriptAot));
 
   if (!executableFile.existsSync()) {
     final Stopwatch stopwatch = Stopwatch()..start();
-    Logger.info('Compiling build script to AOT executable...');
-    compileScript(scriptPath);
+    Logger.info('Compiling build script...');
+    await compileToAotSnapshot(scriptPath, executableFile.path);
     Logger.info('Compilation completed in ${stopwatch.elapsed.formattedMS}');
   }
-
-  return _runProcess(_getRuntimePath(), <String>[executableFile.path, ...args]);
+  return _runProcess(_getRuntimePath(), [executableFile.path, ...args]);
 }
 
 Future<int> _runProcess(String executable, List<String> arguments) async {
-  final Process process = await Process.start(
-    executable,
-    arguments,
-    mode: ProcessStartMode.inheritStdio,
-  );
+  final Process process = await Process.start(executable, arguments, mode: ProcessStartMode.inheritStdio);
   // Wait for the process to complete and get the exit code
   return process.exitCode;
 }

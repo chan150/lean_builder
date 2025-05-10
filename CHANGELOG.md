@@ -1,3 +1,5 @@
+## 0.1.0-alpha.5
+- pre-build script snapshot is now generated on run not shipped
 ## 0.1.0-alpha.4
 - expose Asset
 - fix fields are bing resolved multiple times

@@ -1,7 +1,30 @@
-import 'dart:io' show File, ProcessResult, Process, Platform;
+import 'dart:io' show Directory, File, Platform, Process;
+
+import 'package:frontend_server_client/frontend_server_client.dart';
 
 import 'errors.dart';
 import 'paths.dart' as paths;
+import 'package:path/path.dart' as p;
+
+/// Compiles the build script at the given path to a dill kernel file.
+Future<void> compileKernel(String scriptPath, String scriptKernelPath) async {
+  try {
+    final dir = Directory(p.dirname(scriptKernelPath));
+    if (!dir.existsSync()) {
+      dir.createSync(recursive: true);
+    }
+    final client = await FrontendServerClient.start(
+      scriptPath,
+      scriptKernelPath,
+      'lib/_internal/vm_platform_strong.dill',
+      printIncrementalDependencies: true,
+    );
+    await client.compile();
+    client.kill();
+  } catch (e) {
+    throw CompileError('Failed to compile the script: $e');
+  }
+}
 
 /// Compiles the build script at the given path to an AOT snapshot.
 ///
@@ -10,36 +33,23 @@ import 'paths.dart' as paths;
 /// Throws a [CompileError] if compilation fails.
 ///
 /// @param scriptPath The path to the Dart script to be compiled
-void compileScript(String scriptPath) {
-  final String execPath = getExecutablePath();
-  final ProcessResult result = Process.runSync('dart', <String>[
-    'compile',
-    'aot-snapshot',
-    scriptPath,
-  ]);
-  if (!Platform.isWindows) {
-    Process.runSync('chmod', <String>['+x', execPath]);
-  }
-  if (result.exitCode != 0) {
-    throw CompileError('Failed to compile the script: ${result.stderr}');
-  }
-}
+Future<void> compileToAotSnapshot(String scriptPath, String outputPath) async {
+  try {
+    final dir = Directory(p.dirname(outputPath));
+    if (!dir.existsSync()) {
+      dir.createSync(recursive: true);
+    }
+    final result = await Process.run('dart', ['compile', 'aot-snapshot', scriptPath, '-o', outputPath]);
 
-/// Returns the platform-specific path to the compiled executable.
-///
-/// The path is determined based on the current platform and the
-/// global [scriptExecutable] configuration.
-///
-/// @return The path to the compiled executable
-String getExecutablePath() {
-  return '${paths.scriptExecutable}.aot';
-}
-
-/// Checks if the compiled executable exists on the file system.
-///
-/// @return `true` if the executable exists, `false` otherwise
-bool executableExists() {
-  return File(getExecutablePath()).existsSync();
+    if (result.exitCode != 0) {
+      throw CompileError('Failed to create JIT snapshot: ${result.stderr}');
+    }
+    if (!Platform.isWindows) {
+      Process.runSync('chmod', <String>['+x', outputPath]);
+    }
+  } catch (e) {
+    throw CompileError('Failed to compile JIT snapshot: $e');
+  }
 }
 
 /// Deletes the compiled executable if it exists.
@@ -47,7 +57,7 @@ bool executableExists() {
 /// Used to force recompilation when the script has been modified
 /// or when the executable may be in an inconsistent state.
 void invalidateExecutable() {
-  final File executable = File(getExecutablePath());
+  final File executable = File(paths.buildScriptAot);
   if (executable.existsSync()) {
     executable.deleteSync();
   }

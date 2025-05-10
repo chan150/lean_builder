@@ -2,7 +2,6 @@ import 'dart:async' show FutureOr;
 
 import 'package:lean_builder/builder.dart';
 import 'package:glob/glob.dart' show Glob;
-import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
 
 /// {@template generator_factory}
@@ -286,11 +285,8 @@ class BuilderEntryImpl implements BuilderEntry {
   }) {
     return BuilderEntryImpl(
       key,
-      (BuilderOptions ops) => SharedPartBuilder(
-        <Generator>[generator(ops)],
-        allowSyntaxErrors: allowSyntaxErrors,
-        options: ops,
-      ),
+      (BuilderOptions ops) =>
+          SharedPartBuilder(<Generator>[generator(ops)], allowSyntaxErrors: allowSyntaxErrors, options: ops),
       generateToCache: generateToCache,
       generateFor: generateFor,
       runsBefore: <String>{...runsBefore, ...applies},
@@ -474,11 +470,7 @@ class CombiningBuilderEntry implements BuilderEntry {
   @override
   FutureOr<Set<Uri>> build(ResolverImpl resolver, Asset asset) async {
     final Uri outputUri = asset.uriWithExtension(SharedPartBuilder.extension);
-    final SharedBuildStep buildStep = SharedBuildStep(
-      asset,
-      resolver,
-      outputUri: outputUri,
-    );
+    final SharedBuildStep buildStep = SharedBuildStep(asset, resolver, outputUri: outputUri);
     for (final Builder builder in builders) {
       await builder.build(buildStep);
     }
@@ -498,8 +490,7 @@ class CombiningBuilderEntry implements BuilderEntry {
   /// {@endtemplate}
   static CombiningBuilderEntry fromEntries(List<BuilderEntryImpl> entries) {
     final String key = entries.map((BuilderEntryImpl e) => e.key).join('|');
-    final List<Builder> builders =
-        entries.map((BuilderEntryImpl e) => e.builder).toList();
+    final List<Builder> builders = entries.map((BuilderEntryImpl e) => e.builder).toList();
     final Map<Type, String> annotationsTypeMap = <Type, String>{
       for (final BuilderEntryImpl entry in entries) ...entry.registeredTypes,
     };
@@ -507,8 +498,7 @@ class CombiningBuilderEntry implements BuilderEntry {
     return CombiningBuilderEntry(
       builders: builders,
       key: key,
-      generateFor:
-          entries.expand((BuilderEntryImpl e) => e.generateFor).toSet(),
+      generateFor: entries.expand((BuilderEntryImpl e) => e.generateFor).toSet(),
       runsBefore: entries.expand((BuilderEntryImpl e) => e.runsBefore).toSet(),
       annotationsTypeMap: annotationsTypeMap,
       applies: entries.expand((BuilderEntryImpl e) => e.applies).toSet(),
@@ -520,7 +510,5 @@ class CombiningBuilderEntry implements BuilderEntry {
 
   /// {@macro builder_entry.output_extensions}
   @override
-  late final Set<String> outputExtensions = Set<String>.of(
-    builders.expand((Builder e) => e.outputExtensions),
-  );
+  late final Set<String> outputExtensions = Set<String>.of(builders.expand((Builder e) => e.outputExtensions));
 }

@@ -4,8 +4,6 @@ import 'dart:isolate' show Isolate;
 
 import 'package:lean_builder/builder.dart';
 import 'package:lean_builder/runner.dart';
-import 'package:lean_builder/src/asset/asset.dart';
-import 'package:lean_builder/src/asset/package_file_resolver.dart';
 import 'package:lean_builder/src/graph/assets_graph.dart';
 import 'package:lean_builder/src/graph/references_scan_manager.dart';
 import 'package:lean_builder/src/graph/references_scanner.dart';
@@ -77,9 +75,7 @@ class BuildPhase {
           if (outputUri == null) continue;
           if (outputExtensions.any((String e) => outputUri.path.endsWith(e))) {
             _oldOutputs.add(output);
-            assets.removeWhere(
-              (ProcessableAsset entry) => entry.asset.id == output,
-            );
+            assets.removeWhere((ProcessableAsset entry) => entry.asset.id == output);
           }
         }
       }
@@ -102,9 +98,7 @@ class BuildPhase {
   /// and any errors that occurred.
   /// {@endtemplate}
   Future<PhaseResult> build(Set<ProcessableAsset> assets) async {
-    Logger.debug(
-      'Running build phase for $builders, assets count: ${assets.length}',
-    );
+    Logger.debug('Running build phase for $builders, assets count: ${assets.length}');
 
     if (assets.length < 15) {
       final BuildResult result = await _buildChunk(assets);
@@ -142,14 +136,8 @@ class BuildPhase {
   ///
   /// Returns a [PhaseResult] containing information about outputs and errors
   /// {@endtemplate}
-  PhaseResult _finalizePhase(
-    Map<Asset, Set<Uri>> outputs,
-    List<FailedAsset> failedAssets,
-  ) {
-    final ReferencesScanner scanner = ReferencesScanner(
-      resolver.graph,
-      resolver.fileResolver,
-    );
+  PhaseResult _finalizePhase(Map<Asset, Set<Uri>> outputs, List<FailedAsset> failedAssets) {
+    final ReferencesScanner scanner = ReferencesScanner(resolver.graph, resolver.fileResolver);
     final Set<Uri> outputUris = <Uri>{};
     for (final MapEntry<Asset, Set<Uri>> entry in outputs.entries) {
       for (final Uri uri in entry.value) {
@@ -163,11 +151,7 @@ class BuildPhase {
       }
     }
     final Set<Uri> deletedOutputs = _cleanUp(outputUris);
-    return PhaseResult(
-      outputs: outputUris,
-      failedAssets: failedAssets,
-      deletedOutputs: deletedOutputs,
-    );
+    return PhaseResult(outputs: outputUris, failedAssets: failedAssets, deletedOutputs: deletedOutputs);
   }
 
   /// {@template build_phase._clean_up}
@@ -213,13 +197,8 @@ class BuildPhase {
         );
         for (final BuilderEntry builderEntry in builders) {
           if (!builderEntry.shouldGenerateFor(candidate)) continue;
-          final Set<Uri> generatedOutputs = await builderEntry.build(
-            resolver,
-            entry.asset,
-          );
-          chunkOutputs
-              .putIfAbsent(entry.asset, () => <Uri>{})
-              .addAll(generatedOutputs);
+          final Set<Uri> generatedOutputs = await builderEntry.build(resolver, entry.asset);
+          chunkOutputs.putIfAbsent(entry.asset, () => <Uri>{}).addAll(generatedOutputs);
         }
       } catch (e, stack) {
         chunkErrors.add(FailedAsset(entry.asset, e, stack));

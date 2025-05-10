@@ -69,8 +69,7 @@ class Logger {
   static void error(String message, {StackTrace? stackTrace}) {
     if (stackTrace != null) {
       final Trace trace = Trace.from(stackTrace).terse;
-      final Iterable<Frame> frames =
-          _currentLevel == LogLevel.fine ? trace.frames : trace.frames.take(4);
+      final Iterable<Frame> frames = _currentLevel == LogLevel.fine ? trace.frames : trace.frames.take(4);
       _instance.log(LogLevel.error, '$message\n${frames.join('\n')}');
     } else {
       _instance.log(LogLevel.error, message);
