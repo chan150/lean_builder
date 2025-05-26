@@ -1,3 +1,5 @@
+## 0.1.0-alpha.7
+- Fix: downgrade lints package version from 6.0.0 to 5.1.1
 ## 0.1.0-alpha.6
 - Fix: Add default constructor for classes with no constructors.
 - Feat: Add page_width role with fixed number for all generated files.
