@@ -1,3 +1,6 @@
+## 0.1.0-alpha.6
+- Fix: Add default constructor for classes with no constructors.
+- Feat: Add page_width role with fixed number for all generated files.
 ## 0.1.0-alpha.5
 - pre-build script snapshot is now generated on run not shipped
 ## 0.1.0-alpha.4

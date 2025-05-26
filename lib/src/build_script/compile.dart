@@ -39,13 +39,7 @@ Future<void> compileToAotSnapshot(String scriptPath, String outputPath) async {
     if (!dir.existsSync()) {
       dir.createSync(recursive: true);
     }
-    final result = await Process.run('dart', [
-      'compile',
-      'aot-snapshot',
-      scriptPath,
-      '-o',
-      outputPath,
-    ]);
+    final result = await Process.run('dart', ['compile', 'aot-snapshot', scriptPath, '-o', outputPath]);
 
     if (result.exitCode != 0) {
       throw CompileError('Failed to create JIT snapshot: ${result.stderr}');

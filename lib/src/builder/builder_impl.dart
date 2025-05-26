@@ -12,6 +12,10 @@ import 'builder.dart';
 import 'generator/generated_output.dart';
 import 'generator/generator.dart';
 
+/// A comment configuring `dart_style` to use the default code width so no
+/// configuration discovery is required.
+const dartFormatWidth = '// dart format width=80';
+
 /// Default header for generated files.
 const String defaultFileHeader = '// GENERATED CODE - DO NOT MODIFY BY HAND';
 
@@ -21,9 +25,12 @@ final bool _isDevMode = Zone.current[#isDevMode] == true;
 /// Default formatter function for generated Dart code.
 ///
 /// Uses the latest language version supported by the formatter.
-String _defaultFormatOutput(String code) => DartFormatter(
-  languageVersion: DartFormatter.latestLanguageVersion,
-).format(code);
+String _defaultFormatOutput(String code) {
+  return DartFormatter(
+    languageVersion: DartFormatter.latestLanguageVersion,
+    pageWidth: 80,
+  ).format('$dartFormatWidth\n$code');
+}
 
 /// Line of asterisks used as a separator in generated files.
 final String _headerLine = '// '.padRight(77, '*');
@@ -168,8 +175,7 @@ abstract class _Builder extends Builder {
     LibraryElement library,
     BuildStep buildStep,
   ) async {
-    final List<GeneratedOutput> generatedOutputs =
-        await _generate(library, _generators, buildStep).toList();
+    final List<GeneratedOutput> generatedOutputs = await _generate(library, _generators, buildStep).toList();
     if (generatedOutputs.isEmpty) return;
 
     final StringBuffer contentBuffer = StringBuffer();
@@ -233,8 +239,7 @@ This may indicate an issue in the generator, the input source code, or in the so
   }
 
   @override
-  String toString() =>
-      'Generating $outputExtensions: ${_generators.join(', ')}';
+  String toString() => 'Generating $outputExtensions: ${_generators.join(', ')}';
 }
 
 /// {@template library_builder}
@@ -314,8 +319,7 @@ class SharedPartBuilder extends _Builder {
     String content,
     String extension,
   ) {
-    if (outputExtensions.length != 1 ||
-        outputExtensions.first != SharedPartBuilder.extension) {
+    if (outputExtensions.length != 1 || outputExtensions.first != SharedPartBuilder.extension) {
       throw ArgumentError(
         'The output extension must be ${SharedPartBuilder.extension} '
         'but was ${outputExtensions.join(', ')}',
