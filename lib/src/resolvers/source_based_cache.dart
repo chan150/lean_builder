@@ -8,8 +8,7 @@ import 'dart:collection' show HashMap;
 /// {@endtemplate}
 class SourceBasedCache<T> {
   /// Internal storage for the cached values.
-  final HashMap<String, Map<String, T>> _cache =
-      HashMap<String, Map<String, T>>();
+  final HashMap<String, Map<String, T>> _cache = HashMap<String, Map<String, T>>();
 
   /// {@template source_based_cache.cache}
   /// Adds a value to the cache for the given source and target.
@@ -73,8 +72,7 @@ class SourceBasedCache<T> {
   /// @return The existing or newly cached value
   /// {@endtemplate}
   T putIfAbsent(CompoundKey key, T Function() value) {
-    return _cache.putIfAbsent(key.source, () => <String, T>{})[key.target] ??=
-        value();
+    return _cache.putIfAbsent(key.source, () => <String, T>{})[key.target] ??= value();
   }
 
   /// {@template source_based_cache.cache_key}
@@ -155,10 +153,7 @@ class CompoundKey {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is CompoundKey &&
-          runtimeType == other.runtimeType &&
-          source == other.source &&
-          target == other.target;
+      other is CompoundKey && runtimeType == other.runtimeType && source == other.source && target == other.target;
 
   @override
   int get hashCode => source.hashCode ^ target.hashCode;

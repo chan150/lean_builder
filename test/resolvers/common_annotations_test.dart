@@ -1,9 +1,7 @@
-import 'package:lean_builder/src/asset/package_file_resolver.dart'
-    show PackageFileResolver;
+import 'package:lean_builder/src/asset/package_file_resolver.dart' show PackageFileResolver;
 import 'package:lean_builder/src/element/element.dart';
 import 'package:lean_builder/src/graph/assets_graph.dart' show AssetsGraph;
-import 'package:lean_builder/src/graph/references_scanner.dart'
-    show ReferencesScanner;
+import 'package:lean_builder/src/graph/references_scanner.dart' show ReferencesScanner;
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/resolvers/source_parser.dart';
 import 'package:test/expect.dart';
@@ -89,18 +87,14 @@ void main() {
     expect(classElement.getAnnotation('sealed')!.isSealed, isTrue);
     expect(classElement.getAnnotation('useResult')!.isUseResult, isTrue);
     expect(
-      classElement
-          .getAnnotation('visibleForOverriding')!
-          .isVisibleForOverriding,
+      classElement.getAnnotation('visibleForOverriding')!.isVisibleForOverriding,
       isTrue,
     );
     expect(classElement.getAnnotation('useResult')!.isUseResult, isTrue);
     expect(classElement.getAnnotation('Target')!.isTarget, isTrue);
     expect(classElement.getAnnotation('useResult')!.isUseResult, isTrue);
     expect(
-      classElement
-          .getAnnotation('visibleForOverriding')!
-          .isVisibleForOverriding,
+      classElement.getAnnotation('visibleForOverriding')!.isVisibleForOverriding,
       isTrue,
     );
   });

@@ -87,7 +87,9 @@ class ReferencesScanner {
               final (
                 fasta.Token? nextT,
                 String? name,
-              ) = _tryParseLibraryDirective(nextToken);
+              ) = _tryParseLibraryDirective(
+                nextToken,
+              );
               libraryName = name;
               nextToken = nextT ?? nextToken;
               break;
@@ -97,7 +99,11 @@ class ReferencesScanner {
               final (
                 fasta.Token? nextT,
                 DirectiveStatement? direcitve,
-              ) = _tryParseDirective(type, nextToken, asset);
+              ) = _tryParseDirective(
+                type,
+                nextToken,
+                asset,
+              );
               nextToken = nextT ?? nextToken;
               if (direcitve != null) {
                 results.addDirective(asset, direcitve);
@@ -188,9 +194,7 @@ class ReferencesScanner {
     }
     String name = '';
     Token? nameToken = nextToken;
-    while (nameToken != null &&
-        nameToken.type != TokenType.SEMICOLON &&
-        !nameToken.isEof) {
+    while (nameToken != null && nameToken.type != TokenType.SEMICOLON && !nameToken.isEof) {
       name += nameToken.lexeme;
       nameToken = nameToken.next;
     }
@@ -306,9 +310,7 @@ class ReferencesScanner {
       if (current?.type == TokenType.STRING) {
         stringUri = current!.lexeme;
       } else {
-        while (current != null &&
-            !current.isEof &&
-            current.type != TokenType.SEMICOLON) {
+        while (current != null && !current.isEof && current.type != TokenType.SEMICOLON) {
           stringUri += current.lexeme;
           current = current.next;
         }
@@ -370,8 +372,7 @@ class ReferencesScanner {
     final int type = switch (keyword) {
       Keyword.IMPORT => DirectiveStatement.import,
       Keyword.EXPORT => DirectiveStatement.export,
-      Keyword.PART =>
-        isPartOf ? DirectiveStatement.partOf : DirectiveStatement.part,
+      Keyword.PART => isPartOf ? DirectiveStatement.partOf : DirectiveStatement.part,
       _ => throw UnimplementedError('Unknown directive type: $keyword'),
     };
 
@@ -403,9 +404,7 @@ class ReferencesScanner {
     while (token != null && token.type != TokenType.EOF) {
       token = _skipLTGT(token);
       token = _skipParenthesis(token);
-      if (scopeTracker == 0 &&
-          (token != null && token.isIdentifier ||
-              token?.type == TokenType.EQ)) {
+      if (scopeTracker == 0 && (token != null && token.isIdentifier || token?.type == TokenType.EQ)) {
         identifiers.add(token!);
       }
       if (token?.type == TokenType.SEMICOLON) {
@@ -418,10 +417,7 @@ class ReferencesScanner {
     final int eqIndex = identifiers.indexWhere(
       (fasta.Token e) => e.type == TokenType.EQ,
     );
-    final String? nameLexeme =
-        eqIndex > 0
-            ? identifiers[eqIndex - 1].lexeme
-            : identifiers.lastOrNull?.lexeme;
+    final String? nameLexeme = eqIndex > 0 ? identifiers[eqIndex - 1].lexeme : identifiers.lastOrNull?.lexeme;
     if (_isValidName(nameLexeme)) {
       results.addDeclaration(nameLexeme!, asset, ReferenceType.$typeAlias);
     }

@@ -133,15 +133,13 @@ class TypeUtils {
     }
 
     int length = typeParameters1.length;
-    List<TypeParameterType> freshTypeParameters =
-        List<TypeParameterType>.generate(length, (int index) {
-          return typeParameters1[index];
-        }, growable: false);
+    List<TypeParameterType> freshTypeParameters = List<TypeParameterType>.generate(length, (int index) {
+      return typeParameters1[index];
+    }, growable: false);
 
-    List<TypeParameterType> freshTypeParameterTypes =
-        List<TypeParameterType>.generate(length, (int index) {
-          return freshTypeParameters[index];
-        }, growable: false);
+    List<TypeParameterType> freshTypeParameterTypes = List<TypeParameterType>.generate(length, (int index) {
+      return freshTypeParameters[index];
+    }, growable: false);
 
     Substitution substitution1 = Substitution.fromPairs(
       typeParameters1,
@@ -208,9 +206,7 @@ class TypeUtils {
     }
 
     // A 'call' method tearoff.
-    if (fromType is InterfaceType &&
-        !isNullable(fromType) &&
-        acceptsFunctionType(toType)) {
+    if (fromType is InterfaceType && !isNullable(fromType) && acceptsFunctionType(toType)) {
       FunctionType? callMethodType = getCallMethodType(fromType);
       if (callMethodType != null && isAssignableTo(callMethodType, toType)) {
         return true;

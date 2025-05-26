@@ -15,8 +15,7 @@ class Substitution {
     List<TypeParameterType> typeParameters,
     List<DartType> typeArguments,
   ) {
-    final Map<TypeParameterType, DartType> map =
-        <TypeParameterType, DartType>{};
+    final Map<TypeParameterType, DartType> map = <TypeParameterType, DartType>{};
     for (int i = 0; i < typeParameters.length; i++) {
       if (i >= typeArguments.length) {
         map[typeParameters[i]] = DartType.dynamicType;
@@ -37,10 +36,9 @@ class Substitution {
       if (type.typeArguments.isEmpty) {
         return type;
       }
-      final List<DartType> substitutedTypeArgs =
-          type.typeArguments
-              .map((DartType typeArg) => substituteType(typeArg))
-              .toList();
+      final List<DartType> substitutedTypeArgs = type.typeArguments
+          .map((DartType typeArg) => substituteType(typeArg))
+          .toList();
       return InterfaceTypeImpl(
         type.name,
         type.declarationRef,
@@ -52,10 +50,9 @@ class Substitution {
       if (type.typeArguments.isEmpty) {
         return type;
       }
-      final List<DartType> substitutedTypeArgs =
-          type.typeArguments
-              .map((DartType typeArg) => substituteType(typeArg))
-              .toList();
+      final List<DartType> substitutedTypeArgs = type.typeArguments
+          .map((DartType typeArg) => substituteType(typeArg))
+          .toList();
       return TypeAliasTypeImpl(
         type.name,
         type.declarationRef,
@@ -65,13 +62,12 @@ class Substitution {
       );
     } else if (type is FunctionType) {
       final DartType returnType = substituteType(type.returnType);
-      final List<ParameterElement> parameters =
-          type.parameters.map((ParameterElement param) {
-            if (param is ParameterElementImpl) {
-              param.type = substituteType(param.type);
-            }
-            return param;
-          }).toList();
+      final List<ParameterElement> parameters = type.parameters.map((ParameterElement param) {
+        if (param is ParameterElementImpl) {
+          param.type = substituteType(param.type);
+        }
+        return param;
+      }).toList();
       return FunctionType(
         returnType: returnType,
         typeParameters: type.typeParameters,
@@ -79,8 +75,7 @@ class Substitution {
         isNullable: isNullable,
       );
     } else if (type is RecordType) {
-      final List<RecordTypePositionalField> positionalFields =
-          <RecordTypePositionalField>[];
+      final List<RecordTypePositionalField> positionalFields = <RecordTypePositionalField>[];
       for (final RecordTypePositionalField field in type.positionalFields) {
         positionalFields.add(
           RecordTypePositionalField(substituteType(field.type)),

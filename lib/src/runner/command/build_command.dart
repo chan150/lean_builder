@@ -188,10 +188,9 @@ class BuildCommand extends BaseCommand<int> {
     AssetsGraph assetsGraph,
     PackageFileResolver fileResolver,
   ) {
-    for (final MapEntry<String, Set<String>> entry
-        in List<MapEntry<String, Set<String>>>.of(
-          assetsGraph.outputs.entries,
-        )) {
+    for (final MapEntry<String, Set<String>> entry in List<MapEntry<String, Set<String>>>.of(
+      assetsGraph.outputs.entries,
+    )) {
       assetsGraph.updateAssetState(entry.key, AssetState.unProcessed);
       for (final String output in entry.value) {
         final Uri? outputUri = assetsGraph.uriForAssetOrNull(output);
@@ -284,8 +283,7 @@ class BuildCommand extends BaseCommand<int> {
 
       outputCount += result.outputs.length;
       if (result.containsAnyChanges) {
-        final List<BuilderEntry>? nextPhase =
-            i + 1 < phases.length ? phases[i + 1] : null;
+        final List<BuilderEntry>? nextPhase = i + 1 < phases.length ? phases[i + 1] : null;
         if (nextPhase != null) {
           for (final BuilderEntry builder in phase) {
             // skip if this builder did not do anything
@@ -293,8 +291,7 @@ class BuildCommand extends BaseCommand<int> {
 
             for (final BuilderEntry nextBuilder in nextPhase) {
               if (builder.applies.contains(nextBuilder.key)) {
-                final List<ScannedAsset> packageAssets = graph
-                    .getAssetsForPackage(fileResolver.rootPackage);
+                final List<ScannedAsset> packageAssets = graph.getAssetsForPackage(fileResolver.rootPackage);
                 for (final ScannedAsset asset in packageAssets) {
                   if (nextBuilder.outputExtensions.any(
                     (String e) => asset.uri.path.endsWith(e),

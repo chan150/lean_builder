@@ -1,7 +1,5 @@
-import 'package:analyzer/dart/ast/ast.dart'
-    show Expression, ArgumentList, NamedExpression;
-import 'package:collection/collection.dart'
-    show ListEquality, MapEquality, SetEquality;
+import 'package:analyzer/dart/ast/ast.dart' show Expression, ArgumentList, NamedExpression;
+import 'package:collection/collection.dart' show ListEquality, MapEquality, SetEquality;
 import 'package:lean_builder/element.dart';
 import 'package:lean_builder/src/graph/declaration_ref.dart';
 import 'package:lean_builder/src/type/type.dart';
@@ -92,9 +90,7 @@ class InvalidConst extends Constant {
   String toString() => 'null';
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is InvalidConst && runtimeType == other.runtimeType;
+  bool operator ==(Object other) => identical(this, other) || other is InvalidConst && runtimeType == other.runtimeType;
 
   @override
   int get hashCode => 0;
@@ -138,10 +134,7 @@ class ConstNull extends ConstLiteral<String> {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ConstNull &&
-          runtimeType == other.runtimeType &&
-          value == other.value;
+      identical(this, other) || other is ConstNull && runtimeType == other.runtimeType && value == other.value;
 
   @override
   int get hashCode => value.hashCode;
@@ -163,10 +156,7 @@ class ConstType extends ConstLiteral<DartType> {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ConstType &&
-          runtimeType == other.runtimeType &&
-          value == other.value;
+      identical(this, other) || other is ConstType && runtimeType == other.runtimeType && value == other.value;
 
   @override
   int get hashCode => value.hashCode;
@@ -185,10 +175,7 @@ class ConstString extends ConstLiteral<String> {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ConstString &&
-          runtimeType == other.runtimeType &&
-          value == other.value;
+      identical(this, other) || other is ConstString && runtimeType == other.runtimeType && value == other.value;
 
   @override
   int get hashCode => value.hashCode;
@@ -213,10 +200,7 @@ class ConstNum extends ConstLiteral<num> {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ConstNum &&
-          runtimeType == other.runtimeType &&
-          value == other.value;
+      identical(this, other) || other is ConstNum && runtimeType == other.runtimeType && value == other.value;
 
   @override
   int get hashCode => value.hashCode;
@@ -235,10 +219,7 @@ class ConstInt extends ConstLiteral<int> {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ConstInt &&
-          runtimeType == other.runtimeType &&
-          value == other.value;
+      identical(this, other) || other is ConstInt && runtimeType == other.runtimeType && value == other.value;
 
   @override
   int get hashCode => value.hashCode;
@@ -257,10 +238,7 @@ class ConstDouble extends ConstLiteral<double> {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ConstDouble &&
-          runtimeType == other.runtimeType &&
-          value == other.value;
+      identical(this, other) || other is ConstDouble && runtimeType == other.runtimeType && value == other.value;
 
   @override
   int get hashCode => value.hashCode;
@@ -281,10 +259,7 @@ class ConstSymbol extends ConstLiteral<String> {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ConstSymbol &&
-          runtimeType == other.runtimeType &&
-          value == other.value;
+      identical(this, other) || other is ConstSymbol && runtimeType == other.runtimeType && value == other.value;
 
   @override
   int get hashCode => value.hashCode;
@@ -303,10 +278,7 @@ class ConstBool extends ConstLiteral<bool> {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ConstBool &&
-          runtimeType == other.runtimeType &&
-          value == other.value;
+      identical(this, other) || other is ConstBool && runtimeType == other.runtimeType && value == other.value;
 
   @override
   int get hashCode => value.hashCode;
@@ -340,10 +312,7 @@ class ConstEnumValue extends ConstLiteral<String> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is ConstEnumValue &&
-          runtimeType == other.runtimeType &&
-          value == other.value &&
-          type == other.type;
+      other is ConstEnumValue && runtimeType == other.runtimeType && value == other.value && type == other.type;
 
   @override
   int get hashCode => value.hashCode ^ type.hashCode;
@@ -433,10 +402,7 @@ class ConstFunctionReferenceImpl extends ConstFunctionReference {
 
   @override
   int get hashCode =>
-      type.hashCode ^
-      name.hashCode ^
-      declaration.hashCode ^
-      const ListEquality<DartType>().hash(_typeArguments);
+      type.hashCode ^ name.hashCode ^ declaration.hashCode ^ const ListEquality<DartType>().hash(_typeArguments);
 
   @override
   Object? get literalValue => null;
@@ -457,8 +423,7 @@ class ConstList extends ConstLiteral<List<Constant>> {
   ConstList(super.value);
 
   @override
-  String toString() =>
-      '[${value.map((Constant e) => e.toString()).join(', ')}]';
+  String toString() => '[${value.map((Constant e) => e.toString()).join(', ')}]';
 
   @override
   bool operator ==(Object other) =>
@@ -471,8 +436,7 @@ class ConstList extends ConstLiteral<List<Constant>> {
   int get hashCode => const ListEquality<Constant>().hash(value);
 
   @override
-  List<dynamic> get literalValue =>
-      value.map((Constant e) => e.literalValue).toList();
+  List<dynamic> get literalValue => value.map((Constant e) => e.literalValue).toList();
 }
 
 /// {@template const_map}
@@ -490,8 +454,7 @@ class ConstMap extends ConstLiteral<Map<Constant, Constant>> {
   ConstMap(super.value);
 
   @override
-  String toString() =>
-      '{${value.entries.map((MapEntry<Constant, Constant> e) => '${e.key}: ${e.value}').join(', ')}}';
+  String toString() => '{${value.entries.map((MapEntry<Constant, Constant> e) => '${e.key}: ${e.value}').join(', ')}}';
 
   @override
   bool operator ==(Object other) =>
@@ -505,8 +468,7 @@ class ConstMap extends ConstLiteral<Map<Constant, Constant>> {
 
   @override
   Map<dynamic, dynamic> get literalValue => value.map(
-    (Constant k, Constant v) =>
-        MapEntry<dynamic, dynamic>(k.literalValue, v.literalValue),
+    (Constant k, Constant v) => MapEntry<dynamic, dynamic>(k.literalValue, v.literalValue),
   );
 }
 
@@ -525,22 +487,18 @@ class ConstSet extends ConstLiteral<Set<Constant>> {
   ConstSet(super.value);
 
   @override
-  String toString() =>
-      '{${value.map((Constant e) => e.toString()).join(', ')}}';
+  String toString() => '{${value.map((Constant e) => e.toString()).join(', ')}}';
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is ConstSet &&
-          runtimeType == other.runtimeType &&
-          const SetEquality<Constant>().equals(value, other.value);
+      other is ConstSet && runtimeType == other.runtimeType && const SetEquality<Constant>().equals(value, other.value);
 
   @override
   int get hashCode => const SetEquality<Constant>().hash(value);
 
   @override
-  Set<dynamic> get literalValue =>
-      value.map((Constant e) => e.literalValue).toSet();
+  Set<dynamic> get literalValue => value.map((Constant e) => e.literalValue).toSet();
 }
 
 /// {@template const_object}
@@ -684,8 +642,7 @@ class ConstObjectImpl extends ConstObject {
   final Map<int, String> positionalNames;
 
   @override
-  String toString() =>
-      '{${props.entries.map((MapEntry<String, Constant?> e) => '${e.key}: ${e.value}').join(', ')}}';
+  String toString() => '{${props.entries.map((MapEntry<String, Constant?> e) => '${e.key}: ${e.value}').join(', ')}}';
 
   @override
   ConstString? getString(String key) => _getTyped<ConstString>(key);
@@ -718,8 +675,7 @@ class ConstObjectImpl extends ConstObject {
   ConstEnumValue? getEnumValue(String key) => _getTyped<ConstEnumValue>(key);
 
   @override
-  ConstFunctionReference? getFunctionReference(String key) =>
-      _getTyped<ConstFunctionReference>(key);
+  ConstFunctionReference? getFunctionReference(String key) => _getTyped<ConstFunctionReference>(key);
 
   /// Helper method for retrieving typed properties.
   ///
@@ -784,8 +740,7 @@ class ConstObjectImpl extends ConstObject {
           type == other.type;
 
   @override
-  int get hashCode =>
-      const MapEquality<String, Constant?>().hash(props) ^ type.hashCode;
+  int get hashCode => const MapEquality<String, Constant?>().hash(props) ^ type.hashCode;
 
   @override
   final List<Expression> constructorArguments;

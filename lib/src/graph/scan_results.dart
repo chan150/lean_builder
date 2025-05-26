@@ -90,8 +90,7 @@ class GraphIndex {
 abstract class ScanResults {
   /// Represents the all the assets the scanner has seen.
   /// including the assets that are not processed yet (directives)
-  HashMap<String, List<dynamic> /*uri, digest, tlm-flag, state,library-name?*/>
-  get assets;
+  HashMap<String, List<dynamic> /*uri, digest, tlm-flag, state,library-name?*/> get assets;
 
   /// Represents the identifiers that have been found in the scanned assets.
   List<List<dynamic> /*name, src, type*/> get identifiers;
@@ -100,11 +99,7 @@ abstract class ScanResults {
   ///
   /// this is of every asset and it's directives
   /// it's mainly used to detect relationships between assets
-  HashMap<
-    String,
-    List<List<dynamic> /*type, src, stringUri, show, hide, prefix?, deferred?*/>
-  >
-  get directives;
+  HashMap<String, List<List<dynamic> /*type, src, stringUri, show, hide, prefix?, deferred?*/>> get directives;
 
   /// Returns a list of all the exports and parts of a file.
   ///
@@ -125,8 +120,10 @@ abstract class ScanResults {
   ///
   /// This has an option to include parts because in some contexts of this application
   /// parts are considered imports as they import from the main file.
-  List<List<dynamic> /*type, src, stringUri, show, hide ,prefix? ,deferred?*/>
-  importsOf(String fileId, {bool includeParts = true});
+  List<List<dynamic> /*type, src, stringUri, show, hide ,prefix? ,deferred?*/> importsOf(
+    String fileId, {
+    bool includeParts = true,
+  });
 
   /// Returns the parent source of a file.
   ///
@@ -189,12 +186,10 @@ abstract class ScanResults {
 
 /// The Default implementation of [ScanResults].
 class AssetsScanResults extends ScanResults {
-  final bool Function(List<dynamic>? list1, List<dynamic>? list2) _listEquals =
-      const ListEquality<dynamic>().equals;
+  final bool Function(List<dynamic>? list1, List<dynamic>? list2) _listEquals = const ListEquality<dynamic>().equals;
 
   @override
-  final HashMap<String, List<dynamic>> assets =
-      HashMap<String, List<dynamic>>();
+  final HashMap<String, List<dynamic>> assets = HashMap<String, List<dynamic>>();
 
   @override
   final List<List<dynamic>> identifiers = <List<dynamic>>[];
@@ -207,8 +202,7 @@ class AssetsScanResults extends ScanResults {
       fileDirectives.where((List<dynamic> e) {
         if (e[GraphIndex.directiveType] == DirectiveStatement.export) {
           return true;
-        } else if (includeParts &&
-            e[GraphIndex.directiveType] == DirectiveStatement.part) {
+        } else if (includeParts && e[GraphIndex.directiveType] == DirectiveStatement.part) {
           return true;
         }
         return false;
@@ -222,8 +216,7 @@ class AssetsScanResults extends ScanResults {
     if (fileDirectives == null) return const <List<dynamic>>[];
     return List<List<dynamic>>.of(
       fileDirectives.where(
-        (List<dynamic> e) =>
-            e[GraphIndex.directiveType] == DirectiveStatement.part,
+        (List<dynamic> e) => e[GraphIndex.directiveType] == DirectiveStatement.part,
       ),
     );
   }
@@ -243,15 +236,13 @@ class AssetsScanResults extends ScanResults {
 
   @override
   List<List<dynamic>> importsOf(String fileId, {bool includeParts = true}) {
-    final List<List<dynamic>>? fileDirectives =
-        directives[getParentSrc(fileId)];
+    final List<List<dynamic>>? fileDirectives = directives[getParentSrc(fileId)];
     if (fileDirectives == null) return const <List<dynamic>>[];
     return List<List<dynamic>>.of(
       fileDirectives.where((List<dynamic> e) {
         if (e[GraphIndex.directiveType] == DirectiveStatement.import) {
           return true;
-        } else if (includeParts &&
-            e[GraphIndex.directiveType] == DirectiveStatement.part) {
+        } else if (includeParts && e[GraphIndex.directiveType] == DirectiveStatement.part) {
           return true;
         }
         return false;
@@ -264,21 +255,18 @@ class AssetsScanResults extends ScanResults {
 
   @override
   bool isVisited(String fileId) {
-    return assets.containsKey(fileId) &&
-        assets[fileId]?[GraphIndex.assetDigest] != null;
+    return assets.containsKey(fileId) && assets[fileId]?[GraphIndex.assetDigest] != null;
   }
 
   @override
   void merge(ScanResults results) {
-    for (final MapEntry<String, List<dynamic>> asset
-        in results.assets.entries) {
+    for (final MapEntry<String, List<dynamic>> asset in results.assets.entries) {
       if (assets[asset.key]?[GraphIndex.assetDigest] == null) {
         assets[asset.key] = asset.value;
       }
     }
     // [type, src, stringUri, show, hide, prefix?, deferred?]]
-    for (final MapEntry<String, List<List<dynamic>>> directive
-        in results.directives.entries) {
+    for (final MapEntry<String, List<List<dynamic>>> directive in results.directives.entries) {
       if (!directives.containsKey(directive.key)) {
         directives[directive.key] = directive.value;
       } else {
@@ -290,15 +278,11 @@ class AssetsScanResults extends ScanResults {
           bool isDuplicate = false;
           for (final List<dynamic> exDir in allDirections) {
             final bool hasNameCombinator =
-                (newDir[GraphIndex.directiveType] ==
-                        DirectiveStatement.export ||
-                    newDir[GraphIndex.directiveType] ==
-                        DirectiveStatement.import);
+                (newDir[GraphIndex.directiveType] == DirectiveStatement.export ||
+                newDir[GraphIndex.directiveType] == DirectiveStatement.import);
 
-            if (newDir[GraphIndex.directiveType] ==
-                    exDir[GraphIndex.directiveType] &&
-                newDir[GraphIndex.directiveSrc] ==
-                    exDir[GraphIndex.directiveSrc] &&
+            if (newDir[GraphIndex.directiveType] == exDir[GraphIndex.directiveType] &&
+                newDir[GraphIndex.directiveSrc] == exDir[GraphIndex.directiveSrc] &&
                 (!hasNameCombinator ||
                     (_listEquals(
                           newDir[GraphIndex.directiveShow],
@@ -339,8 +323,7 @@ class AssetsScanResults extends ScanResults {
   void addDirective(Asset src, DirectiveStatement statement) {
     assert(assets.containsKey(src.id));
     final String directiveSrcId = addAsset(statement.asset);
-    final List<List<dynamic>> srcDirectives =
-        directives[src.id] ?? <List<dynamic>>[];
+    final List<List<dynamic>> srcDirectives = directives[src.id] ?? <List<dynamic>>[];
     if (srcDirectives.isNotEmpty) {
       for (final List<dynamic> directive in srcDirectives) {
         final int directiveType = directive[GraphIndex.directiveType];
@@ -396,8 +379,7 @@ class AssetsScanResults extends ScanResults {
   /// Looks up an identifier in the identifiers list.
   List<dynamic>? lookupIdentifier(String identifier, String src) {
     for (final List<dynamic> entry in identifiers) {
-      if (entry[GraphIndex.identifierName] == identifier &&
-          entry[GraphIndex.identifierSrc] == src) {
+      if (entry[GraphIndex.identifierName] == identifier && entry[GraphIndex.identifierSrc] == src) {
         return entry;
       }
     }
@@ -455,8 +437,7 @@ class AssetsScanResults extends ScanResults {
       'identifiers': identifiers,
       'directives': directives,
       'outputs': outputs.map(
-        (String key, Set<String> value) =>
-            MapEntry<String, List<String>>(key, value.toList()),
+        (String key, Set<String> value) => MapEntry<String, List<String>>(key, value.toList()),
       ),
     };
   }
@@ -469,18 +450,14 @@ class AssetsScanResults extends ScanResults {
     instance.assets.addAll(
       (json['assets'] as Map<String, dynamic>).cast<String, List<dynamic>>(),
     );
-    for (final MapEntry<String, dynamic> directive
-        in (json['directives'] as Map<String, dynamic>).entries) {
-      instance.directives[directive.key] =
-          (directive.value as List<dynamic>).cast<List<dynamic>>();
+    for (final MapEntry<String, dynamic> directive in (json['directives'] as Map<String, dynamic>).entries) {
+      instance.directives[directive.key] = (directive.value as List<dynamic>).cast<List<dynamic>>();
     }
     instance.identifiers.addAll(
       (json['identifiers'] as List<dynamic>).cast<List<dynamic>>(),
     );
-    for (final MapEntry<String, dynamic> entry
-        in (json['outputs'] as Map<String, dynamic>).entries) {
-      instance.outputs[entry.key] =
-          (entry.value as List<dynamic>).cast<String>().toSet();
+    for (final MapEntry<String, dynamic> entry in (json['outputs'] as Map<String, dynamic>).entries) {
+      instance.outputs[entry.key] = (entry.value as List<dynamic>).cast<String>().toSet();
     }
     return instance;
   }
@@ -491,8 +468,7 @@ class AssetsScanResults extends ScanResults {
   }
 
   @override
-  final HashMap<String, List<List<dynamic>>> directives =
-      HashMap<String, List<List<dynamic>>>();
+  final HashMap<String, List<List<dynamic>>> directives = HashMap<String, List<List<dynamic>>>();
 
   @override
   final HashMap<String, Set<String>> outputs = HashMap<String, Set<String>>();
@@ -544,8 +520,7 @@ class AssetsScanResults extends ScanResults {
     } else {
       // avoid duplicate entries
       for (final List<dynamic> directive in fileDirectives) {
-        if (directive[GraphIndex.directiveType] ==
-                DirectiveStatement.partOfLibrary &&
+        if (directive[GraphIndex.directiveType] == DirectiveStatement.partOfLibrary &&
             directive[GraphIndex.directiveStringUri] == stringUri) {
           return;
         }
@@ -567,8 +542,7 @@ class AssetsScanResults extends ScanResults {
     } else if (type == DirectiveStatement.partOfLibrary) {
       for (final MapEntry<String, List<dynamic>> asset in assets.entries) {
         if (asset.value.length > GraphIndex.assetLibraryName &&
-            asset.value[GraphIndex.assetLibraryName] ==
-                partOf[GraphIndex.directiveStringUri]) {
+            asset.value[GraphIndex.assetLibraryName] == partOf[GraphIndex.directiveStringUri]) {
           return asset.key;
         }
       }
@@ -646,8 +620,7 @@ enum ReferenceType {
   }
 
   /// Returns true if this reference type represents a named type.
-  bool get representsANamedType =>
-      representsInterfaceType || this == $extension || this == $typeAlias;
+  bool get representsANamedType => representsInterfaceType || this == $extension || this == $typeAlias;
 }
 
 /// An Enumeration representing the state of an asset in the asset graph.

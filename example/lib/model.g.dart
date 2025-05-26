@@ -13,6 +13,4 @@ Person _$PersonFromJson(Map<String, dynamic> json) => Person(
   (json['hobbies'] as List<dynamic>).cast<String>(),
 );
 
-Address _$AddressFromJson(Map<String, dynamic> json) =>
-    Address(json['street'] as String, json['city'] as String);
-
+Address _$AddressFromJson(Map<String, dynamic> json) => Address(json['street'] as String, json['city'] as String);

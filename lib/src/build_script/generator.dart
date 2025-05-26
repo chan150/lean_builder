@@ -20,8 +20,7 @@ String generateBuildScript(List<BuilderDefinitionEntry> entries) {
   for (final BuilderDefinitionEntry entry in entries) {
     imports.add(entry.import);
     if (entry.registeredTypes != null) {
-      for (final RuntimeTypeRegisterEntry annotation
-          in entry.registeredTypes!) {
+      for (final RuntimeTypeRegisterEntry annotation in entry.registeredTypes!) {
         if (annotation.import != null) {
           imports.add(annotation.import!);
         }
@@ -29,8 +28,7 @@ String generateBuildScript(List<BuilderDefinitionEntry> entries) {
     }
   }
   for (final String import in imports) {
-    final String prefix =
-        importPrefixes[import] ??= 'i${importPrefixes.length + 1}';
+    final String prefix = importPrefixes[import] ??= 'i${importPrefixes.length + 1}';
     writeln('import \'$import\' as $prefix;');
   }
   final String builderPrefix = importPrefixes[_leanBuilderImport]!;
@@ -66,21 +64,16 @@ String generateBuildScript(List<BuilderDefinitionEntry> entries) {
       if (type.isLibrary)
         'outputExtensions'
             ' : {${entry.outputExtensions!.map((String e) => "'$e'").join(', ')}}',
-      entry.expectsOptions
-          ? '$prefix.${entry.generatorName}.new'
-          : '(_)=> $prefix.${entry.generatorName}()',
-      if (entry.generateToCache != null)
-        'generateToCache: ${entry.generateToCache}',
+      entry.expectsOptions ? '$prefix.${entry.generatorName}.new' : '(_)=> $prefix.${entry.generatorName}()',
+      if (entry.generateToCache != null) 'generateToCache: ${entry.generateToCache}',
       if (typeRegMap.isNotEmpty)
         'registeredTypes: {${typeRegMap.entries.map((MapEntry<String, String> e) => "${e.key}: '${e.value}' ").join(', ')}}',
-      if (entry.allowSyntaxErrors != null)
-        'allowSyntaxErrors: ${entry.allowSyntaxErrors}',
+      if (entry.allowSyntaxErrors != null) 'allowSyntaxErrors: ${entry.allowSyntaxErrors}',
       if (entry.generateFor?.isNotEmpty == true)
         'generateFor: {${entry.generateFor!.map((String e) => "'$e'").join(', ')}}',
       if (entry.runsBefore?.isNotEmpty == true)
         'runsBefore: {${entry.runsBefore!.map((String e) => "'$e'").join(', ')}}',
-      if (entry.applies?.isNotEmpty == true)
-        'applies: {${entry.applies!.map((String e) => "'$e'").join(', ')}}',
+      if (entry.applies?.isNotEmpty == true) 'applies: {${entry.applies!.map((String e) => "'$e'").join(', ')}}',
       if (entry.options?.isNotEmpty == true)
         'options: ${entry.options!.map((String k, dynamic v) => MapEntry<String, dynamic>("'$k'", v))}',
     ];

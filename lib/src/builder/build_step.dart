@@ -11,9 +11,7 @@ import 'package:lean_builder/builder.dart';
 import 'package:lean_builder/src/asset/assets_reader.dart';
 import 'package:lean_builder/src/build_script/paths.dart';
 import 'package:lean_builder/src/element/element.dart';
-import 'package:path/path.dart'
-    as p
-    show basename, withoutExtension, join, current, dirname, relative;
+import 'package:path/path.dart' as p show basename, withoutExtension, join, current, dirname, relative;
 
 /// some of the abstractions are borrowed from the build package
 
@@ -216,8 +214,7 @@ class BuildStepImpl implements BuildStep {
   @override
   bool hasValidPartDirectiveFor(String extension) {
     final LibraryElementImpl library = resolver.libraryFor(asset);
-    final Iterable<PartDirective> partDirectives =
-        library.compilationUnit.directives.whereType<PartDirective>();
+    final Iterable<PartDirective> partDirectives = library.compilationUnit.directives.whereType<PartDirective>();
     final PackageFileResolver fileResolver = resolver.fileResolver;
     for (final PartDirective partDirect in partDirectives) {
       final String? part = partDirect.uri.stringValue;

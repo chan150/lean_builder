@@ -76,8 +76,7 @@ class AssetsGraph extends AssetsScanResults {
   AssetsGraph(this.hash) : loadedFromCache = false, shouldInvalidate = false;
 
   /// Creates a graph from cached data
-  AssetsGraph._fromCache(this.hash, {this.shouldInvalidate = false})
-    : loadedFromCache = true;
+  AssetsGraph._fromCache(this.hash, {this.shouldInvalidate = false}) : loadedFromCache = true;
 
   /// {@template assets_graph.init}
   /// Initialize an assets graph, loading from cache if possible.
@@ -233,22 +232,16 @@ class AssetsGraph extends AssetsScanResults {
     ];
 
     for (final List<Object?> importEntry in fileImports) {
-      final String importedFileSrc =
-          importEntry[GraphIndex.directiveSrc] as String;
-      final String? prefix =
-          importEntry.elementAtOrNull(GraphIndex.directivePrefix) as String?;
+      final String importedFileSrc = importEntry[GraphIndex.directiveSrc] as String;
+      final String? prefix = importEntry.elementAtOrNull(GraphIndex.directivePrefix) as String?;
       if (importPrefix != null && importPrefix != prefix) continue;
 
       // Skip if the identifier is hidden
-      final List<dynamic> hides =
-          importEntry[GraphIndex.directiveHide] as List<dynamic>? ??
-          const <dynamic>[];
+      final List<dynamic> hides = importEntry[GraphIndex.directiveHide] as List<dynamic>? ?? const <dynamic>[];
       if (hides.contains(identifier)) continue;
 
       // Skip if the identifier is not shown
-      final List<dynamic> shows =
-          importEntry[GraphIndex.directiveShow] as List<dynamic>? ??
-          const <dynamic>[];
+      final List<dynamic> shows = importEntry[GraphIndex.directiveShow] as List<dynamic>? ?? const <dynamic>[];
       if (shows.isNotEmpty && !shows.contains(identifier)) continue;
 
       // Check if the imported file directly declares the identifier
@@ -259,8 +252,7 @@ class AssetsGraph extends AssetsScanResults {
       }
     }
     for (final List<Object?> importEntry in fileImports) {
-      final String importedFileSrc =
-          importEntry[GraphIndex.directiveSrc] as String;
+      final String importedFileSrc = importEntry[GraphIndex.directiveSrc] as String;
       final Set<String> visitedSrcs = <String>{};
       final String? src = _traceExportsOf(
         importedFileSrc,
@@ -291,17 +283,16 @@ class AssetsGraph extends AssetsScanResults {
   /// {@endtemplate}
   DeclarationRef? lookupIdentifierByProvider(String name, String providerSrc) {
     if (!assets.containsKey(providerSrc)) return null;
-    final Map<String, List<dynamic>> possibleSrcs =
-        Map<String, List<dynamic>>.fromEntries(
-          identifiers
-              .where((List<dynamic> e) => e[GraphIndex.identifierName] == name)
-              .map(
-                (List<dynamic> e) => MapEntry<String, List<dynamic>>(
-                  e[GraphIndex.identifierSrc],
-                  e,
-                ),
-              ),
-        );
+    final Map<String, List<dynamic>> possibleSrcs = Map<String, List<dynamic>>.fromEntries(
+      identifiers
+          .where((List<dynamic> e) => e[GraphIndex.identifierName] == name)
+          .map(
+            (List<dynamic> e) => MapEntry<String, List<dynamic>>(
+              e[GraphIndex.identifierSrc],
+              e,
+            ),
+          ),
+    );
 
     // First check if the identifier is declared directly in this file
     for (final MapEntry<String, List<dynamic>> entry in possibleSrcs.entries) {
@@ -363,13 +354,9 @@ class AssetsGraph extends AssetsScanResults {
     final Set<String> checkableExports = <String>{};
     for (final List<dynamic> export in exports) {
       final String exportedFileSrc = export[GraphIndex.directiveSrc] as String;
-      final List<dynamic> hides =
-          export[GraphIndex.directiveHide] as List<dynamic>? ??
-          const <dynamic>[];
+      final List<dynamic> hides = export[GraphIndex.directiveHide] as List<dynamic>? ?? const <dynamic>[];
       if (hides.contains(identifier)) continue;
-      final List<dynamic> shows =
-          export[GraphIndex.directiveShow] as List<dynamic>? ??
-          const <dynamic>[];
+      final List<dynamic> shows = export[GraphIndex.directiveShow] as List<dynamic>? ?? const <dynamic>[];
       if (shows.isNotEmpty && !shows.contains(identifier)) continue;
 
       if (possibleSrcs.contains(exportedFileSrc)) {
@@ -471,8 +458,7 @@ class AssetsGraph extends AssetsScanResults {
   factory AssetsGraph.fromCache(Map<String, dynamic> json, String hash) {
     final String? lastUsedHash = json['hash'] as String?;
     final String? version = json['version'] as String?;
-    final bool shouldInvalidate =
-        lastUsedHash != hash || version != AssetsGraph.version;
+    final bool shouldInvalidate = lastUsedHash != hash || version != AssetsGraph.version;
     final AssetsGraph instance = AssetsGraph._fromCache(
       hash,
       shouldInvalidate: shouldInvalidate,
@@ -526,8 +512,7 @@ class AssetsGraph extends AssetsScanResults {
     if (visited.contains(id)) return <String>{};
     visited.add(id);
     final Set<String> dependents = <String>{};
-    for (final MapEntry<String, List<List<dynamic>>> entry
-        in directives.entries) {
+    for (final MapEntry<String, List<List<dynamic>>> entry in directives.entries) {
       for (final List<dynamic> directive in entry.value) {
         final int type = directive[GraphIndex.directiveType];
         if (directive[GraphIndex.directiveSrc] == id) {

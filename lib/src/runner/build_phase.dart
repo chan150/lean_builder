@@ -215,9 +215,7 @@ class BuildPhase {
             resolver,
             entry.asset,
           );
-          chunkOutputs
-              .putIfAbsent(entry.asset, () => <Uri>{})
-              .addAll(generatedOutputs);
+          chunkOutputs.putIfAbsent(entry.asset, () => <Uri>{}).addAll(generatedOutputs);
         }
       } catch (e, stack) {
         chunkErrors.add(FailedAsset(entry.asset, e, stack));

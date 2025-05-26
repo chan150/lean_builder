@@ -201,8 +201,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
         typeAliasElm.didResolveMetadata = true;
       }
     });
-    final TypeAnnotation targetType =
-        node.functionType != null ? node.functionType! : node.type;
+    final TypeAnnotation targetType = node.functionType != null ? node.functionType! : node.type;
     final DartType type = resolveTypeRef((targetType), typeAliasElm);
     typeAliasElm.aliasedType = type;
 
@@ -412,19 +411,13 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
           enumElement.library,
           this,
         );
-        final EnumDeclaration enumNode =
-            node.thisOrAncestorOfType<EnumDeclaration>()!;
-        final SimpleIdentifier? constructorName =
-            args.constructorSelector?.name;
-        final ConstructorDeclaration constructor = enumNode.members
-            .whereType<ConstructorDeclaration>()
-            .firstWhere(
-              (ConstructorDeclaration e) =>
-                  e.name?.lexeme == constructorName?.name,
-              orElse: () => throw Exception('Could not find constructor'),
-            );
-        final ConstObjectImpl? constantObj =
-            constEvaluator.evaluate(constructor) as ConstObjectImpl?;
+        final EnumDeclaration enumNode = node.thisOrAncestorOfType<EnumDeclaration>()!;
+        final SimpleIdentifier? constructorName = args.constructorSelector?.name;
+        final ConstructorDeclaration constructor = enumNode.members.whereType<ConstructorDeclaration>().firstWhere(
+          (ConstructorDeclaration e) => e.name?.lexeme == constructorName?.name,
+          orElse: () => throw Exception('Could not find constructor'),
+        );
+        final ConstObjectImpl? constantObj = constEvaluator.evaluate(constructor) as ConstObjectImpl?;
         return constantObj?.construct(
           args.argumentList,
           constEvaluator,
@@ -440,8 +433,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
 
   @override
   void visitTypeParameter(TypeParameter node) {
-    final TypeParameterizedElementMixin element =
-        currentElementAs<TypeParameterizedElementMixin>();
+    final TypeParameterizedElementMixin element = currentElementAs<TypeParameterizedElementMixin>();
     final TypeAnnotation? bound = node.bound;
     DartType boundType = DartType.dynamicType;
     if (bound != null) {
@@ -459,8 +451,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
     }
     if (typeAnno is NamedType) {
       if (enclosingEle is TypeParameterizedElementMixin) {
-        for (final TypeParameterType typeParam
-            in enclosingEle.allTypeParameters) {
+        for (final TypeParameterType typeParam in enclosingEle.allTypeParameters) {
           if (typeParam.name == typeAnno.name2.lexeme) {
             return typeParam.withNullability(typeAnno.question != null);
           }
@@ -500,19 +491,16 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
     RecordTypeAnnotation typeAnnotation,
     Element enclosingEle,
   ) {
-    final List<RecordTypePositionalField> positionalTypes =
-        <RecordTypePositionalField>[];
-    for (final RecordTypeAnnotationPositionalField field
-        in typeAnnotation.positionalFields) {
+    final List<RecordTypePositionalField> positionalTypes = <RecordTypePositionalField>[];
+    for (final RecordTypeAnnotationPositionalField field in typeAnnotation.positionalFields) {
       positionalTypes.add(
         RecordTypePositionalField(resolveTypeRef(field.type, enclosingEle)),
       );
     }
     final List<RecordTypeNamedField> namedTypes = <RecordTypeNamedField>[];
-    for (final RecordTypeAnnotationNamedField field
-        in <RecordTypeAnnotationNamedField>[
-          ...?typeAnnotation.namedFields?.fields,
-        ]) {
+    for (final RecordTypeAnnotationNamedField field in <RecordTypeAnnotationNamedField>[
+      ...?typeAnnotation.namedFields?.fields,
+    ]) {
       namedTypes.add(
         RecordTypeNamedField(
           field.name.lexeme,
@@ -582,8 +570,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
 
   @override
   void visitFieldDeclaration(FieldDeclaration node) {
-    final InterfaceElementImpl interfaceElement =
-        currentElementAs<InterfaceElementImpl>();
+    final InterfaceElementImpl interfaceElement = currentElementAs<InterfaceElementImpl>();
     final DartType fieldType = resolveTypeRef(
       node.fields.type,
       interfaceElement,
@@ -643,16 +630,17 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
       LibraryElementImpl lib,
       AstNode targetNode,
       DeclarationRef decRef,
-    ) = resolver.astNodeFor(identifier, currentElement.library);
+    ) = resolver.astNodeFor(
+      identifier,
+      currentElement.library,
+    );
     final ConstantEvaluator constantEvaluator = ConstantEvaluator(
       resolver,
       lib,
       this,
     );
-    if (targetNode is ClassDeclaration ||
-        targetNode is ConstructorDeclaration) {
-      final ClassDeclaration classDeclaration =
-          targetNode.thisOrAncestorOfType<ClassDeclaration>()!;
+    if (targetNode is ClassDeclaration || targetNode is ConstructorDeclaration) {
+      final ClassDeclaration classDeclaration = targetNode.thisOrAncestorOfType<ClassDeclaration>()!;
       final String className = classDeclaration.name.lexeme;
       final List<DartType> typeArgs = <DartType>[];
       for (final TypeAnnotation typeArg in <TypeAnnotation>[
@@ -674,16 +662,12 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
           if (targetNode is ConstructorDeclaration) {
             constructor = targetNode;
           } else {
-            constructor = classDeclaration.members
-                .whereType<ConstructorDeclaration>()
-                .firstWhere(
-                  (ConstructorDeclaration e) =>
-                      e.name?.lexeme == node.constructorName?.name,
-                  orElse: () => throw Exception('Could not find constructor'),
-                );
+            constructor = classDeclaration.members.whereType<ConstructorDeclaration>().firstWhere(
+              (ConstructorDeclaration e) => e.name?.lexeme == node.constructorName?.name,
+              orElse: () => throw Exception('Could not find constructor'),
+            );
           }
-          final ConstObjectImpl? obj =
-              constantEvaluator.evaluate(constructor) as ConstObjectImpl?;
+          final ConstObjectImpl? obj = constantEvaluator.evaluate(constructor) as ConstObjectImpl?;
           if (node.arguments != null) {
             return constantEvaluator.visitElementScoped(
               currentElement.library,
@@ -700,8 +684,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
         },
       );
       currentElement.addMetadata(elem);
-    } else if (targetNode is TopLevelVariableDeclaration ||
-        targetNode is FieldDeclaration) {
+    } else if (targetNode is TopLevelVariableDeclaration || targetNode is FieldDeclaration) {
       final VariableDeclarationList varList;
       if (targetNode is TopLevelVariableDeclaration) {
         varList = targetNode.variables;
@@ -801,8 +784,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
   @override
   void visitSimpleFormalParameter(SimpleFormalParameter node) {
     final String name = node.name?.lexeme ?? '';
-    final ExecutableElementImpl executableElement =
-        currentElementAs<ExecutableElementImpl>();
+    final ExecutableElementImpl executableElement = currentElementAs<ExecutableElementImpl>();
     if (executableElement.getParameter(name) != null) {
       return;
     }
@@ -816,11 +798,9 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
   @override
   void visitDefaultFormalParameter(DefaultFormalParameter node) {
     node.parameter.accept(this);
-    final ExecutableElementImpl executableElement =
-        currentElementAs<ExecutableElementImpl>();
+    final ExecutableElementImpl executableElement = currentElementAs<ExecutableElementImpl>();
     final ParameterElementImpl? param =
-        executableElement.getParameter(node.name?.lexeme ?? '')
-            as ParameterElementImpl?;
+        executableElement.getParameter(node.name?.lexeme ?? '') as ParameterElementImpl?;
     if (param != null && node.defaultValue != null) {
       param.initializer = node.defaultValue;
       param.setConstantComputeValue(() {
@@ -837,21 +817,18 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
   @override
   void visitFieldFormalParameter(FieldFormalParameter node) {
     final String name = node.name.lexeme;
-    final ConstructorElementImpl constructorEle =
-        currentElementAs<ConstructorElementImpl>();
+    final ConstructorElementImpl constructorEle = currentElementAs<ConstructorElementImpl>();
     if (constructorEle.getParameter(name) != null) {
       return;
     }
-    final InterfaceElementImpl interfaceElement =
-        constructorEle.enclosingElement as InterfaceElementImpl;
+    final InterfaceElementImpl interfaceElement = constructorEle.enclosingElement as InterfaceElementImpl;
     final List<FieldElement> fields = interfaceElement.fields;
-    final DartType thisType =
-        fields
-            .firstWhere(
-              (FieldElement e) => e.name == name,
-              orElse: () => throw Exception('Could not link this type'),
-            )
-            .type;
+    final DartType thisType = fields
+        .firstWhere(
+          (FieldElement e) => e.name == name,
+          orElse: () => throw Exception('Could not link this type'),
+        )
+        .type;
     final ParameterElementImpl parameterElement = _buildParameter(
       node,
       constructorEle,
@@ -870,18 +847,17 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
       LibraryElementImpl lib,
       ClassDeclaration clazzNode as ClassDeclaration,
       _,
-    ) = resolver.astNodeFor(ref, library);
+    ) = resolver.astNodeFor(
+      ref,
+      library,
+    );
 
-    final ConstructorDeclaration constructorNode = clazzNode.members
-        .whereType<ConstructorDeclaration>()
-        .firstWhere(
-          (ConstructorDeclaration e) =>
-              (e.name?.lexeme ?? '') == constructorName,
-        );
+    final ConstructorDeclaration constructorNode = clazzNode.members.whereType<ConstructorDeclaration>().firstWhere(
+      (ConstructorDeclaration e) => (e.name?.lexeme ?? '') == constructorName,
+    );
 
     final FormalParameter targetParam;
-    final NodeList<FormalParameter> ancestorParams =
-        constructorNode.parameters.parameters;
+    final NodeList<FormalParameter> ancestorParams = constructorNode.parameters.parameters;
     if (superParam.isNamed) {
       targetParam = ancestorParams.firstWhere(
         (FormalParameter e) => e.name?.lexeme == superParam.name.lexeme,
@@ -889,10 +865,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
       );
     } else {
       final List<FormalParameter> thisParams = <FormalParameter>[
-        ...?superParam
-            .thisOrAncestorOfType<ConstructorDeclaration>()
-            ?.parameters
-            .parameters,
+        ...?superParam.thisOrAncestorOfType<ConstructorDeclaration>()?.parameters.parameters,
       ];
       final int superParamIndex = thisParams.indexWhere(
         (FormalParameter p) => p.name?.lexeme == superParam.name.lexeme,
@@ -921,16 +894,12 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
       LibraryElementImpl lib,
     ) {
       if (param is FieldFormalParameter) {
-        final FieldDeclaration field = clazzNode.members
-            .whereType<FieldDeclaration>()
-            .firstWhere(
-              (FieldDeclaration e) => e.fields.variables.any(
-                (VariableDeclaration v) => v.name.lexeme == param.name.lexeme,
-              ),
-              orElse:
-                  () =>
-                      throw Exception('Could not find field formal parameter'),
-            );
+        final FieldDeclaration field = clazzNode.members.whereType<FieldDeclaration>().firstWhere(
+          (FieldDeclaration e) => e.fields.variables.any(
+            (VariableDeclaration v) => v.name.lexeme == param.name.lexeme,
+          ),
+          orElse: () => throw Exception('Could not find field formal parameter'),
+        );
         return (
           resolveTypeRef(field.fields.type, getTypeParamsCollector()),
           null,
@@ -940,10 +909,9 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
       } else if (param is DefaultFormalParameter) {
         return (buildParam(param.parameter, lib).$1, param.defaultValue);
       } else if (param is SuperFormalParameter) {
-        final SuperConstructorInvocation? superInvocation =
-            constructorNode.initializers
-                .whereType<SuperConstructorInvocation>()
-                .singleOrNull;
+        final SuperConstructorInvocation? superInvocation = constructorNode.initializers
+            .whereType<SuperConstructorInvocation>()
+            .singleOrNull;
         final NamedType superType = clazzNode.extendsClause!.superclass;
         return _resolveSuperParam(
           ref: IdentifierRef(
@@ -965,14 +933,12 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
   @override
   void visitSuperFormalParameter(SuperFormalParameter node) {
     final String name = node.name.lexeme;
-    final ConstructorElementImpl constructorEle =
-        currentElementAs<ConstructorElementImpl>();
+    final ConstructorElementImpl constructorEle = currentElementAs<ConstructorElementImpl>();
     if (constructorEle.getParameter(name) != null) {
       return;
     }
     final LibraryElementImpl library = currentLibrary();
-    final ConstructorElementRef superConstRef =
-        constructorEle.superConstructor!;
+    final ConstructorElementRef superConstRef = constructorEle.superConstructor!;
 
     final (DartType superType, Expression? initializer) = _resolveSuperParam(
       ref: IdentifierRef(
@@ -1059,16 +1025,15 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
     );
     final DartType type = resolveTypeRef((node.variables.type), library);
     for (final VariableDeclaration variable in node.variables.variables) {
-      final TopLevelVariableElementImpl topLevelVar =
-          TopLevelVariableElementImpl(
-            name: variable.name.lexeme,
-            isConst: node.variables.isConst,
-            isFinal: node.variables.isFinal,
-            isLate: node.variables.isLate,
-            isExternal: node.externalKeyword != null,
-            hasImplicitType: node.variables.type == null,
-            enclosingElement: library,
-          );
+      final TopLevelVariableElementImpl topLevelVar = TopLevelVariableElementImpl(
+        name: variable.name.lexeme,
+        isConst: node.variables.isConst,
+        isFinal: node.variables.isFinal,
+        isLate: node.variables.isLate,
+        isExternal: node.externalKeyword != null,
+        hasImplicitType: node.variables.type == null,
+        enclosingElement: library,
+      );
       topLevelVar.type = type;
       if (variable.initializer != null) {
         topLevelVar.setConstantComputeValue(() {
@@ -1093,8 +1058,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
 
   @override
   void visitMethodDeclaration(MethodDeclaration node) {
-    final InterfaceElementImpl interfaceElement =
-        currentElementAs<InterfaceElementImpl>();
+    final InterfaceElementImpl interfaceElement = currentElementAs<InterfaceElementImpl>();
     final String name = node.name.lexeme;
     MethodElementImpl methodElement = MethodElementImpl(
       isStatic: node.isStatic,
@@ -1142,20 +1106,17 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
 
   @override
   void visitConstructorDeclaration(ConstructorDeclaration node) {
-    final InterfaceElementImpl interfaceElement =
-        currentElementAs<InterfaceElementImpl>();
+    final InterfaceElementImpl interfaceElement = currentElementAs<InterfaceElementImpl>();
     final String constructorName = node.name?.lexeme ?? '';
 
     final NodeList<ConstructorInitializer> initializers = node.initializers;
     ConstructorElementRef? superConstructor;
 
     if (interfaceElement.superType != null) {
-      final Iterable<SuperConstructorInvocation> invocations =
-          initializers.whereType<SuperConstructorInvocation>();
-      final String? superConstName =
-          invocations
-              .map((SuperConstructorInvocation e) => e.constructorName?.name)
-              .firstOrNull;
+      final Iterable<SuperConstructorInvocation> invocations = initializers.whereType<SuperConstructorInvocation>();
+      final String? superConstName = invocations
+          .map((SuperConstructorInvocation e) => e.constructorName?.name)
+          .firstOrNull;
       final NamedDartType? superClazz = interfaceElement.superType;
       if (superClazz != null) {
         superConstructor = ConstructorElementRef(
@@ -1177,8 +1138,7 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
     setCodeRange(constructorElement, node);
     Token? nameNode = node.name;
     if (nameNode == null) {
-      final Token parentName =
-          node.thisOrAncestorOfType<NamedCompilationUnitMember>()!.name;
+      final Token parentName = node.thisOrAncestorOfType<NamedCompilationUnitMember>()!.name;
       constructorElement.setNameRange(node.offset, parentName.length);
     } else {
       constructorElement.setNameRange(nameNode.offset, nameNode.length);
@@ -1195,11 +1155,10 @@ class ElementBuilder extends UnifyingAstVisitor<void> with ElementStack<void> {
     final ConstructorName? redirectedConstructor = node.redirectedConstructor;
     if (redirectedConstructor != null) {
       final NamedType redType = redirectedConstructor.type;
-      final IdentifierRef identifierRef = resolver
-          .resolveIdentifier(interfaceElement.library, <String>[
-            if (redType.importPrefix != null) redType.importPrefix!.name.lexeme,
-            redType.name2.lexeme,
-          ]);
+      final IdentifierRef identifierRef = resolver.resolveIdentifier(interfaceElement.library, <String>[
+        if (redType.importPrefix != null) redType.importPrefix!.name.lexeme,
+        redType.name2.lexeme,
+      ]);
 
       final DeclarationRef? declarationRef = resolver.getDeclarationRef(
         identifierRef.topLevelTarget,

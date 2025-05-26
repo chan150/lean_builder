@@ -188,20 +188,16 @@ class DirectivesBuilder extends ElementBuilder {
     String stringUri,
     int type,
   ) {
-    final List<List<dynamic>>? fileDirectives =
-        resolver.graph.directives[library.src.id];
+    final List<List<dynamic>>? fileDirectives = resolver.graph.directives[library.src.id];
     if (fileDirectives == null) {
       throw StateError('No directives found for ${library.src.shortUri}');
     }
     final List<dynamic> directive = fileDirectives.firstWhere(
       (List<dynamic> element) =>
-          element[GraphIndex.directiveStringUri] == stringUri &&
-          element[GraphIndex.directiveType] == type,
-      orElse:
-          () =>
-              throw StateError(
-                'No export directive found for $stringUri in ${library.src.shortUri}',
-              ),
+          element[GraphIndex.directiveStringUri] == stringUri && element[GraphIndex.directiveType] == type,
+      orElse: () => throw StateError(
+        'No export directive found for $stringUri in ${library.src.shortUri}',
+      ),
     );
     return directive;
   }

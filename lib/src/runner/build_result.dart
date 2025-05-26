@@ -56,10 +56,7 @@ class FailedAsset {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is FailedAsset &&
-          runtimeType == other.runtimeType &&
-          asset == other.asset &&
-          error == other.error;
+      other is FailedAsset && runtimeType == other.runtimeType && asset == other.asset && error == other.error;
 
   @override
   int get hashCode => asset.hashCode ^ error.hashCode;
@@ -99,8 +96,7 @@ class PhaseResult {
   /// Whether the phase produced any changes
   ///
   /// This includes both new outputs and deleted outputs
-  bool get containsAnyChanges =>
-      outputs.isNotEmpty || deletedOutputs.isNotEmpty;
+  bool get containsAnyChanges => outputs.isNotEmpty || deletedOutputs.isNotEmpty;
 
   /// {@template phase_result.contains_changes_from_builder}
   /// Checks whether this phase contains changes from a specific builder.

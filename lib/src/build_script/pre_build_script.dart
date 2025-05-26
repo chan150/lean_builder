@@ -3,8 +3,7 @@ import 'dart:isolate' show SendPort;
 import 'package:lean_builder/src/asset/package_file_resolver.dart';
 import 'package:lean_builder/src/build_script/build_script.dart';
 import 'package:lean_builder/src/graph/assets_graph.dart';
-import 'package:lean_builder/src/graph/references_scan_manager.dart'
-    show ProcessableAsset, ReferencesScanManager;
+import 'package:lean_builder/src/graph/references_scan_manager.dart' show ProcessableAsset, ReferencesScanManager;
 import 'package:lean_builder/src/logger.dart';
 import 'package:lean_builder/src/resolvers/source_parser.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
@@ -23,8 +22,7 @@ Future<void> main(List<String> args, SendPort? port) async {
     Logger.info('Syncing assets graph...');
     await scanManager.scanAssets();
     Logger.info("Assets graph synced in ${stopWatch.elapsed.formattedMS}.");
-    final Set<ProcessableAsset> builderAssets = graph
-        .getBuilderProcessableAssets(fileResolver);
+    final Set<ProcessableAsset> builderAssets = graph.getBuilderProcessableAssets(fileResolver);
     final ResolverImpl resolver = ResolverImpl(
       graph,
       fileResolver,

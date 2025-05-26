@@ -1,5 +1,4 @@
-import 'package:collection/collection.dart'
-    show SetEquality, MapEquality, ListEquality;
+import 'package:collection/collection.dart' show SetEquality, MapEquality, ListEquality;
 
 /// Represents a runtime type entry used for registering type annotations.
 ///

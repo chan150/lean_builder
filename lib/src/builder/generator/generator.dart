@@ -27,8 +27,7 @@ abstract class Generator {
   /// @param buildStep The build step providing context for generation
   /// @return Generated code as a string, or null if nothing to generate
   /// {@endtemplate}
-  FutureOr<String?> generate(LibraryElement library, BuildStep buildStep) =>
-      null;
+  FutureOr<String?> generate(LibraryElement library, BuildStep buildStep) => null;
 
   @override
   String toString() => runtimeType.toString();
@@ -252,8 +251,7 @@ abstract class GeneratorForAnnotatedEnum<T> extends GeneratorForAnnotation<T> {
 /// This specialized generator only targets function elements and automatically
 /// handles filtering out non-function elements.
 /// {@endtemplate}
-abstract class GeneratorForAnnotatedFunction<T>
-    extends GeneratorForAnnotation<T> {
+abstract class GeneratorForAnnotatedFunction<T> extends GeneratorForAnnotation<T> {
   /// {@macro generator_for_annotation_base.constructor}
   const GeneratorForAnnotatedFunction({super.throwOnUnresolved});
 

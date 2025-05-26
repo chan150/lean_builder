@@ -4,9 +4,7 @@ import 'dart:typed_data' show Uint8List;
 
 import 'package:lean_builder/src/utils.dart';
 import 'package:meta/meta.dart' show visibleForTesting;
-import 'package:path/path.dart'
-    as p
-    show join, joinAll, dirname, normalize, canonicalize, current;
+import 'package:path/path.dart' as p show join, joinAll, dirname, normalize, canonicalize, current;
 import 'package:xxh3/xxh3.dart' show xxh3String;
 import 'asset.dart';
 import 'errors.dart';
@@ -162,8 +160,7 @@ abstract class PackageFileResolver {
   /// @return A new PackageFileResolver with the restored state
   /// {@endtemplate}
   factory PackageFileResolver.fromJson(Map<String, dynamic> data) {
-    final Map<String, String> packageToPath =
-        (data['packageToPath'] as Map<dynamic, dynamic>).cast<String, String>();
+    final Map<String, String> packageToPath = (data['packageToPath'] as Map<dynamic, dynamic>).cast<String, String>();
 
     return PackageFileResolverImpl(
       packageToPath,
@@ -291,10 +288,7 @@ class PackageFileResolverImpl implements PackageFileResolver {
           absoluteUri = Directory.current.uri.resolve(
             packageUri.pathSegments.skip(1).join('/'),
           );
-          resolvedPath =
-              absoluteUri
-                  .replace(path: p.canonicalize(absoluteUri.path))
-                  .toString();
+          resolvedPath = absoluteUri.replace(path: p.canonicalize(absoluteUri.path)).toString();
         }
         packageToPath[name] = resolvedPath;
       }
@@ -313,11 +307,10 @@ class PackageFileResolverImpl implements PackageFileResolver {
     if (uri.scheme == 'dart') {
       return PackageFileResolver.dartSdk;
     }
-    final String path =
-        resolveFileUri(
-          uri,
-          relativeTo: relativeTo,
-        ).replace(scheme: 'file').toString();
+    final String path = resolveFileUri(
+      uri,
+      relativeTo: relativeTo,
+    ).replace(scheme: 'file').toString();
     String? bestMatch;
     int bestMatchLength = 0;
     for (final MapEntry<String, String> entry in pathToPackage.entries) {
@@ -329,9 +322,7 @@ class PackageFileResolverImpl implements PackageFileResolver {
         return packageName;
       }
       // Check if uri starts with this root path
-      if (path.startsWith(rootPath) &&
-          (rootPath.endsWith('/') ||
-              path.substring(rootPath.length).startsWith('/'))) {
+      if (path.startsWith(rootPath) && (rootPath.endsWith('/') || path.substring(rootPath.length).startsWith('/'))) {
         // If this match is longer than our current best match, use it
         if (rootPath.length > bestMatchLength) {
           bestMatch = packageName;
@@ -543,8 +534,7 @@ class PackageFileResolverImpl implements PackageFileResolver {
       throw InvalidPathError('Relative URI requires a base URI');
     }
     final String baseDir = p.dirname(relativeTo.path);
-    final String uriPath =
-        uri.path.startsWith('/') ? uri.path.substring(1) : uri.path;
+    final String uriPath = uri.path.startsWith('/') ? uri.path.substring(1) : uri.path;
     try {
       final String normalized = p.normalize(p.join(baseDir, uriPath));
       return Uri(scheme: 'file', path: normalized);

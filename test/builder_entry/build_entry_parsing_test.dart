@@ -445,7 +445,9 @@ void main() {
     final (
       List<BuilderDefinitionEntry> entries,
       List<BuilderOverride> overries,
-    ) = parseBuilderEntries(<Asset>{asset}, resolver);
+    ) = parseBuilderEntries(<Asset>{
+      asset,
+    }, resolver);
     final List<BuilderDefinitionEntry> withOverrides = applyOverrides(
       entries,
       overries,

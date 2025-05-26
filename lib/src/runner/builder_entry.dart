@@ -497,8 +497,7 @@ class CombiningBuilderEntry implements BuilderEntry {
   /// {@endtemplate}
   static CombiningBuilderEntry fromEntries(List<BuilderEntryImpl> entries) {
     final String key = entries.map((BuilderEntryImpl e) => e.key).join('|');
-    final List<Builder> builders =
-        entries.map((BuilderEntryImpl e) => e.builder).toList();
+    final List<Builder> builders = entries.map((BuilderEntryImpl e) => e.builder).toList();
     final Map<Type, String> annotationsTypeMap = <Type, String>{
       for (final BuilderEntryImpl entry in entries) ...entry.registeredTypes,
     };
@@ -506,8 +505,7 @@ class CombiningBuilderEntry implements BuilderEntry {
     return CombiningBuilderEntry(
       builders: builders,
       key: key,
-      generateFor:
-          entries.expand((BuilderEntryImpl e) => e.generateFor).toSet(),
+      generateFor: entries.expand((BuilderEntryImpl e) => e.generateFor).toSet(),
       runsBefore: entries.expand((BuilderEntryImpl e) => e.runsBefore).toSet(),
       annotationsTypeMap: annotationsTypeMap,
       applies: entries.expand((BuilderEntryImpl e) => e.applies).toSet(),

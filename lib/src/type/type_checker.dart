@@ -81,16 +81,14 @@ abstract class TypeChecker {
   /// {@macro annotation_check}
   ///
   /// Returns if a constant annotating [element] is exactly this type.
-  bool hasAnnotationOfExact(Element element) =>
-      firstAnnotationOfExact(element) != null;
+  bool hasAnnotationOfExact(Element element) => firstAnnotationOfExact(element) != null;
 
   /// {@macro annotation_check}
   ///
   /// Returns annotating constants on [element] assignable to this type.
-  Iterable<ElementAnnotation> annotationsOf(Element element) =>
-      _annotationsWhere(element, (DartType ref) {
-        return isAssignableFromType(ref);
-      });
+  Iterable<ElementAnnotation> annotationsOf(Element element) => _annotationsWhere(element, (DartType ref) {
+    return isAssignableFromType(ref);
+  });
 
   Iterable<ElementAnnotation> _annotationsWhere(
     Element element,
@@ -107,8 +105,7 @@ abstract class TypeChecker {
   /// {@macro annotation_check}
   ///
   /// Returns annotating constants on [element] of exactly this type.
-  Iterable<ElementAnnotation> annotationsOfExact(Element element) =>
-      _annotationsWhere(element, isExactlyType);
+  Iterable<ElementAnnotation> annotationsOfExact(Element element) => _annotationsWhere(element, isExactlyType);
 
   /// {@template type_assignability}
   /// Checks type assignability according to Dart's type system rules.
@@ -118,8 +115,7 @@ abstract class TypeChecker {
   ///
   /// Returns `true` if the type of [element] can be assigned to this type.
   bool isAssignableFrom(Element element) {
-    return isExactly(element) ||
-        (element is InterfaceElement && isAssignableFromType(element.thisType));
+    return isExactly(element) || (element is InterfaceElement && isAssignableFromType(element.thisType));
   }
 
   /// {@macro type_assignability}
@@ -240,11 +236,9 @@ class _UriTypeChecker extends _TypeCheckerImpl {
 abstract class _TypeCheckerImpl extends TypeChecker {
   _TypeCheckerImpl() : super._();
 
-  final Map<String, InterfaceType> _resolvedTypesCache =
-      <String, InterfaceType>{};
+  final Map<String, InterfaceType> _resolvedTypesCache = <String, InterfaceType>{};
 
-  final Map<String, (bool, NamedDartType?)> _superTypeChecksCache =
-      <String, (bool, NamedDartType?)>{};
+  final Map<String, (bool, NamedDartType?)> _superTypeChecksCache = <String, (bool, NamedDartType?)>{};
 
   (bool, NamedDartType?) _checkSupertypesRecursively(
     NamedDartType typeToCheck,
@@ -262,10 +256,8 @@ abstract class _TypeCheckerImpl extends TypeChecker {
       importPrefix: typeToCheck.declarationRef.importPrefix,
       declarationRef: typeToCheck.declarationRef,
     );
-    final (LibraryElementImpl library, AstNode unit, _) = importingLib.resolver
-        .astNodeFor(identifier, importingLib);
-    final Map<InterfaceType, LibraryElement> typesToSuperCheck =
-        <InterfaceType, LibraryElement>{};
+    final (LibraryElementImpl library, AstNode unit, _) = importingLib.resolver.astNodeFor(identifier, importingLib);
+    final Map<InterfaceType, LibraryElement> typesToSuperCheck = <InterfaceType, LibraryElement>{};
 
     (bool, InterfaceType?) check(NamedType? typeAnnotation) {
       if (typeAnnotation == null) {
@@ -340,8 +332,7 @@ abstract class _TypeCheckerImpl extends TypeChecker {
       throw Exception('Unsupported AST node type: ${unit.runtimeType}');
     }
 
-    for (final MapEntry<InterfaceType, LibraryElement> entry
-        in typesToSuperCheck.entries) {
+    for (final MapEntry<InterfaceType, LibraryElement> entry in typesToSuperCheck.entries) {
       final (bool match, NamedDartType? type) = _checkSupertypesRecursively(
         entry.key,
         entry.value,
@@ -364,12 +355,11 @@ abstract class _TypeCheckerImpl extends TypeChecker {
     }
     final String typename = superType.name2.lexeme;
     final ImportPrefixReference? importPrefix = superType.importPrefix;
-    final DeclarationRef? identifierLocation = importingLib.resolver
-        .getDeclarationRef(
-          typename,
-          importingLib.src,
-          importPrefix: importPrefix?.name.lexeme,
-        );
+    final DeclarationRef? identifierLocation = importingLib.resolver.getDeclarationRef(
+      typename,
+      importingLib.src,
+      importPrefix: importPrefix?.name.lexeme,
+    );
 
     if (identifierLocation == null) {
       throw IdentifierNotFoundError(
@@ -388,8 +378,7 @@ abstract class _TypeCheckerImpl extends TypeChecker {
   }
 
   @override
-  bool isSupertypeOf(DartType typeRef) =>
-      _isSupertypeOf(typeRef, extendClauseOnly: true);
+  bool isSupertypeOf(DartType typeRef) => _isSupertypeOf(typeRef, extendClauseOnly: true);
 
   bool _isSupertypeOf(DartType typeRef, {bool extendClauseOnly = false}) {
     if (typeRef is InterfaceType) {
@@ -422,7 +411,10 @@ abstract class _TypeCheckerImpl extends TypeChecker {
       final (
         bool match,
         NamedDartType? superType,
-      ) = _checkSupertypesRecursively(typeRef, importingLib);
+      ) = _checkSupertypesRecursively(
+        typeRef,
+        importingLib,
+      );
       return match ? superType : null;
     }
     return null;

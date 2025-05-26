@@ -17,19 +17,16 @@ import 'compile.dart' as compile;
 import 'paths.dart' as paths;
 
 /// Import path for lean_builder annotation classes.
-const String _leanAnnotations =
-    'package:lean_builder/src/build_script/annotations.dart';
+const String _leanAnnotations = 'package:lean_builder/src/build_script/annotations.dart';
 
 /// Import path for the Generator base class.
-const String _leanGenerator =
-    'package:lean_builder/src/builder/generator/generator.dart';
+const String _leanGenerator = 'package:lean_builder/src/builder/generator/generator.dart';
 
 /// Import path for the Builder base class.
 const String _leanBuilders = 'package:lean_builder/src/builder/builder.dart';
 
 /// Import path for parsed builder entry classes.
-const String _parsedBuilderEntry =
-    'package:lean_builder/src/build_script/parsed_builder_entry.dart';
+const String _parsedBuilderEntry = 'package:lean_builder/src/build_script/parsed_builder_entry.dart';
 
 /// Prepares the build script by generating code based on the provided assets.
 ///
@@ -163,8 +160,10 @@ List<BuilderDefinitionEntry> applyOverrides(
     'LeanBuilder',
     _leanAnnotations,
   );
-  late final TypeChecker leanBuilderOverrideTypeChecker = resolver
-      .typeCheckerFor('LeanBuilderOverrides', _leanAnnotations);
+  late final TypeChecker leanBuilderOverrideTypeChecker = resolver.typeCheckerFor(
+    'LeanBuilderOverrides',
+    _leanAnnotations,
+  );
   late final TypeChecker generatorTypeChecker = resolver.typeCheckerFor(
     'Generator',
     _leanGenerator,
@@ -190,8 +189,7 @@ List<BuilderDefinitionEntry> applyOverrides(
         );
       }
       final NamedDartType? superType = element.superType;
-      if (superType == null ||
-          !generatorTypeChecker.isAssignableFromType(superType)) {
+      if (superType == null || !generatorTypeChecker.isAssignableFromType(superType)) {
         throw BuildConfigError(
           'Expected a class that extends Generator for LeanGenerator annotation',
         );
@@ -203,8 +201,7 @@ List<BuilderDefinitionEntry> applyOverrides(
       }
 
       final bool isShared = constObj.constructorName == 'shared';
-      final BuilderType builderType =
-          isShared ? BuilderType.shared : BuilderType.library;
+      final BuilderType builderType = isShared ? BuilderType.shared : BuilderType.library;
       final BuilderDefinitionEntry builderEntry = _buildEntry(
         asset,
         constObj,
@@ -226,8 +223,7 @@ List<BuilderDefinitionEntry> applyOverrides(
       }
       final NamedDartType? superType = element.superType;
 
-      if (superType == null ||
-          !builderTypeChecker.isAssignableFromType(superType)) {
+      if (superType == null || !builderTypeChecker.isAssignableFromType(superType)) {
         throw BuildConfigError(
           'Expected a class that extends Builder for LeanBuilder annotation',
         );
@@ -264,8 +260,7 @@ List<BuilderDefinitionEntry> applyOverrides(
       final List<Constant> list = constObj.value;
       if (list.isEmpty) continue;
       for (final Constant obj in list) {
-        if (obj is! ConstObject ||
-            !builderOverrideTypeChecker.isExactlyType(obj.type)) {
+        if (obj is! ConstObject || !builderOverrideTypeChecker.isExactlyType(obj.type)) {
           throw BuildConfigError(
             'Expected a const object of type BuilderOverride as list element',
           );
@@ -318,8 +313,7 @@ BuilderDefinitionEntry _buildEntry(
 ) {
   Set<String>? outputExtensions;
   if (builderType.isLibrary) {
-    final Set<String>? extensions =
-        constObj.getSet('outputExtensions')?.literalValue.cast<String>();
+    final Set<String>? extensions = constObj.getSet('outputExtensions')?.literalValue.cast<String>();
     if (extensions != null && extensions.isNotEmpty) {
       outputExtensions = extensions;
     } else {
@@ -340,11 +334,8 @@ BuilderDefinitionEntry _buildEntry(
         'Expected a constructor with no parameters or one positional parameter of type (BuilderOptions)',
       );
     }
-    final ParameterElement? options =
-        constructor.parameters.isNotEmpty ? constructor.parameters.first : null;
-    if (options != null &&
-        (!options.isPositional ||
-            !optionsTypeChecker.isExactlyType(options.type))) {
+    final ParameterElement? options = constructor.parameters.isNotEmpty ? constructor.parameters.first : null;
+    if (options != null && (!options.isPositional || !optionsTypeChecker.isExactlyType(options.type))) {
       throw BuildConfigError(
         'Expected a parameter of exact type BuilderOptions, but got ${options.type}',
       );
@@ -352,8 +343,7 @@ BuilderDefinitionEntry _buildEntry(
     expectsOptions = options != null;
   }
 
-  final List<RuntimeTypeRegisterEntry> typesToRegister =
-      <RuntimeTypeRegisterEntry>[];
+  final List<RuntimeTypeRegisterEntry> typesToRegister = <RuntimeTypeRegisterEntry>[];
   final String import = _resolveImport(asset.shortUri)!;
   final Set<Constant>? annotationRefs = constObj.getSet('registerTypes')?.value;
   final Set<DartType> types = <DartType>{

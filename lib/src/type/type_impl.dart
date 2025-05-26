@@ -111,20 +111,16 @@ class InterfaceTypeImpl extends TypeImpl implements InterfaceType {
   String get _srcName => declarationRef.srcUri.toString();
 
   @override
-  bool get isDartCoreBool =>
-      name == 'bool' && _srcName == CoreTypeSource.coreBool;
+  bool get isDartCoreBool => name == 'bool' && _srcName == CoreTypeSource.coreBool;
 
   @override
-  bool get isDartCoreDouble =>
-      name == 'double' && _srcName == CoreTypeSource.coreDouble;
+  bool get isDartCoreDouble => name == 'double' && _srcName == CoreTypeSource.coreDouble;
 
   @override
-  bool get isDartCoreEnum =>
-      name == 'Enum' && _srcName == CoreTypeSource.coreEnum;
+  bool get isDartCoreEnum => name == 'Enum' && _srcName == CoreTypeSource.coreEnum;
 
   @override
-  bool get isDartCoreFunction =>
-      name == 'Function' && _srcName == CoreTypeSource.coreFunction;
+  bool get isDartCoreFunction => name == 'Function' && _srcName == CoreTypeSource.coreFunction;
 
   @override
   bool get isDartCoreInt => name == 'int' && _srcName == CoreTypeSource.coreInt;
@@ -133,62 +129,49 @@ class InterfaceTypeImpl extends TypeImpl implements InterfaceType {
   bool get isDartCoreNum => name == 'num' && _srcName == CoreTypeSource.coreNum;
 
   @override
-  bool get isDartCoreIterable =>
-      name == 'Iterable' && _srcName == CoreTypeSource.coreIterable;
+  bool get isDartCoreIterable => name == 'Iterable' && _srcName == CoreTypeSource.coreIterable;
 
   @override
-  bool get isDartCoreList =>
-      name == 'List' && _srcName == CoreTypeSource.coreList;
+  bool get isDartCoreList => name == 'List' && _srcName == CoreTypeSource.coreList;
 
   @override
   bool get isDartCoreMap => name == 'Map' && _srcName == CoreTypeSource.coreMap;
 
   @override
-  bool get isDartCoreNull =>
-      name == 'Null' && _srcName == CoreTypeSource.coreNull;
+  bool get isDartCoreNull => name == 'Null' && _srcName == CoreTypeSource.coreNull;
 
   @override
-  bool get isDartCoreObject =>
-      name == 'Object' && _srcName == CoreTypeSource.coreObject;
+  bool get isDartCoreObject => name == 'Object' && _srcName == CoreTypeSource.coreObject;
 
   @override
-  bool get isDartCoreRecord =>
-      name == 'Record' && _srcName == CoreTypeSource.coreRecord;
+  bool get isDartCoreRecord => name == 'Record' && _srcName == CoreTypeSource.coreRecord;
 
   @override
   bool get isDartCoreSet => name == 'Set' && _srcName == CoreTypeSource.coreSet;
 
   @override
-  bool get isDartCoreString =>
-      name == 'String' && _srcName == CoreTypeSource.coreString;
+  bool get isDartCoreString => name == 'String' && _srcName == CoreTypeSource.coreString;
 
   @override
-  bool get isDartCoreSymbol =>
-      name == 'Symbol' && _srcName == CoreTypeSource.coreSymbol;
+  bool get isDartCoreSymbol => name == 'Symbol' && _srcName == CoreTypeSource.coreSymbol;
 
   @override
-  bool get isDartCoreType =>
-      name == 'Type' && _srcName == CoreTypeSource.coreType;
+  bool get isDartCoreType => name == 'Type' && _srcName == CoreTypeSource.coreType;
 
   @override
-  bool get isDartAsyncFuture =>
-      name == 'Future' && _srcName == CoreTypeSource.asyncFuture;
+  bool get isDartAsyncFuture => name == 'Future' && _srcName == CoreTypeSource.asyncFuture;
 
   @override
-  bool get isDartAsyncFutureOr =>
-      name == 'FutureOr' && _srcName == CoreTypeSource.asyncFutureOr;
+  bool get isDartAsyncFutureOr => name == 'FutureOr' && _srcName == CoreTypeSource.asyncFutureOr;
 
   @override
-  bool get isDartAsyncStream =>
-      name == 'Stream' && _srcName == CoreTypeSource.asyncStream;
+  bool get isDartAsyncStream => name == 'Stream' && _srcName == CoreTypeSource.asyncStream;
 
   @override
-  bool get isDartCoreBigInt =>
-      name == 'BigInt' && _srcName == CoreTypeSource.coreBigInt;
+  bool get isDartCoreBigInt => name == 'BigInt' && _srcName == CoreTypeSource.coreBigInt;
 
   @override
-  bool get isDartCoreDateTime =>
-      name == 'DateTime' && _srcName == CoreTypeSource.coreDateTime;
+  bool get isDartCoreDateTime => name == 'DateTime' && _srcName == CoreTypeSource.coreDateTime;
 
   @override
   bool get isEnum => declarationRef.type == ReferenceType.$enum;
@@ -243,16 +226,13 @@ class InterfaceTypeImpl extends TypeImpl implements InterfaceType {
 
   @override
   int get hashCode =>
-      name.hashCode ^
-      declarationRef.srcId.hashCode ^
-      const ListEquality<DartType>().hash(typeArguments);
+      name.hashCode ^ declarationRef.srcId.hashCode ^ const ListEquality<DartType>().hash(typeArguments);
 
   /// Determines if this type is exactly the same as [other].
   @override
   bool isExactly(DartType other) {
     if (other is NamedDartType) {
-      return name == other.name &&
-          declarationRef.srcId == other.declarationRef.srcId;
+      return name == other.name && declarationRef.srcId == other.declarationRef.srcId;
     }
     return false;
   }
@@ -387,8 +367,7 @@ class TypeAliasTypeImpl extends TypeImpl implements TypeAliasType {
   @override
   bool isExactly(DartType other) {
     if (other is TypeAliasTypeImpl) {
-      return name == other.name &&
-          declarationRef.srcId == other.declarationRef.srcId;
+      return name == other.name && declarationRef.srcId == other.declarationRef.srcId;
     }
     return false;
   }
@@ -449,10 +428,12 @@ class FunctionType extends TypeImpl {
 
   @override
   String toString() {
-    final Iterable<ParameterElement> requiredPositionalParams = parameters
-        .where((ParameterElement p) => p.isRequiredPositional);
-    final Iterable<ParameterElement> optionalPositionalParams = parameters
-        .where((ParameterElement p) => p.isOptionalPositional);
+    final Iterable<ParameterElement> requiredPositionalParams = parameters.where(
+      (ParameterElement p) => p.isRequiredPositional,
+    );
+    final Iterable<ParameterElement> optionalPositionalParams = parameters.where(
+      (ParameterElement p) => p.isOptionalPositional,
+    );
     final Iterable<ParameterElement> namedParams = parameters.where(
       (ParameterElement p) => p.isNamed,
     );
@@ -471,9 +452,7 @@ class FunctionType extends TypeImpl {
       buffer.write('(');
       if (requiredPositionalParams.isNotEmpty) {
         buffer.write(
-          requiredPositionalParams
-              .map((ParameterElement e) => '${e.type} ${e.name}')
-              .join(', '),
+          requiredPositionalParams.map((ParameterElement e) => '${e.type} ${e.name}').join(', '),
         );
       }
       if (optionalPositionalParams.isNotEmpty) {
@@ -482,22 +461,17 @@ class FunctionType extends TypeImpl {
         }
         buffer.write('[');
         buffer.write(
-          optionalPositionalParams
-              .map((ParameterElement e) => '${e.type} ${e.name}')
-              .join(', '),
+          optionalPositionalParams.map((ParameterElement e) => '${e.type} ${e.name}').join(', '),
         );
         buffer.write(']');
       }
       if (namedParams.isNotEmpty) {
-        if (requiredPositionalParams.isNotEmpty ||
-            optionalPositionalParams.isNotEmpty) {
+        if (requiredPositionalParams.isNotEmpty || optionalPositionalParams.isNotEmpty) {
           buffer.write(', ');
         }
         buffer.write('{');
         buffer.write(
-          namedParams
-              .map((ParameterElement e) => '${e.type} ${e.name}')
-              .join(', '),
+          namedParams.map((ParameterElement e) => '${e.type} ${e.name}').join(', '),
         );
         buffer.write('}');
       }
@@ -565,17 +539,11 @@ class FunctionType extends TypeImpl {
 
   /// A list of names for required positional parameters.
   List<String> get normalParameterNames =>
-      parameters
-          .where((ParameterElement p) => p.isRequiredPositional)
-          .map((ParameterElement p) => p.name)
-          .toList();
+      parameters.where((ParameterElement p) => p.isRequiredPositional).map((ParameterElement p) => p.name).toList();
 
   /// A list of names for optional positional parameters.
   List<String> get optionalParameterNames =>
-      parameters
-          .where((ParameterElement p) => p.isOptionalPositional)
-          .map((ParameterElement p) => p.name)
-          .toList();
+      parameters.where((ParameterElement p) => p.isOptionalPositional).map((ParameterElement p) => p.name).toList();
 
   @override
   Null get element => null;
@@ -601,8 +569,7 @@ class FunctionType extends TypeImpl {
     final List<ParameterElement> newParams = List<ParameterElement>.of(
       parameters,
     );
-    for (final ParameterElementImpl param
-        in parameters.whereType<ParameterElementImpl>()) {
+    for (final ParameterElementImpl param in parameters.whereType<ParameterElementImpl>()) {
       param.type = substitution.substituteType(param.type);
     }
 
@@ -667,10 +634,7 @@ class TypeParameterType extends TypeImpl {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is TypeParameterType &&
-          runtimeType == other.runtimeType &&
-          bound == other.bound &&
-          name == other.name;
+      other is TypeParameterType && runtimeType == other.runtimeType && bound == other.bound && name == other.name;
 
   @override
   int get hashCode => bound.hashCode;
@@ -707,8 +671,7 @@ class RecordType extends TypeImpl {
       buffer.write(
         positionalFields
             .mapIndexed(
-              (int i, RecordTypePositionalField e) =>
-                  '${e.type} ${r'$'}${i + 1}',
+              (int i, RecordTypePositionalField e) => '${e.type} ${r'$'}${i + 1}',
             )
             .join(', '),
       );
@@ -719,9 +682,7 @@ class RecordType extends TypeImpl {
       }
       buffer.write('{');
       buffer.write(
-        namedFields
-            .map((RecordTypeNamedField e) => '${e.type} ${e.name}')
-            .join(', '),
+        namedFields.map((RecordTypeNamedField e) => '${e.type} ${e.name}').join(', '),
       );
       buffer.write('}');
     }
