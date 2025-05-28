@@ -11,7 +11,7 @@ import 'package:lean_builder/builder.dart';
 import 'package:lean_builder/src/asset/assets_reader.dart';
 import 'package:lean_builder/src/build_script/paths.dart';
 import 'package:lean_builder/src/element/element.dart';
-import 'package:path/path.dart' as p show basename, withoutExtension, join, current, dirname, relative;
+import 'package:path/path.dart' as p show basename, withoutExtension, join, current, dirname, relative, joinAll;
 
 /// some of the abstractions are borrowed from the build package
 
@@ -150,12 +150,17 @@ class BuildStepImpl implements BuildStep {
   Uri _getOutputUri(String extension) {
     if (generateToCache) {
       final Uri shortUri = asset.shortUri;
+      final isPackageUri = shortUri.scheme == 'package';
       assert(
-        shortUri.scheme == 'package' || shortUri.scheme == 'asset',
+        isPackageUri || shortUri.scheme == 'asset',
         'Only package and asset URIs are supported',
       );
+      final parts = isPackageUri
+          ? [...shortUri.pathSegments.take(1), 'lib', ...shortUri.pathSegments.skip(1)]
+          : shortUri.pathSegments;
+      final path = p.joinAll(parts);
       final Uri outputUri = shortUri.replace(
-        path: p.withoutExtension(shortUri.path) + extension,
+        path: '${p.withoutExtension(path)}$extension',
       );
       _validateOutput(outputUri);
       final String filename = p.basename(outputUri.path);

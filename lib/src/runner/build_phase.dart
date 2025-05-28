@@ -75,9 +75,7 @@ class BuildPhase {
           if (outputUri == null) continue;
           if (outputExtensions.any((String e) => outputUri.path.endsWith(e))) {
             _oldOutputs.add(output);
-            assets.removeWhere(
-              (ProcessableAsset entry) => entry.asset.id == output,
-            );
+            assets.removeWhere((entry) => entry.asset.id == output);
           }
         }
       }
@@ -120,11 +118,10 @@ class BuildPhase {
 
     final HashMap<Asset, Set<Uri>> phaseOutputs = HashMap<Asset, Set<Uri>>();
     final List<FailedAsset> failedAssets = <FailedAsset>[];
-    for (final BuildResult result in await Future.wait(chunkResults)) {
+    for (final result in await Future.wait(chunkResults)) {
       phaseOutputs.addAll(result.outputs);
       failedAssets.addAll(result.failedAssets);
     }
-
     return _finalizePhase(phaseOutputs, failedAssets);
   }
 
@@ -144,10 +141,7 @@ class BuildPhase {
     Map<Asset, Set<Uri>> outputs,
     List<FailedAsset> failedAssets,
   ) {
-    final ReferencesScanner scanner = ReferencesScanner(
-      resolver.graph,
-      resolver.fileResolver,
-    );
+    final scanner = ReferencesScanner(resolver.graph, resolver.fileResolver);
     final Set<Uri> outputUris = <Uri>{};
     for (final MapEntry<Asset, Set<Uri>> entry in outputs.entries) {
       for (final Uri uri in entry.value) {
@@ -155,6 +149,9 @@ class BuildPhase {
         // if the output is a dart file, we need to scan it before the next phase
         if (p.extension(uri.path) == '.dart') {
           scanner.scan(output, forceOverride: true);
+        } else {
+          // if it's not a dart file, we just add it to the graph
+          resolver.graph.addAsset(output);
         }
         resolver.graph.addOutput(entry.key, output);
         outputUris.add(uri);

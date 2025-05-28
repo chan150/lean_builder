@@ -38,6 +38,9 @@ class LeanBuilder {
   /// {@endtemplate}
   final Set<Type>? registerTypes;
 
+  /// Builder keys that this generator applies to.
+  final Set<String>? applies;
+
   /// Additional configuration options for this builder.
   final Map<String, dynamic>? options;
 
@@ -49,6 +52,7 @@ class LeanBuilder {
     this.generateFor,
     this.runsBefore,
     this.options,
+    this.applies,
   });
 }
 

@@ -243,7 +243,7 @@ class BuildCommand extends BaseCommand<int> {
 
       final Set<String>? outputs = graph.outputs[entry.asset.id];
       if (outputs != null) {
-        for (final String output in outputs) {
+        for (final String output in Set.of(outputs)) {
           final Uri? outputUri = graph.uriForAssetOrNull(output);
           if (outputUri == null) continue;
           if (!allOutputExtensions.any(
@@ -264,15 +264,13 @@ class BuildCommand extends BaseCommand<int> {
 
     int outputCount = 0;
     final List<List<BuilderEntry>> phases = calculateBuilderPhases(builders);
-    final Set<ProcessableAsset> assetsToProcess = Set<ProcessableAsset>.of(
-      assets,
-    );
+    final assetsToProcess = Set<ProcessableAsset>.of(assets);
 
     for (int i = 0; i < phases.length; i++) {
       final List<BuilderEntry> phase = phases[i];
-      final BuildPhase buildPhase = BuildPhase(resolver, phase);
+      final buildPhase = BuildPhase(resolver, phase);
       buildPhase.beforeBuild(resolver, assets);
-      final PhaseResult result = await buildPhase.build(assetsToProcess);
+      final result = await buildPhase.build(assetsToProcess);
       if (result.hasErrors) {
         for (final FailedAsset entry in result.failedAssets) {
           graph.updateAssetState(entry.asset.id, AssetState.unProcessed);
@@ -296,11 +294,9 @@ class BuildCommand extends BaseCommand<int> {
                   if (nextBuilder.outputExtensions.any(
                     (String e) => asset.uri.path.endsWith(e),
                   )) {
-                    final String? srcGenerator = graph.getGeneratorOfOutput(
-                      asset.id,
-                    );
+                    final srcGenerator = graph.getGeneratorOfOutput(asset.id);
                     if (srcGenerator != null) {
-                      // mark the source as unprocessed to force the next phase to reprocess it
+                      // mark the source as unprocessed to force the next phase to process it
                       graph.updateAssetState(
                         srcGenerator,
                         AssetState.unProcessed,
@@ -314,9 +310,7 @@ class BuildCommand extends BaseCommand<int> {
         }
       }
       // add new outputs to the assets to be processed by the next phase
-      final Set<ProcessableAsset> newAssets = graph.getProcessableAssets(
-        fileResolver,
-      );
+      final newAssets = graph.getProcessableAssets(fileResolver);
       assetsToProcess.addAll(newAssets);
       // we assume that the new assets will be processed in the next phase
       // if something goes wrong, we revert back to unprocessed

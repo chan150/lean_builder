@@ -85,10 +85,7 @@ String? prepareBuildScript(
     return null;
   }
 
-  final List<BuilderDefinitionEntry> withOverrides = applyOverrides(
-    entries,
-    overrides,
-  );
+  final withOverrides = applyOverrides(entries, overrides);
 
   Logger.info('Generating a new build script...');
   String script = generateBuildScript(withOverrides);
@@ -152,30 +149,12 @@ List<BuilderDefinitionEntry> applyOverrides(
 ) {
   final List<BuilderDefinitionEntry> parsedEntries = <BuilderDefinitionEntry>[];
   final List<BuilderOverride> parsedOverrides = <BuilderOverride>[];
-  late final TypeChecker leanGenTypeChecker = resolver.typeCheckerFor(
-    'LeanGenerator',
-    _leanAnnotations,
-  );
-  late final TypeChecker leanBuilderTypeChecker = resolver.typeCheckerFor(
-    'LeanBuilder',
-    _leanAnnotations,
-  );
-  late final TypeChecker leanBuilderOverrideTypeChecker = resolver.typeCheckerFor(
-    'LeanBuilderOverrides',
-    _leanAnnotations,
-  );
-  late final TypeChecker generatorTypeChecker = resolver.typeCheckerFor(
-    'Generator',
-    _leanGenerator,
-  );
-  late final TypeChecker builderTypeChecker = resolver.typeCheckerFor(
-    'Builder',
-    _leanBuilders,
-  );
-  late final TypeChecker builderOverrideTypeChecker = resolver.typeCheckerFor(
-    'BuilderOverride',
-    _parsedBuilderEntry,
-  );
+  late final leanGenTypeChecker = resolver.typeCheckerFor('LeanGenerator', _leanAnnotations);
+  late final leanBuilderTypeChecker = resolver.typeCheckerFor('LeanBuilder', _leanAnnotations);
+  late final leanBuilderOverrideTypeChecker = resolver.typeCheckerFor('LeanBuilderOverrides', _leanAnnotations);
+  late final generatorTypeChecker = resolver.typeCheckerFor('Generator', _leanGenerator);
+  late final builderTypeChecker = resolver.typeCheckerFor('Builder', _leanBuilders);
+  late final builderOverrideTypeChecker = resolver.typeCheckerFor('BuilderOverride', _parsedBuilderEntry);
 
   for (final Asset asset in assets) {
     final LibraryElement library = resolver.resolveLibrary(asset);
@@ -202,13 +181,7 @@ List<BuilderDefinitionEntry> applyOverrides(
 
       final bool isShared = constObj.constructorName == 'shared';
       final BuilderType builderType = isShared ? BuilderType.shared : BuilderType.library;
-      final BuilderDefinitionEntry builderEntry = _buildEntry(
-        asset,
-        constObj,
-        resolver,
-        element,
-        builderType,
-      );
+      final builderEntry = _buildEntry(asset, constObj, resolver, element, builderType);
       parsedEntries.add(builderEntry);
     }
 

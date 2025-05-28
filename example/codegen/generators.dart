@@ -40,11 +40,11 @@ class SerializableGenerator extends GeneratorForAnnotatedClass<Serializable> {
         );
       } else if (type.isDartCoreMap) {
         b.writeln(
-          '  (json[\'${param.name}\'] as Map<String, dynamic>).map((k, v) => MapEntry(k, ${type.element?.name}.fromJson(v))),',
+          '  (json[\'${param.name}\'] as Map<String, dynamic>).map((k, v) => MapEntry(k, ${type.name}.fromJson(v))),',
         );
       } else {
         b.writeln(
-          ' ${type.element?.name}.fromJson(json[\'${param.name}\'] as Map<String, dynamic>),',
+          ' ${type.name}.fromJson(json[\'${param.name}\'] as Map<String, dynamic>),',
         );
       }
     }
