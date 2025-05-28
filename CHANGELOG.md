@@ -1,6 +1,7 @@
 ## 0.1.0-alpha.10
 - feat: introduce PathMatcher for flexible asset finding
 - fix: assets reader does not follow symlinks now
+- fix: formatter page-width role is now included before any generated content'
 ## 0.1.0-alpha.9
 - fix: exclude none-dart files from being scanned for references by ReferencesScanner
 ## 0.1.0-alpha.8

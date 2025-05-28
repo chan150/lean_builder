@@ -17,7 +17,7 @@ import 'generator/generator.dart';
 const dartFormatWidth = '// dart format width=80';
 
 /// Default header for generated files.
-const String defaultFileHeader = '// GENERATED CODE - DO NOT MODIFY BY HAND';
+const String defaultFileHeader = '// GENERATED CODE - DO NOT MODIFY BY HAND\n$dartFormatWidth';
 
 /// Flag indicating whether the code is running in development mode.
 final bool _isDevMode = Zone.current[#isDevMode] == true;
@@ -29,7 +29,7 @@ String _defaultFormatOutput(String code) {
   return DartFormatter(
     languageVersion: DartFormatter.latestLanguageVersion,
     pageWidth: 80,
-  ).format('$dartFormatWidth\n$code');
+  ).format(code);
 }
 
 /// Line of asterisks used as a separator in generated files.

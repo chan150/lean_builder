@@ -7,7 +7,6 @@ import 'dart:io' show File, Directory;
 
 import 'package:analyzer/dart/ast/ast.dart' show PartDirective;
 import 'package:lean_builder/builder.dart';
-import 'package:lean_builder/src/asset/assets_reader.dart';
 import 'package:lean_builder/src/build_script/paths.dart';
 import 'package:lean_builder/src/element/element.dart';
 import 'package:path/path.dart' as p show basename, withoutExtension, join, current, dirname, relative, joinAll;
@@ -310,10 +309,7 @@ class SharedBuildStep extends BuildStepImpl {
       asset.uri.path,
       from: p.dirname(outputUri.path),
     );
-    final String header = <String>[
-      defaultFileHeader,
-      "part of '$partOf';",
-    ].join('\n\n');
+    final String header = <String>[defaultFileHeader, "part of '$partOf';"].join('\n\n');
     final String content = _buffer.toString();
 
     final File outputFile = File.fromUri(outputUri);
