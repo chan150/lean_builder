@@ -146,13 +146,7 @@ class BuildPhase {
     for (final MapEntry<Asset, Set<Uri>> entry in outputs.entries) {
       for (final Uri uri in entry.value) {
         final Asset output = resolver.fileResolver.assetForUri(uri);
-        // if the output is a dart file, we need to scan it before the next phase
-        if (p.extension(uri.path) == '.dart') {
-          scanner.scan(output, forceOverride: true);
-        } else {
-          // if it's not a dart file, we just add it to the graph
-          resolver.graph.addAsset(output);
-        }
+        scanner.scan(output, forceOverride: true);
         resolver.graph.addOutput(entry.key, output);
         outputUris.add(uri);
       }

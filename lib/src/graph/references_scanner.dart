@@ -1,5 +1,6 @@
 import 'dart:math' as math show max;
 import 'dart:typed_data' show Uint8List;
+import 'package:path/path.dart' as p show extension;
 
 // ignore: implementation_imports
 import 'package:_fe_analyzer_shared/src/scanner/scanner.dart' as fasta;
@@ -53,6 +54,11 @@ class ReferencesScanner {
       final Uint8List bytes = asset.readAsBytesSync();
 
       results.addAsset(asset);
+      // do not scan non-Dart files
+      if (p.extension(asset.uri.path) != '.dart') {
+        results.updateAssetInfo(asset, content: bytes);
+        return;
+      }
 
       Token? token = fasta.scan(bytes).tokens;
       String? libraryName;

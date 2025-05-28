@@ -1,3 +1,5 @@
+## 0.1.0-alpha.9
+- fix: exclude none-dart files from being scanned for references by ReferencesScanner
 ## 0.1.0-alpha.8
 - fix: add missing 'applies' property to @LeanBuilder
 - fix: none dart outputs are now properly tracked
