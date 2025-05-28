@@ -1,3 +1,6 @@
+## 0.1.0-alpha.10
+- feat: introduce PathMatcher for flexible asset finding
+- fix: assets reader does not follow symlinks now
 ## 0.1.0-alpha.9
 - fix: exclude none-dart files from being scanned for references by ReferencesScanner
 ## 0.1.0-alpha.8

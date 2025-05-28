@@ -10,7 +10,6 @@ import 'package:lean_builder/src/graph/references_scanner.dart';
 import 'package:lean_builder/src/logger.dart';
 import 'package:lean_builder/src/resolvers/resolver.dart';
 import 'package:lean_builder/src/runner/build_utils.dart';
-import 'package:path/path.dart' as p show extension;
 
 import 'build_result.dart';
 

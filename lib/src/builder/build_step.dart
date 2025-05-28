@@ -6,7 +6,6 @@ import 'dart:convert' show Encoding, utf8;
 import 'dart:io' show File, Directory;
 
 import 'package:analyzer/dart/ast/ast.dart' show PartDirective;
-import 'package:glob/glob.dart' show Glob;
 import 'package:lean_builder/builder.dart';
 import 'package:lean_builder/src/asset/assets_reader.dart';
 import 'package:lean_builder/src/build_script/paths.dart';
@@ -42,14 +41,15 @@ abstract class BuildStep {
   /// the [allowedExtensions].
   Set<String> get allowedExtensions;
 
-  /// Finds assets within the root package that match the [glob] pattern.
+  /// Finds assets within the root package that match the [matcher] pattern.
   ///
   /// Useful for locating additional input files needed during generation,
   /// such as template files or configuration files.
   ///
-  /// @param glob The glob pattern to match against files in the root package
+  /// @param matcher The path matcher to match against files in the root package
+  /// @param subDir An optional subdirectory to limit the search within the root package.
   /// @return A list of matching assets
-  List<Asset> findAssets(Glob glob);
+  List<Asset> findAssets(PathMatcher matcher, {String? subDir});
 
   /// Writes [bytes] to a binary file located at [id].
   ///
@@ -240,8 +240,8 @@ class BuildStepImpl implements BuildStep {
   );
 
   @override
-  List<Asset> findAssets(Glob glob) {
-    return _assetReader.findRootAssets(glob);
+  List<Asset> findAssets(PathMatcher matcher, {String? subDir}) {
+    return _assetReader.findRootAssets(matcher, subDir: subDir);
   }
 }
 

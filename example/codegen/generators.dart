@@ -23,7 +23,6 @@ class SerializableGenerator extends GeneratorForAnnotatedClass<Serializable> {
     );
     for (final param in constructor.parameters) {
       final type = param.type;
-
       if (param.isNamed) b.writeln('${param.name}: ');
 
       if (type.isDartCoreInt ||

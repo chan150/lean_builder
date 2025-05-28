@@ -2,7 +2,7 @@ import 'dart:collection' show HashMap;
 import 'dart:io' show Directory, File, FileSystemEntity;
 
 import 'package:glob/glob.dart' show Glob;
-import 'package:path/path.dart' as p show join;
+import 'package:path/path.dart' as p show join, Context;
 
 import 'asset.dart';
 import 'package_file_resolver.dart';
@@ -52,18 +52,22 @@ class FileAssetReader {
   }
 
   /// {@template file_asset_reader.find_root_assets}
-  /// Finds assets in the root package that match the specified [glob] pattern.
+  /// Finds assets in the root package that match the specified [matcher] pattern.
   ///
   /// This method recursively searches all directories in the root package
-  /// and returns a list of [Asset] objects for files that match the [glob].
+  /// and returns a list of [Asset] objects for files that match the [matcher].
+  ///
+  /// The [subDir] parameter allows filtering assets within a specific subdirectory
+  /// of the root package. If [subDir] is provided, it should be a relative path
+  /// from the root package directory.
   /// {@endtemplate}
-  List<Asset> findRootAssets(Glob glob) {
+  List<Asset> findRootAssets(PathMatcher matcher, {String? subDir}) {
     final String package = fileResolver.rootPackage;
     final String packagePath = fileResolver.pathFor(package);
-    final Directory dir = Directory.fromUri(Uri.parse(packagePath));
+    final Directory dir = Directory.fromUri(Uri.parse(p.join(packagePath, subDir)));
     assert(dir.existsSync(), 'Package $package not found at ${dir.path}');
     final List<Asset> collection = <Asset>[];
-    _collectAssets(dir, collection, matcher: glob);
+    _collectAssets(dir, collection, matcher: matcher);
     return collection;
   }
 
@@ -73,9 +77,9 @@ class FileAssetReader {
   void _collectAssets(
     Directory directory,
     List<Asset> assets, {
-    Glob? matcher,
+    PathMatcher? matcher,
   }) {
-    for (final FileSystemEntity entity in directory.listSync()) {
+    for (final FileSystemEntity entity in directory.listSync(followLinks: false)) {
       if (entity is Directory) {
         _collectAssets(entity, assets, matcher: matcher);
       } else if (entity is File) {
@@ -85,5 +89,99 @@ class FileAssetReader {
         assets.add(fileResolver.assetForUri(entity.uri));
       }
     }
+  }
+}
+
+/// An abstract class for matching paths against a pattern.
+abstract class PathMatcher {
+  /// Checks if the given [path] matches the pattern.
+  bool matches(String path);
+
+  /// Creates a Glob-based [PathMatcher] from a glob pattern.
+  factory PathMatcher.glob(
+    String pattern, {
+    p.Context? context,
+    bool recursive = false,
+    bool? caseSensitive,
+  }) {
+    return GlobPathMatcher(
+      Glob(
+        pattern,
+        context: context,
+        recursive: recursive,
+        caseSensitive: caseSensitive,
+      ),
+    );
+  }
+
+  /// Creates a Regex-based [PathMatcher] from a regular expression pattern.
+  factory PathMatcher.regex(
+    String pattern, {
+    bool caseSensitive = true,
+    bool unicode = false,
+    bool dotAll = false,
+  }) {
+    return RegexPathMatcher(
+      RegExp(
+        pattern,
+        caseSensitive: caseSensitive,
+        unicode: unicode,
+        dotAll: dotAll,
+      ),
+    );
+  }
+
+  /// Creates a [PathMatcher] that uses a callback function to match paths.
+  factory PathMatcher.callback(
+    bool Function(String path) callback,
+  ) {
+    return CallbackPathMatcher(callback);
+  }
+}
+
+/// A [PathMatcher] implementation that uses a [Glob] pattern to match paths.
+///
+/// This class provides a way to match file paths against glob patterns,
+class GlobPathMatcher implements PathMatcher {
+  /// The glob pattern to match against.
+  final Glob _glob;
+
+  /// Creates a [GlobPathMatcher] with the specified [glob] pattern.
+  GlobPathMatcher(this._glob);
+
+  @override
+  bool matches(String path) {
+    return _glob.matches(path);
+  }
+}
+
+/// A [PathMatcher] implementation that uses a regular expression to match paths.
+///
+/// This class provides a way to match file paths against regular expression patterns,
+class RegexPathMatcher implements PathMatcher {
+  final RegExp _regex;
+
+  /// Creates a [RegexPathMatcher] with the specified [regex] pattern.
+  RegexPathMatcher(this._regex);
+
+  @override
+  bool matches(String path) {
+    return _regex.hasMatch(path);
+  }
+}
+
+// callback matcher
+/// A [PathMatcher] implementation that uses a callback function to match paths.
+///
+/// This class provides a way to match file paths against custom logic defined in a callback function.
+class CallbackPathMatcher implements PathMatcher {
+  final bool Function(String path) _callback;
+
+  /// Creates a [CallbackPathMatcher] with the specified [callback] function.
+  CallbackPathMatcher(this._callback);
+
+  @override
+  bool matches(String path) {
+    return _callback(path);
   }
 }
