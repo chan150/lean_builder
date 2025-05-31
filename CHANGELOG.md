@@ -1,3 +1,5 @@
+## 0.1.0-alpha.11
+- chore: Remove flutter_test dependency from pubspec.yaml
 ## 0.1.0-alpha.10
 - feat: introduce PathMatcher for flexible asset finding
 - fix: assets reader does not follow symlinks now
