@@ -138,12 +138,12 @@ class AssetsGraph extends AssetsScanResults {
   ///
   /// [package] is the name of the package to get assets for.
   /// {@endtemplate}
-  List<ScannedAsset> getAssetsForPackage(String package) {
+  List<ScannedAsset> getAssetsForPackages(Set<String> packages) {
     final List<ScannedAsset> assets = <ScannedAsset>[];
     for (final MapEntry<String, List<dynamic>> entry in this.assets.entries) {
       final Uri uri = Uri.parse(entry.value[GraphIndex.assetUri]);
       if (uri.pathSegments.isEmpty) continue;
-      if (uri.pathSegments[0] == package) {
+      if (packages.contains(uri.pathSegments[0])) {
         assets.add(
           ScannedAsset(
             entry.key,

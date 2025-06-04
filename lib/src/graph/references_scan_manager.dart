@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 import 'dart:isolate' show Isolate, ReceivePort, SendPort;
 import 'dart:typed_data' show Uint8List;
 
+import 'package:lean_builder/src/utils.dart';
 import 'package:xxh3/xxh3.dart' show xxh3String;
 import 'package:lean_builder/src/asset/asset.dart';
 import 'package:lean_builder/src/asset/assets_reader.dart';
@@ -117,28 +118,31 @@ class ReferencesScanManager {
   /// {@endtemplate}
   Future<void> scanAssets({bool scanOnlyRoot = false}) async {
     final FileAssetReader assetsReader = FileAssetReader(fileResolver);
-    final Set<String> packagesToScan = scanOnlyRoot ? <String>{rootPackage} : fileResolver.packages;
+    final Set<String> packagesToScan;
+    if (scanOnlyRoot) {
+      packagesToScan = {rootPackage};
+    } else if (assetsGraph.loadedFromCache) {
+      packagesToScan = {...pathHostedPackages, rootPackage};
+    } else {
+      packagesToScan = fileResolver.packages;
+    }
 
-    final Map<String, List<Asset>> assets = assetsReader.listAssetsFor(
-      packagesToScan,
-    );
+    final assets = assetsReader.listAssetsFor(packagesToScan);
     final List<Asset> assetsList = assets.values.expand((List<Asset> e) => e).toList();
     // Only distribute work if building from scratch
     if (!assetsGraph.loadedFromCache) {
       await scanWithIsolates(assetsList, fileResolver.toJson());
     } else {
       // Use single-threaded approach for incremental updates
-      final ReferencesScanner scanner = ReferencesScanner(
-        assetsGraph,
-        fileResolver,
-      );
+      final scanner = ReferencesScanner(assetsGraph, fileResolver);
       for (final Asset asset in assetsList) {
         scanner.scan(asset);
       }
+
+      handleIncrementallyUpdatedAssets(
+        assetsGraph.getAssetsForPackages(packagesToScan),
+      );
     }
-    handleIncrementallyUpdatedAssets(
-      assetsGraph.getAssetsForPackage(rootPackage),
-    );
   }
 
   /// {@template references_scan_manager.scan_with_isolates}

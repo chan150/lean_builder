@@ -47,8 +47,7 @@ class SerializableGenerator extends GeneratorForAnnotatedClass<Serializable> {
         );
       }
     }
-    b.writeln(');');
-
+    b.write(');');
     return b.toString();
   }
 }

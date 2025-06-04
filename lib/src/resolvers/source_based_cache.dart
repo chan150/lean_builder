@@ -60,7 +60,7 @@ class SourceBasedCache<T> {
   /// @param key The compound key to look up
   /// @return The cached value, or null if not found
   /// {@endtemplate}
-  operator [](CompoundKey key) {
+  T? operator [](CompoundKey key) {
     return _cache[key.source]?[key.target];
   }
 

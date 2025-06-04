@@ -198,9 +198,8 @@ abstract class _Builder extends Builder {
           ..writeln();
       }
 
-      contentBuffer.writeln(item.output);
+      contentBuffer.write(item.output);
     }
-
     await writeOutput(buildStep, contentBuffer.toString(), extension);
   }
 

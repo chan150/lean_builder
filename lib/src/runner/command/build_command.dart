@@ -289,7 +289,7 @@ class BuildCommand extends BaseCommand<int> {
 
             for (final BuilderEntry nextBuilder in nextPhase) {
               if (builder.applies.contains(nextBuilder.key)) {
-                final List<ScannedAsset> packageAssets = graph.getAssetsForPackage(fileResolver.rootPackage);
+                final List<ScannedAsset> packageAssets = graph.getAssetsForPackages({fileResolver.rootPackage});
                 for (final ScannedAsset asset in packageAssets) {
                   if (nextBuilder.outputExtensions.any(
                     (String e) => asset.uri.path.endsWith(e),

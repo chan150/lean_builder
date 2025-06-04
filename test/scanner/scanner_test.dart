@@ -10,7 +10,7 @@ import 'package:test/scaffolding.dart';
 import '../utils/test_utils.dart';
 import 'string_asset_src.dart';
 
-main() {
+void main() {
   late ReferencesScanner scanner;
   late AssetsGraph assetsGraph;
 

@@ -92,9 +92,7 @@ abstract class GeneratorForAnnotationBase extends Generator {
         annotatedElement.element,
         annotatedElement.annotation,
       );
-      final Iterable<String> normalized = await normalizeGeneratorOutput(
-        rawValue,
-      );
+      final Iterable<String> normalized = await normalizeGeneratorOutput(rawValue);
       for (final String value in normalized) {
         if (value.trim().isNotEmpty) {
           values.add(value);

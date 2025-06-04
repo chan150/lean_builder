@@ -23,11 +23,7 @@ Future<void> main(List<String> args, SendPort? port) async {
     await scanManager.scanAssets();
     Logger.info("Assets graph synced in ${stopWatch.elapsed.formattedMS}.");
     final Set<ProcessableAsset> builderAssets = graph.getBuilderProcessableAssets(fileResolver);
-    final ResolverImpl resolver = ResolverImpl(
-      graph,
-      fileResolver,
-      SourceParser(),
-    );
+    final resolver = ResolverImpl(graph, fileResolver, SourceParser());
     final String? scriptPath = prepareBuildScript(builderAssets, resolver);
     await graph.save();
 
