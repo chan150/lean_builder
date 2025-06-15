@@ -27,7 +27,7 @@ void main(List<String> args) async {
 
   final preBuildScriptKernelPath = p.join(p.current, paths.preBuildScriptKernel);
   if (!File(preBuildScriptKernelPath).existsSync()) {
-    await compileKernel(preBuildScriptUri.path, preBuildScriptKernelPath);
+    await compileKernel(Uri.decodeComponent(preBuildScriptUri.path), preBuildScriptKernelPath);
   }
   final messagePort = ReceivePort();
   await Isolate.spawnUri(Uri.file(preBuildScriptKernelPath), args, messagePort.sendPort, errorsAreFatal: true);
