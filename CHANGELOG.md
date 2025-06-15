@@ -1,3 +1,5 @@
+## 0.1.0-alpha.13
+- fix: preBuildScriptUri path decoding error #4
 ## 0.1.0-alpha.12
 - chore: update lints package constrain to ^6.0.0
 - fix: track changes of path hosted packages

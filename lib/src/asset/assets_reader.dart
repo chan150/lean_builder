@@ -2,7 +2,7 @@ import 'dart:collection' show HashMap;
 import 'dart:io' show Directory, File, FileSystemEntity;
 
 import 'package:glob/glob.dart' show Glob;
-import 'package:path/path.dart' as p show join, Context;
+import 'package:path/path.dart' as p;
 
 import 'asset.dart';
 import 'package_file_resolver.dart';
@@ -36,7 +36,7 @@ class FileAssetReader {
     for (final String package in packages) {
       final List<Asset> collection = <Asset>[];
       final String packagePath = fileResolver.pathFor(package);
-      final Directory dir = Directory.fromUri(Uri.parse(packagePath));
+      final Directory dir = Directory(p.fromUri(packagePath));
       assert(dir.existsSync(), 'Package $package not found at ${dir.path}');
       for (final String subDir in PackageFileResolver.dirsScheme.keys) {
         /// Skip none-lib directory for non-root packages
@@ -64,7 +64,7 @@ class FileAssetReader {
   List<Asset> findRootAssets(PathMatcher matcher, {String? subDir}) {
     final String package = fileResolver.rootPackage;
     final String packagePath = fileResolver.pathFor(package);
-    final Directory dir = Directory.fromUri(Uri.parse(p.join(packagePath, subDir)));
+    final Directory dir = Directory(p.fromUri(p.join(packagePath, subDir)));
     assert(dir.existsSync(), 'Package $package not found at ${dir.path}');
     final List<Asset> collection = <Asset>[];
     _collectAssets(dir, collection, matcher: matcher);

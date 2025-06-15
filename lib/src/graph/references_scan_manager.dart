@@ -164,6 +164,9 @@ class ReferencesScanManager {
     Map<String, dynamic> packageResolverData,
   ) async {
     final int isolateCount = Platform.numberOfProcessors - 1; // Leave one core free
+    if (assets.isEmpty) {
+      return <ProcessableAsset>{};
+    }
     final int actualIsolateCount = isolateCount.clamp(1, assets.length);
 
     // Calculate chunk size - each isolate gets roughly equal work
