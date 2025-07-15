@@ -79,6 +79,7 @@ class FileAssetReader {
     List<Asset> assets, {
     PathMatcher? matcher,
   }) {
+    if(!directory.existsSync()) return;
     for (final FileSystemEntity entity in directory.listSync(followLinks: false)) {
       if (entity is Directory) {
         _collectAssets(entity, assets, matcher: matcher);

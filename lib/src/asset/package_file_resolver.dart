@@ -2,10 +2,12 @@ import 'dart:convert' show jsonDecode, jsonEncode;
 import 'dart:io' show File, Directory, Platform;
 import 'dart:typed_data' show Uint8List;
 
+import 'package:lean_builder/src/logger.dart';
 import 'package:lean_builder/src/utils.dart';
 import 'package:meta/meta.dart' show visibleForTesting;
 import 'package:path/path.dart' as p show join, joinAll, dirname, normalize, canonicalize, current;
 import 'package:xxh3/xxh3.dart' show xxh3String;
+
 import 'asset.dart';
 import 'errors.dart';
 
@@ -288,7 +290,9 @@ class PackageFileResolverImpl implements PackageFileResolver {
           absoluteUri = Directory.current.uri.resolve(
             packageUri.pathSegments.skip(1).join('/'),
           );
-          resolvedPath = absoluteUri.replace(path: p.canonicalize(absoluteUri.path)).toString();
+          resolvedPath = Platform.isWindows
+              ? absoluteUri.toString()
+              : absoluteUri.replace(path: p.canonicalize(absoluteUri.path)).toString();
         }
         packageToPath[name] = resolvedPath;
       }
